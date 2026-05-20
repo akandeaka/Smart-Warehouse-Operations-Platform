@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warehouse Manager Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .tabs {
+            background: white;
+            padding: 0 20px;
+            display: flex;
+            gap: 5px;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 16px;
+        }
+
+        .tab.active {
+            border-bottom: 3px solid #667eea;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .panel {
+            display: none;
+            padding: 20px;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        table {
+            width: 100%;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        th {
+            background: #f8f9fa;
+            padding: 12px;
+            text-align: left;
+        }
+
+        td {
+            padding: 12px;
+            border-top: 1px solid #eee;
+        }
+
+        button.approve-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button.close-day-btn {
+            background: #ffc107;
+            color: #333;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏪 Warehouse Manager Dashboard</h1>
+        <div class="logout-btn" onclick="logout()">Logout</div>
+    </div>
+
+    <div class="stats-container">
+        <div class="stat-card">
+            <div>Total Products</div>
+            <div class="value" id="totalProducts">0</div>
+        </div>
+        <div class="stat-card">
+            <div>Warehouse Value (₦)</div>
+            <div class="value" id="totalValue">0</div>
+        </div>
+        <div class="stat-card">
+            <div>Pending Approvals</div>
+            <div class="value" id="pendingApprovals">0</div>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="showPanel('stock')">Stock Management</button>
+        <button class="tab" onclick="showPanel('approvals')">Credit Approvals</button>
+        <button class="tab" onclick="showPanel('reports')">Daily Reports</button>
+    </div>
+
+    <div id="stockPanel" class="panel active">
+        <h2>Current Warehouse Stock</h2>
+        <table id="stockTable">
+            <thead><tr><th>Product</th><th>Quantity</th><th>Unit Cost</th><th>Total Value</th></tr></thead>
+            <tbody id="stockTableBody"></tbody>
+        </table>
+    </div>
+
+    <div id="approvalsPanel" class="panel">
+        <h2>Pending Credit Approvals</h2>
+        <table id="approvalsTable">
+            <thead><tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Action</th></tr></thead>
+            <tbody id="approvalsTableBody"></tbody>
+        </table>
+    </div>
+
+    <div id="reportsPanel" class="panel">
+        <button class="close-day-btn" onclick="closeDay()">🔒 Close Day (5 PM)</button>
+        <h2>Today's Sales Report</h2>
+        <table id="salesReportTable">
+            <thead><tr><th>Team</th><th>Orders</th><th>Total Sales</th></tr></thead>
+            <tbody id="salesReportBody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        let products = [
+            {name: 'Premium Rice', qty: 500, cost: 3500},
+            {name: 'Vegetable Oil', qty: 300, cost: 1800},
+            {name: 'Tomato Paste', qty: 1000, cost: 150}
+        ];
+        
+        let pendingApprovals = [
+            {order: 'SALE-002', customer: 'XYZ Supermarket', amount: 168000}
+        ];
+        
+        let salesReport = [
+            {team: 'Alpha Team', orders: 5, total: 210000},
+            {team: 'Beta Team', orders: 3, total: 168000}
+        ];
+
+        function updateStats() {
+            let totalValue = products.reduce((sum, p) => sum + (p.qty * p.cost), 0);
+            document.getElementById('totalProducts').innerText = products.length;
+            document.getElementById('totalValue').innerText = totalValue.toLocaleString();
+            document.getElementById('pendingApprovals').innerText = pendingApprovals.length;
+        }
+
+        function loadStockTable() {
+            let html = '';
+            products.forEach(p => {
+                html += `<tr><td>${p.name}</td><td>${p.qty}</td><td>₦${p.cost.toLocaleString()}</td><td>₦${(p.qty * p.cost).toLocaleString()}</td></tr>`;
+            });
+            document.getElementById('stockTableBody').innerHTML = html;
+        }
+
+        function loadApprovalsTable() {
+            let html = '';
+            pendingApprovals.forEach(a => {
+                html += `<tr>
+                    <td>${a.order}</td>
+                    <td>${a.customer}</td>
+                    <td>₦${a.amount.toLocaleString()}</td>
+                    <td><button class="approve-btn" onclick="approveCredit('${a.order}')">Approve</button></td>
+                </tr>`;
+            });
+            document.getElementById('approvalsTableBody').innerHTML = html || '<tr><td colspan="4">No pending approvals</td></tr>';
+        }
+
+        function loadSalesReport() {
+            let html = '';
+            salesReport.forEach(s => {
+                html += `<tr><td>${s.team}</td><td>${s.orders}</td><td>₦${s.total.toLocaleString()}</td></tr>`;
+            });
+            document.getElementById('salesReportBody').innerHTML = html;
+        }
+
+        function approveCredit(order) {
+            pendingApprovals = pendingApprovals.filter(a => a.order !== order);
+            loadApprovalsTable();
+            updateStats();
+            alert(`✅ Credit approved for ${order}. Stock deducted.`);
+        }
+
+        function closeDay() {
+            if (confirm('Close the day at 5 PM? This will return unsold stock and lock transactions.')) {
+                alert('✅ Day closed successfully!');
+            }
+        }
+
+        function showPanel(panelName) {
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            if (panelName === 'stock') {
+                document.getElementById('stockPanel').classList.add('active');
+                document.querySelector('.tab:nth-child(1)').classList.add('active');
+            } else if (panelName === 'approvals') {
+                document.getElementById('approvalsPanel').classList.add('active');
+                document.querySelector('.tab:nth-child(2)').classList.add('active');
+                loadApprovalsTable();
+            } else if (panelName === 'reports') {
+                document.getElementById('reportsPanel').classList.add('active');
+                document.querySelector('.tab:nth-child(3)').classList.add('active');
+                loadSalesReport();
+            }
+        }
+
+        function logout() {
+            window.location.href = 'login.html';
+        }
+
+        updateStats();
+        loadStockTable();
+        loadApprovalsTable();
+        loadSalesReport();
+    </script>
+</body>
+</html>
