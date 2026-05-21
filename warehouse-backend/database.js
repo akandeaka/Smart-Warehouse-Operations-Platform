@@ -1,28 +1,26 @@
-// database.js
+// database.js - Aiven MySQL connection
 const mysql = require('mysql2');
 require('dotenv').config();
 
-// Create connection pool for better performance
 const pool = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'warehouse_stock_system',
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
     waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    enableKeepAlive: true,
-    keepAliveInitialDelay: 0
+    connectionLimit: 5,
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
 
-// Promisify for async/await
 const promisePool = pool.promise();
 
-// Test connection
 async function testConnection() {
     try {
         const [rows] = await promisePool.query('SELECT 1');
-        console.log('✅ Database connected successfully');
+        console.log('✅ Aiven MySQL connected successfully');
         return true;
     } catch (error) {
         console.error('❌ Database connection failed:', error.message);
