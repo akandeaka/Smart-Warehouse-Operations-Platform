@@ -155,3 +155,46 @@
     </script>
 </body>
 </html>
+<script>
+    // API URL from config
+    const API_URL = 'https://warehouse-backend-api-2fye.onrender.com/api';
+    
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        const errorDiv = document.getElementById('errorMessage');
+        
+        try {
+            const response = await fetch(`${API_URL}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Store token and user info
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                
+                // Redirect based on role
+                if (data.user.role === 'warehouse_manager') {
+                    window.location.href = 'manager-dashboard.html';
+                } else if (data.user.role === 'sales_rep') {
+                    window.location.href = 'sales-dashboard.html';
+                }
+            } else {
+                errorDiv.style.display = 'block';
+                errorDiv.textContent = data.message || 'Invalid username or password';
+                setTimeout(() => { errorDiv.style.display = 'none'; }, 3000);
+            }
+        } catch (error) {
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = 'Server error. Please try again.';
+            setTimeout(() => { errorDiv.style.display = 'none'; }, 3000);
+        }
+    });
+</script>
