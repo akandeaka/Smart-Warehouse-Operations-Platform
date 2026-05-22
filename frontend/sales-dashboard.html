@@ -12,24 +12,34 @@
         .stat-card { background: white; padding: 20px; border-radius: 10px; text-align: center; }
         .stat-card .value { font-size: 28px; font-weight: bold; color: #28a745; }
         .card { background: white; padding: 20px; margin: 20px; border-radius: 10px; }
-        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; margin-top: 15px; }
-        .product-item { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fafafa; }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px; }
+        .product-item { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fafafa; position: relative; }
         .product-item h4 { color: #333; margin-bottom: 10px; }
-        .product-item .price { color: #28a745; font-weight: bold; font-size: 18px; }
-        .product-item .stock { color: #666; font-size: 14px; }
+        .product-item .price { color: #28a745; font-weight: bold; font-size: 20px; }
+        .product-item .stock { color: #666; font-size: 14px; margin: 5px 0; }
+        .product-item .total-value { color: #667eea; font-weight: bold; margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; }
+        .confirm-btn { background: #28a745; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; margin-top: 15px; }
+        .confirm-btn:hover { background: #218838; }
+        .confirmed-badge { background: #28a745; color: white; padding: 5px 10px; border-radius: 5px; font-size: 12px; display: inline-block; margin-bottom: 10px; }
+        .pending-badge { background: #ffc107; color: #333; padding: 5px 10px; border-radius: 5px; font-size: 12px; display: inline-block; margin-bottom: 10px; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: 500; }
         input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
         .payment-options { display: flex; gap: 15px; margin: 15px 0; }
         button.sell-btn { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
-        button.sell-btn:hover { background: #218838; }
+        button.sell-btn:disabled { background: #ccc; cursor: not-allowed; }
+        button.sell-btn:hover:enabled { background: #218838; }
         .logout-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; }
         .success-msg { background: #d4edda; color: #155724; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
         .error-msg { background: #f8d7da; color: #721c24; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
+        .warning-msg { background: #fff3cd; color: #856404; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
         table { width: 100%; margin-top: 15px; border-collapse: collapse; }
         th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
         th { background: #f8f9fa; }
         .loading { text-align: center; padding: 40px; color: #666; }
+        .allocation-summary { background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .allocation-summary h4 { margin-bottom: 10px; }
+        .total-goods-value { font-size: 24px; font-weight: bold; color: #28a745; }
     </style>
 </head>
 <body>
@@ -40,6 +50,7 @@
 
     <div id="successMsg" class="success-msg"></div>
     <div id="errorMsg" class="error-msg"></div>
+    <div id="warningMsg" class="warning-msg"></div>
 
     <div class="stats-container">
         <div class="stat-card">
@@ -54,12 +65,21 @@
 
     <div class="card">
         <h3>📦 My Allocated Stock (Today)</h3>
+        <div id="allocationSummary" class="allocation-summary" style="display: none;">
+            <h4>📋 Allocation Summary</h4>
+            <div>Total Goods Value: <span id="totalAllocatedValue" class="total-goods-value">₦0</span></div>
+            <div>Status: <span id="confirmationStatus">Not Confirmed</span></div>
+        </div>
+        
         <div id="stockLoading" class="loading">Loading your allocated stock...</div>
         <div id="allocatedStock" class="product-grid" style="display: none;"></div>
+        
+        <button id="confirmReceiptBtn" class="confirm-btn" onclick="confirmAllocation()" style="display: none;">✅ Confirm Receipt of Goods</button>
     </div>
 
     <div class="card">
         <h3>➕ Record New Sale</h3>
+        <div id="saleDisabledWarning" class="warning-msg" style="display: none;">⚠️ You must confirm receipt of allocated goods before you can sell.</div>
         <form id="saleForm">
             <div class="form-group">
                 <label>Customer Name *</label>
@@ -82,7 +102,7 @@
                 <label><input type="radio" name="paymentMethod" value="transfer"> 🏦 Bank Transfer</label>
                 <label><input type="radio" name="paymentMethod" value="credit"> 📝 Credit (Needs Approval)</label>
             </div>
-            <button type="submit" class="sell-btn">Sell Now</button>
+            <button type="submit" class="sell-btn" id="sellBtn" disabled>Sell Now</button>
         </form>
     </div>
 
@@ -109,9 +129,18 @@
         let authToken = localStorage.getItem('token');
         let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
         let allocatedProducts = [];
+        let isConfirmed = false;
 
-        function showMessage(msg, isError = false) {
-            const msgDiv = isError ? document.getElementById('errorMsg') : document.getElementById('successMsg');
+        function formatMoney(amount) {
+            return '₦' + amount.toLocaleString('en-NG');
+        }
+
+        function showMessage(msg, isError = false, isWarning = false) {
+            let msgDiv;
+            if (isError) msgDiv = document.getElementById('errorMsg');
+            else if (isWarning) msgDiv = document.getElementById('warningMsg');
+            else msgDiv = document.getElementById('successMsg');
+            
             msgDiv.innerHTML = msg;
             msgDiv.style.display = 'block';
             setTimeout(() => { msgDiv.style.display = 'none'; }, 3000);
@@ -146,6 +175,8 @@
             const loadingDiv = document.getElementById('stockLoading');
             const container = document.getElementById('allocatedStock');
             const select = document.getElementById('productSelect');
+            const confirmBtn = document.getElementById('confirmReceiptBtn');
+            const allocationSummary = document.getElementById('allocationSummary');
             
             loadingDiv.style.display = 'block';
             container.style.display = 'none';
@@ -157,25 +188,52 @@
                 
                 if (allocatedProducts.length === 0) {
                     container.innerHTML = '<p style="text-align:center; color:#666;">No stock allocated today. Contact warehouse manager.</p>';
+                    confirmBtn.style.display = 'none';
+                    allocationSummary.style.display = 'none';
                 } else {
+                    // Calculate total value of allocated goods
+                    let totalValue = 0;
                     let html = '';
                     let selectHtml = '<option value="">Select Product</option>';
                     
                     allocatedProducts.forEach(p => {
+                        const productTotal = p.remaining_qty * p.selling_price;
+                        totalValue += productTotal;
                         html += `
                             <div class="product-item">
                                 <h4>${p.product_name}</h4>
-                                <div class="stock">Available: ${p.remaining_qty} units</div>
-                                <div class="price">₦${p.selling_price.toLocaleString()}</div>
+                                <div class="stock">📦 Available: ${p.remaining_qty} units</div>
+                                <div class="price">💰 Price: ${formatMoney(p.selling_price)} per unit</div>
+                                <div class="total-value">📊 Total Value: ${formatMoney(productTotal)}</div>
                             </div>
                         `;
                         if (p.remaining_qty > 0) {
-                            selectHtml += `<option value="${p.id}" data-price="${p.selling_price}" data-name="${p.product_name}">${p.product_name} - ₦${p.selling_price} (${p.remaining_qty} left)</option>`;
+                            selectHtml += `<option value="${p.id}" data-price="${p.selling_price}" data-name="${p.product_name}">${p.product_name} - ${formatMoney(p.selling_price)} (${p.remaining_qty} left)</option>`;
                         }
                     });
                     
                     container.innerHTML = html;
                     select.innerHTML = selectHtml;
+                    
+                    // Show allocation summary
+                    document.getElementById('totalAllocatedValue').innerHTML = formatMoney(totalValue);
+                    allocationSummary.style.display = 'block';
+                    
+                    // Check if already confirmed
+                    const savedConfirmation = localStorage.getItem(`confirmed_${currentUser.team_id}_${new Date().toISOString().split('T')[0]}`);
+                    if (savedConfirmation === 'true') {
+                        isConfirmed = true;
+                        document.getElementById('confirmationStatus').innerHTML = '✅ Confirmed';
+                        document.getElementById('confirmationStatus').style.color = '#28a745';
+                        confirmBtn.style.display = 'none';
+                        enableSelling(true);
+                    } else {
+                        isConfirmed = false;
+                        document.getElementById('confirmationStatus').innerHTML = '⏳ Pending Confirmation';
+                        document.getElementById('confirmationStatus').style.color = '#ffc107';
+                        confirmBtn.style.display = 'block';
+                        enableSelling(false);
+                    }
                 }
                 
                 loadingDiv.style.display = 'none';
@@ -185,8 +243,51 @@
             }
         }
 
+        function enableSelling(enabled) {
+            const sellBtn = document.getElementById('sellBtn');
+            const saleDisabledWarning = document.getElementById('saleDisabledWarning');
+            const formInputs = document.querySelectorAll('#saleForm input, #saleForm select');
+            
+            sellBtn.disabled = !enabled;
+            if (enabled) {
+                saleDisabledWarning.style.display = 'none';
+                formInputs.forEach(input => { if(input.id !== 'sellBtn') input.disabled = false; });
+            } else {
+                saleDisabledWarning.style.display = 'block';
+                formInputs.forEach(input => { if(input.id !== 'sellBtn') input.disabled = true; });
+            }
+        }
+
+        async function confirmAllocation() {
+            const today = new Date().toISOString().split('T')[0];
+            
+            // Calculate total value
+            let totalValue = 0;
+            allocatedProducts.forEach(p => {
+                totalValue += p.remaining_qty * p.selling_price;
+            });
+            
+            if (confirm(`Please confirm you have received ALL physical goods valued at ${formatMoney(totalValue)}.\n\nOnce confirmed, you will be able to sell these items.`)) {
+                // Save confirmation to localStorage
+                localStorage.setItem(`confirmed_${currentUser.team_id}_${today}`, 'true');
+                isConfirmed = true;
+                
+                document.getElementById('confirmationStatus').innerHTML = '✅ Confirmed';
+                document.getElementById('confirmationStatus').style.color = '#28a745';
+                document.getElementById('confirmReceiptBtn').style.display = 'none';
+                
+                enableSelling(true);
+                showMessage('✅ Allocation confirmed! You can now start selling.');
+            }
+        }
+
         document.getElementById('saleForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            if (!isConfirmed) {
+                showMessage('You must confirm receipt of goods before selling', true);
+                return;
+            }
             
             const customerName = document.getElementById('customerName').value;
             const customerPhone = document.getElementById('customerPhone').value;
@@ -223,14 +324,13 @@
             });
             
             if (result && result.success) {
-                showMessage(`✅ Sale recorded! ₦${totalAmount.toLocaleString()} - ${paymentMethod === 'credit' ? 'Pending approval' : 'Awaiting payment confirmation'}`);
+                showMessage(`✅ Sale recorded! ${formatMoney(totalAmount)} - ${paymentMethod === 'credit' ? 'Pending approval' : 'Awaiting payment confirmation'}`);
                 
                 document.getElementById('customerName').value = '';
                 document.getElementById('customerPhone').value = '';
                 document.getElementById('quantity').value = '';
                 document.getElementById('productSelect').value = '';
                 
-                // Reload all data to reflect the new sale
                 loadAllocatedStock();
                 loadSalesHistory();
                 if (paymentMethod === 'credit') {
@@ -250,7 +350,6 @@
             loadingDiv.style.display = 'block';
             table.style.display = 'none';
             
-            // Fetch all sales orders for this team
             const data = await fetchAPI(`/sales/team/${currentUser.team_id}/history`);
             
             if (data && data.success) {
@@ -263,9 +362,7 @@
                 } else {
                     for (const sale of data.data) {
                         totalSalesAmount += sale.total_amount;
-                        
-                        // Fetch items for each sale
-                        const itemsResponse = await fetch(`https://warehouse-backend-api-2fye.onrender.com/api/sales/order/${sale.id}/items`, {
+                        const itemsResponse = await fetch(`${API_URL}/sales/order/${sale.id}/items`, {
                             headers: { 'Authorization': `Bearer ${authToken}` }
                         });
                         const itemsData = await itemsResponse.json();
@@ -279,31 +376,18 @@
                                         <td>${sale.customer_name}</td>
                                         <td>${item.product_name}</td>
                                         <td>${item.quantity}</td>
-                                        <td>₦${item.total_price.toLocaleString()}</td>
+                                        <td>${formatMoney(item.total_price)}</td>
                                         <td>${sale.payment_method}</td>
                                         <td>${sale.payment_status}</td>
                                     </tr>
                                 `;
                             });
-                        } else {
-                            // Fallback if items endpoint fails
-                            html += `
-                                <tr>
-                                    <td>${new Date(sale.created_at).toLocaleTimeString()}</td>
-                                    <td>${sale.customer_name}</td>
-                                    <td>-</td>
-                                    <td>-</td>
-                                    <td>₦${sale.total_amount.toLocaleString()}</td>
-                                    <td>${sale.payment_method}</td>
-                                    <td>${sale.payment_status}</td>
-                                </tr>
-                            `;
                         }
                     }
                 }
                 
                 tbody.innerHTML = html;
-                document.getElementById('todaySales').innerHTML = `₦${totalSalesAmount.toLocaleString()}`;
+                document.getElementById('todaySales').innerHTML = formatMoney(totalSalesAmount);
                 document.getElementById('itemsSold').innerHTML = totalItems;
                 
                 loadingDiv.style.display = 'none';
@@ -318,19 +402,10 @@
             const data = await fetchAPI(`/sales/team/${currentUser.team_id}/history`);
             if (data && data.success) {
                 let total = 0;
-                let items = 0;
                 for (const sale of data.data) {
                     total += sale.total_amount;
-                    const itemsResponse = await fetch(`https://warehouse-backend-api-2fye.onrender.com/api/sales/order/${sale.id}/items`, {
-                        headers: { 'Authorization': `Bearer ${authToken}` }
-                    });
-                    const itemsData = await itemsResponse.json();
-                    if (itemsData && itemsData.success) {
-                        itemsData.data.forEach(item => { items += item.quantity; });
-                    }
                 }
-                document.getElementById('todaySales').innerHTML = `₦${total.toLocaleString()}`;
-                document.getElementById('itemsSold').innerHTML = items;
+                document.getElementById('todaySales').innerHTML = formatMoney(total);
             }
         }
         
@@ -355,7 +430,7 @@
                             <tr>
                                 <td>${req.order_number}</td>
                                 <td>${req.customer_name}</td>
-                                <td>₦${req.total_amount.toLocaleString()}</td>
+                                <td>${formatMoney(req.total_amount)}</td>
                                 <td>${statusText}</td>
                                 <td>${new Date(req.requested_at).toLocaleDateString()}</td>
                             </tr>
