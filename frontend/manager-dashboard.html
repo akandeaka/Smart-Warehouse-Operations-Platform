@@ -19,20 +19,22 @@
         table { width: 100%; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         th { background: #f8f9fa; padding: 12px; text-align: left; }
         td { padding: 12px; border-top: 1px solid #eee; }
-        button.approve-btn { background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; }
-        button.reject-btn { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; margin-left: 5px; }
-        button.close-day-btn { background: #ffc107; color: #333; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; }
-        .logout-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; }
-        .loading { text-align: center; padding: 40px; color: #666; }
-        .error-msg { background: #f8d7da; color: #721c24; padding: 12px; border-radius: 5px; margin: 20px; display: none; }
-        .success-msg { background: #d4edda; color: #155724; padding: 12px; border-radius: 5px; margin: 20px; display: none; }
-        .form-card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .form-card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
         .form-row { display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
         .form-group { flex: 1; min-width: 150px; }
         .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
         .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
-        .allocate-btn { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        .allocate-btn:hover { background: #218838; }
+        .allocate-btn, .approve-btn, .reject-btn, .confirm-return-btn { background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; margin: 2px; }
+        .reject-btn { background: #dc3545; }
+        .close-day-btn { background: #ffc107; color: #333; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; }
+        .logout-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; }
+        .loading { text-align: center; padding: 40px; color: #666; }
+        .success-msg, .error-msg { padding: 12px; margin: 20px; border-radius: 5px; display: none; }
+        .success-msg { background: #d4edda; color: #155724; }
+        .error-msg { background: #f8d7da; color: #721c24; }
+        .credit-row { background-color: #fff0f0; border-left: 3px solid #dc3545; }
+        .credit-amount { color: #dc3545; font-weight: bold; }
+        .credit-amount::before { content: "- "; }
     </style>
 </head>
 <body>
@@ -40,406 +42,106 @@
         <h1>🏪 Warehouse Manager Dashboard</h1>
         <div class="logout-btn" onclick="logout()">Logout</div>
     </div>
-
     <div id="successMsg" class="success-msg"></div>
     <div id="errorMsg" class="error-msg"></div>
 
     <div class="stats-container">
-        <div class="stat-card">
-            <div>Total Products</div>
-            <div class="value" id="totalProducts">0</div>
-        </div>
-        <div class="stat-card">
-            <div>Warehouse Value (₦)</div>
-            <div class="value" id="totalValue">0</div>
-        </div>
-        <div class="stat-card">
-            <div>Pending Approvals</div>
-            <div class="value" id="pendingApprovals">0</div>
-        </div>
+        <div class="stat-card"><div>Total Products</div><div class="value" id="totalProducts">0</div></div>
+        <div class="stat-card"><div>Warehouse Value (₦)</div><div class="value" id="totalValue">0</div></div>
+        <div class="stat-card"><div>Pending Approvals</div><div class="value" id="pendingApprovals">0</div></div>
     </div>
 
     <div class="tabs">
         <button class="tab" onclick="showPanel('allocate')">Allocate Stock</button>
         <button class="tab" onclick="showPanel('stock')">Stock Management</button>
         <button class="tab" onclick="showPanel('approvals')">Credit Approvals</button>
+        <button class="tab" onclick="showPanel('returns')">Pending Returns</button>
         <button class="tab" onclick="showPanel('reports')">Daily Reports</button>
     </div>
 
-    <!-- PANEL 1: ALLOCATE STOCK -->
+    <!-- Allocate Stock Panel -->
     <div id="allocatePanel" class="panel">
-        <h2>📤 Allocate Stock to Sales Team</h2>
-        
         <div class="form-card">
             <h3>New Allocation</h3>
             <div class="form-row">
-                <div class="form-group">
-                    <label>Select Sales Team</label>
-                    <select id="allocateTeamId">
-                        <option value="">-- Select Team --</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Select Product</label>
-                    <select id="allocateProductId">
-                        <option value="">-- Select Product --</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Quantity</label>
-                    <input type="number" id="allocateQuantity" min="1" placeholder="Enter quantity">
-                </div>
-                <div class="form-group">
-                    <button class="allocate-btn" onclick="allocateStock()">Allocate Stock</button>
-                </div>
+                <div class="form-group"><label>Team</label><select id="allocateTeamId"></select></div>
+                <div class="form-group"><label>Product</label><select id="allocateProductId"></select></div>
+                <div class="form-group"><label>Quantity</label><input type="number" id="allocateQuantity" min="1"></div>
+                <div class="form-group"><button class="allocate-btn" onclick="allocateStock()">Allocate</button></div>
             </div>
         </div>
-
         <h3>Today's Allocations</h3>
-        <div id="allocationsLoading" class="loading">Loading allocations...</div>
-        <table id="allocationsTable" style="display: none;">
-            <thead>
-                <tr><th>Team</th><th>Product</th><th>Allocated</th><th>Sold</th><th>Remaining</th><th>Status</th></tr>
-            </thead>
-            <tbody id="allocationsTableBody"></tbody>
-        </table>
+        <div id="allocationsLoading" class="loading">Loading...</div>
+        <table id="allocationsTable" style="display:none"><thead><tr><th>Team</th><th>Product</th><th>Allocated</th><th>Sold</th><th>Remaining</th></tr></thead><tbody id="allocationsTableBody"></tbody></table>
     </div>
 
-    <!-- PANEL 2: STOCK MANAGEMENT -->
+    <!-- Stock Management Panel -->
     <div id="stockPanel" class="panel">
-        <h2>Current Warehouse Stock</h2>
-        <div id="stockLoading" class="loading">Loading stock data...</div>
-        <table id="stockTable" style="display: none;">
-            <thead><tr><th>Product</th><th>Quantity</th><th>Unit Cost</th><th>Total Value</th></tr></thead>
-            <tbody id="stockTableBody"></tbody>
-        </table>
+        <div id="stockLoading" class="loading">Loading...</div>
+        <table id="stockTable" style="display:none"><thead><tr><th>Product</th><th>Quantity</th><th>Unit Cost</th><th>Total Value</th></tr></thead><tbody id="stockTableBody"></tbody></table>
     </div>
 
-    <!-- PANEL 3: CREDIT APPROVALS -->
+    <!-- Credit Approvals Panel -->
     <div id="approvalsPanel" class="panel">
-        <h2>Pending Credit Approvals</h2>
-        <div id="approvalsLoading" class="loading">Loading pending approvals...</div>
-        <table id="approvalsTable" style="display: none;">
-            <thead><tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Requested By</th><th>Action</th></tr></thead>
-            <tbody id="approvalsTableBody"></tbody>
-        </table>
+        <div id="approvalsLoading" class="loading">Loading...</div>
+        <table id="approvalsTable" style="display:none"><thead><tr><th>Order #</th><th>Customer</th><th>Original Amount</th><th>Approved Amount</th><th>Action</th></tr></thead><tbody id="approvalsTableBody"></tbody></table>
     </div>
 
-    <!-- PANEL 4: DAILY REPORTS -->
+    <!-- Pending Returns Panel -->
+    <div id="returnsPanel" class="panel">
+        <div id="returnsLoading" class="loading">Loading...</div>
+        <table id="returnsTable" style="display:none"><thead><tr><th>Team</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Action</th></tr></thead><tbody id="returnsTableBody"></tbody></table>
+    </div>
+
+    <!-- Daily Reports Panel -->
     <div id="reportsPanel" class="panel">
         <button class="close-day-btn" onclick="closeDay()">🔒 Close Day (5 PM)</button>
-        <h2>Today's Sales Report</h2>
-        <div id="reportLoading" class="loading">Loading report...</div>
-        <table id="salesReportTable" style="display: none;">
-            <thead><tr><th>Team</th><th>Orders</th><th>Cash</th><th>Transfer</th><th>Credit</th><th>Total</th></tr></thead>
-            <tbody id="salesReportBody"></tbody>
-        </table>
+        <div id="reportLoading" class="loading">Loading...</div>
+        <table id="salesReportTable" style="display:none"><thead><tr><th>Team</th><th>Orders</th><th>Cash</th><th>Transfer</th><th>Credit</th><th>Total</th></tr></thead><tbody id="salesReportBody"></tbody></table>
     </div>
 
     <script>
         const API_URL = 'https://warehouse-backend-api-2fye.onrender.com/api';
         let authToken = localStorage.getItem('token');
-        let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-        let productsList = [];
-        let teamsList = [];
 
-        function showMessage(msg, isError = false) {
-            const msgDiv = isError ? document.getElementById('errorMsg') : document.getElementById('successMsg');
-            msgDiv.innerHTML = msg;
-            msgDiv.style.display = 'block';
-            setTimeout(() => { msgDiv.style.display = 'none'; }, 3000);
-        }
+        function formatMoney(amount) { return '₦' + amount.toLocaleString('en-NG'); }
+        function showMessage(msg, isError = false) { const div = document.getElementById(isError ? 'errorMsg' : 'successMsg'); div.innerHTML = msg; div.style.display = 'block'; setTimeout(() => div.style.display = 'none', 3000); }
 
         async function fetchAPI(endpoint, options = {}) {
             try {
-                const response = await fetch(`${API_URL}${endpoint}`, {
-                    ...options,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`,
-                        ...options.headers
-                    }
-                });
-                
-                if (response.status === 401) {
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
-                    window.location.href = 'login.html';
-                    return null;
-                }
-                
+                const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}`, ...options.headers } });
+                if (response.status === 401) { localStorage.clear(); window.location.href = 'login.html'; return null; }
                 return await response.json();
-            } catch (error) {
-                showMessage('Network error: ' + error.message, true);
-                return null;
-            }
+            } catch (error) { showMessage('Network error', true); return null; }
         }
 
-        async function loadTeams() {
-            const response = await fetch(`${API_URL}/teams`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            });
-            const data = await response.json();
-            if (data && data.success) {
-                teamsList = data.data;
-                const select = document.getElementById('allocateTeamId');
-                select.innerHTML = '<option value="">-- Select Team --</option>';
-                teamsList.forEach(team => {
-                    select.innerHTML += `<option value="${team.id}">${team.team_name}</option>`;
-                });
-            }
-        }
-
-        async function loadProductsForAllocation() {
-            const data = await fetchAPI('/products');
-            if (data && data.success) {
-                productsList = data.data;
-                const select = document.getElementById('allocateProductId');
-                select.innerHTML = '<option value="">-- Select Product --</option>';
-                productsList.forEach(product => {
-                    if (product.current_qty > 0) {
-                        select.innerHTML += `<option value="${product.id}" data-stock="${product.current_qty}">${product.product_name} (${product.current_qty} available)</option>`;
-                    }
-                });
-            }
-        }
-
-        async function allocateStock() {
-            const teamId = document.getElementById('allocateTeamId').value;
-            const productId = document.getElementById('allocateProductId').value;
-            const quantity = document.getElementById('allocateQuantity').value;
-            
-            if (!teamId || !productId || !quantity || quantity < 1) {
-                showMessage('Please select team, product, and valid quantity', true);
-                return;
-            }
-            
-            const product = productsList.find(p => p.id == productId);
-            if (product && quantity > product.current_qty) {
-                showMessage(`Only ${product.current_qty} units available in warehouse`, true);
-                return;
-            }
-            
-            const result = await fetchAPI('/allocations', {
-                method: 'POST',
-                body: JSON.stringify({
-                    team_id: parseInt(teamId),
-                    product_id: parseInt(productId),
-                    quantity: parseInt(quantity),
-                    allocated_date: new Date().toISOString().split('T')[0]
-                })
-            });
-            
-            if (result && result.success) {
-                showMessage(`✅ Allocated ${quantity} units to team successfully`);
-                document.getElementById('allocateQuantity').value = '';
-                loadTodayAllocations();
-                loadProducts();
-                loadProductsForAllocation();
-            } else {
-                showMessage(result?.message || 'Allocation failed', true);
-            }
-        }
-
-        async function loadTodayAllocations() {
-            const loadingDiv = document.getElementById('allocationsLoading');
-            const table = document.getElementById('allocationsTable');
-            const tbody = document.getElementById('allocationsTableBody');
-            
-            loadingDiv.style.display = 'block';
-            table.style.display = 'none';
-            
-            const data = await fetchAPI('/allocations/today');
-            
-            if (data && data.success) {
-                let html = '';
-                data.data.forEach(a => {
-                    const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
-                    html += `<tr>
-                        <td>${a.team_name}</td>
-                        <td>${a.product_name}</td>
-                        <td>${a.allocated_qty}</td>
-                        <td>${a.sold_qty}</td>
-                        <td>${remaining}</td>
-                        <td>${a.status}</td>
-                    </tr>`;
-                });
-                tbody.innerHTML = html || '<tr><td colspan="6">No allocations today</td></tr>';
-                loadingDiv.style.display = 'none';
-                table.style.display = 'table';
-            } else {
-                loadingDiv.innerHTML = 'Failed to load allocations';
-            }
-        }
-
-        async function loadProducts() {
-            const loadingDiv = document.getElementById('stockLoading');
-            const table = document.getElementById('stockTable');
-            const tbody = document.getElementById('stockTableBody');
-            
-            loadingDiv.style.display = 'block';
-            table.style.display = 'none';
-            
-            const data = await fetchAPI('/products');
-            
-            if (data && data.success) {
-                let totalValue = 0;
-                let html = '';
-                data.data.forEach(p => {
-                    const productValue = p.current_qty * p.unit_cost;
-                    totalValue += productValue;
-                    html += `<tr>
-                        <td>${p.product_name}</td>
-                        <td>${p.current_qty}</td>
-                        <td>₦${p.unit_cost.toLocaleString()}</td>
-                        <td>₦${productValue.toLocaleString()}</td>
-                    </tr>`;
-                });
-                tbody.innerHTML = html;
-                document.getElementById('totalProducts').innerText = data.data.length;
-                document.getElementById('totalValue').innerText = totalValue.toLocaleString();
-                loadingDiv.style.display = 'none';
-                table.style.display = 'table';
-            } else {
-                loadingDiv.innerHTML = 'Failed to load products';
-            }
-        }
-
-        async function loadPendingApprovals() {
-            const loadingDiv = document.getElementById('approvalsLoading');
-            const table = document.getElementById('approvalsTable');
-            const tbody = document.getElementById('approvalsTableBody');
-            
-            loadingDiv.style.display = 'block';
-            table.style.display = 'none';
-            
-            const data = await fetchAPI('/approvals/pending');
-            
-            if (data && data.success) {
-                document.getElementById('pendingApprovals').innerText = data.data.length;
-                
-                if (data.data.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5">No pending approvals</td></tr>';
-                } else {
-                    let html = '';
-                    data.data.forEach(a => {
-                        html += `<tr>
-                            <td>${a.order_number}</td>
-                            <td>${a.customer_name}</td>
-                            <td>₦${a.total_amount.toLocaleString()}</td>
-                            <td>${a.requested_by}</td>
-                            <td>
-                                <button class="approve-btn" onclick="processApproval(${a.id}, 'approved')">Approve</button>
-                                <button class="reject-btn" onclick="processApproval(${a.id}, 'rejected')">Reject</button>
+        async function loadTeams() { const data = await fetchAPI('/teams'); if (data?.success) { let html = '<option value="">Select Team</option>'; data.data.forEach(t => html += `<option value="${t.id}">${t.team_name}</option>`); document.getElementById('allocateTeamId').innerHTML = html; } }
+        async function loadProductsForAllocation() { const data = await fetchAPI('/products'); if (data?.success) { let html = '<option value="">Select Product</option>'; data.data.forEach(p => { if (p.current_qty > 0) html += `<option value="${p.id}" data-stock="${p.current_qty}">${p.product_name} (${p.current_qty} left)</option>`; }); document.getElementById('allocateProductId').innerHTML = html; } }
+        async function allocateStock() { const teamId = document.getElementById('allocateTeamId').value, productId = document.getElementById('allocateProductId').value, quantity = document.getElementById('allocateQuantity').value; if (!teamId || !productId || quantity < 1) return showMessage('Fill all fields', true); const result = await fetchAPI('/allocations', { method: 'POST', body: JSON.stringify({ team_id: parseInt(teamId), product_id: parseInt(productId), quantity: parseInt(quantity), allocated_date: new Date().toISOString().split('T')[0] }) }); if (result?.success) { showMessage(result.message); document.getElementById('allocateQuantity').value = ''; loadTodayAllocations(); loadProducts(); loadProductsForAllocation(); } else showMessage(result?.message || 'Allocation failed', true); }
+        async function loadTodayAllocations() { const data = await fetchAPI('/allocations/today'); if (data?.success) { let html = ''; data.data.forEach(a => { const remaining = a.allocated_qty - a.sold_qty - a.returned_qty; html += `<tr><td>${a.team_name}</td><td>${a.product_name}</td><td>${a.allocated_qty}</td><td>${a.sold_qty}</td><td>${remaining}</td></tr>`; }); document.getElementById('allocationsTableBody').innerHTML = html || '<tr><td colspan="5">No allocations</td></tr>'; document.getElementById('allocationsLoading').style.display = 'none'; document.getElementById('allocationsTable').style.display = 'table'; } }
+        async function loadProducts() { const data = await fetchAPI('/products'); if (data?.success) { let totalValue = 0, html = ''; data.data.forEach(p => { totalValue += p.current_qty * p.unit_cost; html += `<tr><td>${p.product_name}</td><td>${p.current_qty}</td><td>${formatMoney(p.unit_cost)}</td><td>${formatMoney(p.current_qty * p.unit_cost)}</td></tr>`; }); document.getElementById('stockTableBody').innerHTML = html; document.getElementById('totalProducts').innerText = data.data.length; document.getElementById('totalValue').innerHTML = formatMoney(totalValue); document.getElementById('stockLoading').style.display = 'none'; document.getElementById('stockTable').style.display = 'table'; } }
+        async function loadPendingApprovals() { const data = await fetchAPI('/approvals/pending'); if (data?.success) { document.getElementById('pendingApprovals').innerText = data.data.length; let html = ''; data.data.forEach(a => { html += `<tr><td>${a.order_number}</td><td>${a.customer_name}</td><td class="${a.payment_method === 'credit' ? 'credit-amount' : ''}">${a.payment_method === 'credit' ? '-' : ''}${formatMoney(a.total_amount)}</td><td><input type="number" id="amount_${a.id}" value="${a.total_amount}" step="1000" style="width:120px"></td>
+                            <td><button class="approve-btn" onclick="approveCredit(${a.id})">Approve</button><button class="reject-btn" onclick="rejectCredit(${a.id})">Reject</button></td>
+                        </tr>`; }); document.getElementById('approvalsTableBody').innerHTML = html || '<tr><td colspan="5">No pending approvals</tr>'; document.getElementById('approvalsLoading').style.display = 'none'; document.getElementById('approvalsTable').style.display = 'table'; } }
+        async function approveCredit(id) { const approvedAmount = document.getElementById(`amount_${id}`)?.value; if (confirm(`Approve credit for ${formatMoney(approvedAmount)}?`)) { const result = await fetchAPI('/approvals/approve', { method: 'POST', body: JSON.stringify({ approval_id: id, approved_amount: parseFloat(approvedAmount) }) }); if (result?.success) { showMessage('Credit approved'); loadPendingApprovals(); loadTodayAllocations(); loadProducts(); } } }
+        async function rejectCredit(id) { if (confirm('Reject this credit?')) { const result = await fetchAPI('/approvals/reject', { method: 'POST', body: JSON.stringify({ approval_id: id }) }); if (result?.success) { showMessage('Credit rejected'); loadPendingApprovals(); } } }
+        async function loadPendingReturns() { const data = await fetchAPI('/sales/pending-submissions'); if (data?.success) { let html = ''; data.data.forEach(item => { html += `<tr>
+                            <td>${item.team_name}</td>
+                            <td>${item.customer_name}</td>
+                            <td>${item.product_name}</td>
+                            <td>${item.quantity}</td>
+                            <td>${formatMoney(item.amount)}</td>
+                            <td>${item.type === 'credit' ? '📝 Credit' : (item.type === 'cash' ? '💵 Cash' : '🏦 Transfer')}</td>
+                            <td><button class="approve-btn" onclick="confirmReturn(${item.id}, 'accept')">✅ Accept & Move to Warehouse</button>
+                                <button class="reject-btn" onclick="confirmReturn(${item.id}, 'reject')">❌ Return to Team</button>
                             </td>
-                        </tr>`;
-                    });
-                    tbody.innerHTML = html;
-                }
-                loadingDiv.style.display = 'none';
-                table.style.display = 'table';
-            } else {
-                loadingDiv.innerHTML = 'Failed to load approvals';
-            }
-        }
-
-        async function processApproval(approvalId, status) {
-            if (confirm(`Are you sure you want to ${status} this credit request?`)) {
-                const result = await fetchAPI(`/approvals/${approvalId}`, {
-                    method: 'PUT',
-                    body: JSON.stringify({ status })
-                });
-                
-                if (result && result.success) {
-                    showMessage(result.message);
-                    loadPendingApprovals();
-                } else {
-                    showMessage('Failed to process approval', true);
-                }
-            }
-        }
-
-        async function loadDailyReport() {
-            const loadingDiv = document.getElementById('reportLoading');
-            const table = document.getElementById('salesReportTable');
-            const tbody = document.getElementById('salesReportBody');
-            
-            loadingDiv.style.display = 'block';
-            table.style.display = 'none';
-            
-            const data = await fetchAPI('/reports/daily');
-            
-            if (data && data.success) {
-                let html = '';
-                data.teams.forEach(team => {
-                    html += `<tr>
-                        <td>${team.team_name}</td>
-                        <td>${team.num_orders}</td>
-                        <td>₦${(team.cash_sales || 0).toLocaleString()}</td>
-                        <td>₦${(team.transfer_sales || 0).toLocaleString()}</td>
-                        <td>₦${(team.credit_sales || 0).toLocaleString()}</td>
-                        <td>₦${(team.total_sales || 0).toLocaleString()}</td>
-                    </tr>`;
-                });
-                tbody.innerHTML = html;
-                loadingDiv.style.display = 'none';
-                table.style.display = 'table';
-            } else {
-                loadingDiv.innerHTML = 'Failed to load report';
-            }
-        }
-
-        async function closeDay() {
-            if (confirm('Close the day at 5 PM? This will return unsold stock and lock transactions.')) {
-                const result = await fetchAPI('/daily/close', { method: 'POST' });
-                if (result && result.success) {
-                    showMessage('✅ Day closed successfully!');
-                    loadDailyReport();
-                    loadTodayAllocations();
-                    loadProducts();
-                } else {
-                    showMessage('Failed to close day', true);
-                }
-            }
-        }
-
-        function showPanel(panelName) {
-            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            
-            const panels = ['allocate', 'stock', 'approvals', 'reports'];
-            const index = panels.indexOf(panelName);
-            document.querySelectorAll('.tab')[index].classList.add('active');
-            
-            if (panelName === 'allocate') {
-                document.getElementById('allocatePanel').classList.add('active');
-                loadTodayAllocations();
-            } else if (panelName === 'stock') {
-                document.getElementById('stockPanel').classList.add('active');
-                loadProducts();
-            } else if (panelName === 'approvals') {
-                document.getElementById('approvalsPanel').classList.add('active');
-                loadPendingApprovals();
-            } else if (panelName === 'reports') {
-                document.getElementById('reportsPanel').classList.add('active');
-                loadDailyReport();
-            }
-        }
-
-        function logout() {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = 'login.html';
-        }
-
-        if (!authToken) {
-            window.location.href = 'login.html';
-        } else {
-            loadTeams();
-            loadProductsForAllocation();
-            loadTodayAllocations();
-            loadProducts();
-        }
+                        </tr>`; }); document.getElementById('returnsTableBody').innerHTML = html || '<tr><td colspan="7">No pending submissions</tr>'; document.getElementById('returnsLoading').style.display = 'none'; document.getElementById('returnsTable').style.display = 'table'; } }
+        async function confirmReturn(itemId, action) { const result = await fetchAPI('/sales/confirm-return', { method: 'POST', body: JSON.stringify({ item_id: itemId, action }) }); if (result?.success) { showMessage(`Item ${action === 'accept' ? 'accepted' : 'returned'}`); loadPendingReturns(); loadProducts(); } }
+        async function loadDailyReport() { const data = await fetchAPI('/reports/daily'); if (data?.success) { let html = ''; data.teams.forEach(t => { html += `<tr><td>${t.team_name}</td><td>${t.num_orders}</td><td>${formatMoney(t.cash_sales || 0)}</td><td>${formatMoney(t.transfer_sales || 0)}</td><td class="${t.credit_sales > 0 ? 'credit-amount' : ''}">${t.credit_sales > 0 ? '-' : ''}${formatMoney(t.credit_sales || 0)}</td><td>${formatMoney(t.total_sales || 0)}</td></tr>`; }); document.getElementById('salesReportBody').innerHTML = html; document.getElementById('reportLoading').style.display = 'none'; document.getElementById('salesReportTable').style.display = 'table'; } }
+        async function closeDay() { if (confirm('Close the day?')) { const result = await fetchAPI('/daily/close', { method: 'POST' }); if (result?.success) { showMessage('Day closed'); loadDailyReport(); loadTodayAllocations(); loadProducts(); } } }
+        function showPanel(name) { document.querySelectorAll('.panel').forEach(p => p.classList.remove('active')); document.querySelectorAll('.tab').forEach(t => t.classList.remove('active')); const panels = { allocate:0, stock:1, approvals:2, returns:3, reports:4 }; document.getElementById(`${name}Panel`).classList.add('active'); document.querySelectorAll('.tab')[panels[name]].classList.add('active'); if (name === 'allocate') { loadTodayAllocations(); loadTeams(); loadProductsForAllocation(); } if (name === 'stock') loadProducts(); if (name === 'approvals') loadPendingApprovals(); if (name === 'returns') loadPendingReturns(); if (name === 'reports') loadDailyReport(); }
+        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+        if (!authToken) window.location.href = 'login.html'; else { loadProducts(); loadTeams(); loadProductsForAllocation(); }
     </script>
 </body>
 </html>
