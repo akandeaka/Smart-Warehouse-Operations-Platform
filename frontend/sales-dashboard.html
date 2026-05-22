@@ -9,9 +9,10 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
         .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
         .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; padding: 20px; }
-        .stat-card { background: white; padding: 20px; border-radius: 10px; text-align: center; }
+        .stat-card { background: white; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .stat-card .value { font-size: 28px; font-weight: bold; color: #28a745; }
-        .card { background: white; padding: 20px; margin: 20px; border-radius: 10px; }
+        .stat-card .credit-value { font-size: 28px; font-weight: bold; color: #dc3545; }
+        .card { background: white; padding: 20px; margin: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px; }
         .product-item { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fafafa; }
         .product-item h4 { color: #333; margin-bottom: 10px; }
@@ -20,12 +21,15 @@
         .product-item .total-value { color: #667eea; font-weight: bold; margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; }
         .confirm-btn { background: #28a745; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; margin-top: 15px; }
         .confirm-btn:hover { background: #218838; }
+        .submit-btn { background: #ffc107; color: #333; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; width: calc(100% - 40px); margin: 0 20px 20px 20px; }
+        .submit-btn:hover { background: #e0a800; }
+        .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: 500; }
         input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
         .payment-options { display: flex; gap: 15px; margin: 15px 0; flex-wrap: wrap; }
         .payment-options label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
-        button.sell-btn { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
+        button.sell-btn { background: #28a745; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
         button.sell-btn:disabled { background: #ccc; cursor: not-allowed; }
         .logout-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; }
         .success-msg { background: #d4edda; color: #155724; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
@@ -39,11 +43,9 @@
         .total-goods-value { font-size: 24px; font-weight: bold; color: #28a745; }
         .status-confirmed { color: #28a745; font-weight: bold; }
         .status-pending { color: #ffc107; font-weight: bold; }
-        /* Credit sale row styling */
-        .credit-row { background-color: #fff5f5 !important; border-left: 4px solid #dc3545; }
-        .credit-amount { color: #dc3545 !important; font-weight: bold; }
+        .credit-row { background-color: #fff0f0; border-left: 3px solid #dc3545; }
+        .credit-amount { color: #dc3545; font-weight: bold; }
         .credit-amount::before { content: "- "; }
-        .negative-sign { color: #dc3545; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -66,8 +68,8 @@
             <div class="value" id="itemsSold">0</div>
         </div>
         <div class="stat-card">
-            <div>Credit Sales (Not Included in Total)</div>
-            <div class="value" id="creditTotal" style="color: #dc3545;">-₦0</div>
+            <div>Credit Sales (Not in Total)</div>
+            <div class="credit-value" id="creditTotal">-₦0</div>
         </div>
     </div>
 
@@ -78,16 +80,14 @@
             <div>Total Goods Value: <span id="totalAllocatedValue" class="total-goods-value">₦0</span></div>
             <div>Status: <span id="confirmationStatus" class="status-pending">Not Confirmed</span></div>
         </div>
-        
         <div id="stockLoading" class="loading">Loading your allocated stock...</div>
         <div id="allocatedStock" class="product-grid" style="display: none;"></div>
-        
         <button id="confirmReceiptBtn" class="confirm-btn" onclick="confirmAllocation()" style="display: none;">✅ Confirm Receipt of Goods</button>
     </div>
 
     <div class="card">
         <h3>➕ Record New Sale</h3>
-        <div id="saleDisabledWarning" class="warning-msg" style="display: none;">⚠️ You must confirm receipt of allocated goods before you can sell.</div>
+        <div id="saleDisabledWarning" class="warning-msg" style="display: none;">⚠️ You must confirm receipt of goods before selling.</div>
         <form id="saleForm">
             <div class="form-group">
                 <label>Customer Name *</label>
@@ -105,32 +105,38 @@
                 <label>Quantity *</label>
                 <input type="number" id="quantity" min="1" required>
             </div>
+            <div class="form-group" id="creditDueDateGroup" style="display: none;">
+                <label>Expected Payment Date</label>
+                <input type="date" id="creditDueDate">
+            </div>
             <div class="payment-options">
-                <label><input type="radio" name="paymentMethod" value="cash" checked> 💵 Cash (Adds to Total)</label>
-                <label><input type="radio" name="paymentMethod" value="transfer"> 🏦 Bank Transfer (Adds to Total)</label>
-                <label><input type="radio" name="paymentMethod" value="credit"> 📝 Credit (Shows in Red - NOT Added to Total)</label>
+                <label><input type="radio" name="paymentMethod" value="cash" checked> 💵 Cash</label>
+                <label><input type="radio" name="paymentMethod" value="transfer"> 🏦 Bank Transfer</label>
+                <label><input type="radio" name="paymentMethod" value="credit"> 📝 Credit (Needs Approval)</label>
             </div>
             <button type="submit" class="sell-btn" id="sellBtn" disabled>Sell Now</button>
         </form>
     </div>
 
     <div class="card">
-        <h3>📋 My Credit Requests (Pending Manager Approval)</h3>
+        <h3>📋 My Credit Requests</h3>
         <div id="creditLoading" class="loading">Loading credit requests...</div>
         <table id="creditTable" style="display: none;">
-            <thead><tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+            <thead><tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Status</th><th>Due Date</th></tr></thead>
             <tbody id="creditTableBody"></tbody>
         </table>
     </div>
 
     <div class="card">
         <h3>📊 Today's Transaction History</h3>
-        <div id="historyLoading" class="loading">Loading transaction history...</div>
+        <div id="historyLoading" class="loading">Loading history...</div>
         <table id="historyTable" style="display: none;">
             <thead><tr><th>Time</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Status</th></tr></thead>
             <tbody id="salesHistoryBody"></tbody>
         </table>
     </div>
+
+    <button id="submitDayBtn" class="submit-btn" onclick="submitDaySales()" disabled>📤 Submit Final Sales for the Day</button>
 
     <script>
         const API_URL = 'https://warehouse-backend-api-2fye.onrender.com/api';
@@ -139,20 +145,11 @@
         let allocatedProducts = [];
         let isConfirmed = false;
 
-        function formatMoney(amount) {
-            return '₦' + amount.toLocaleString('en-NG');
-        }
-
-        function formatCreditMoney(amount) {
-            return '-₦' + amount.toLocaleString('en-NG');
-        }
+        function formatMoney(amount) { return '₦' + amount.toLocaleString('en-NG'); }
+        function formatCreditMoney(amount) { return '-₦' + amount.toLocaleString('en-NG'); }
 
         function showMessage(msg, isError = false, isWarning = false) {
-            let msgDiv;
-            if (isError) msgDiv = document.getElementById('errorMsg');
-            else if (isWarning) msgDiv = document.getElementById('warningMsg');
-            else msgDiv = document.getElementById('successMsg');
-            
+            let msgDiv = isError ? document.getElementById('errorMsg') : (isWarning ? document.getElementById('warningMsg') : document.getElementById('successMsg'));
             msgDiv.innerHTML = msg;
             msgDiv.style.display = 'block';
             setTimeout(() => { msgDiv.style.display = 'none'; }, 3000);
@@ -162,359 +159,185 @@
             try {
                 const response = await fetch(`${API_URL}${endpoint}`, {
                     ...options,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`,
-                        ...options.headers
-                    }
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}`, ...options.headers }
                 });
-                
-                if (response.status === 401) {
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
-                    window.location.href = 'login.html';
-                    return null;
-                }
-                
+                if (response.status === 401) { localStorage.clear(); window.location.href = 'login.html'; return null; }
                 return await response.json();
-            } catch (error) {
-                showMessage('Network error: ' + error.message, true);
-                return null;
-            }
+            } catch (error) { showMessage('Network error: ' + error.message, true); return null; }
         }
 
         async function loadAllocatedStock() {
-            const loadingDiv = document.getElementById('stockLoading');
-            const container = document.getElementById('allocatedStock');
-            const select = document.getElementById('productSelect');
-            const confirmBtn = document.getElementById('confirmReceiptBtn');
-            const allocationSummary = document.getElementById('allocationSummary');
-            
-            loadingDiv.style.display = 'block';
-            container.style.display = 'none';
-            
+            document.getElementById('stockLoading').style.display = 'block';
             const data = await fetchAPI(`/sales/team/${currentUser.team_id}/allocations`);
-            
             if (data && data.success) {
                 allocatedProducts = data.data.filter(p => p.remaining_qty > 0);
-                
+                const today = new Date().toISOString().split('T')[0];
+                const savedConfirmation = localStorage.getItem(`confirmed_${currentUser.team_id}_${today}`);
+                isConfirmed = savedConfirmation === 'true';
+
                 if (allocatedProducts.length === 0) {
-                    container.innerHTML = '<p style="text-align:center; color:#666;">No stock allocated today. Contact warehouse manager.</p>';
-                    confirmBtn.style.display = 'none';
-                    allocationSummary.style.display = 'none';
+                    document.getElementById('allocatedStock').innerHTML = '<p style="text-align:center;">No stock allocated today. Contact manager.</p>';
+                    document.getElementById('confirmReceiptBtn').style.display = 'none';
+                    document.getElementById('allocationSummary').style.display = 'none';
                     enableSelling(false);
                 } else {
-                    let totalValue = 0;
-                    let html = '';
-                    let selectHtml = '<option value="">Select Product</option>';
-                    
+                    let totalValue = 0, html = '', selectHtml = '<option value="">Select Product</option>';
                     allocatedProducts.forEach(p => {
-                        const productTotal = p.remaining_qty * p.selling_price;
-                        totalValue += productTotal;
-                        html += `
-                            <div class="product-item">
-                                <h4>${p.product_name}</h4>
-                                <div class="stock">📦 Available: ${p.remaining_qty} units</div>
-                                <div class="price">💰 Price: ${formatMoney(p.selling_price)} per unit</div>
-                                <div class="total-value">📊 Total Value: ${formatMoney(productTotal)}</div>
-                            </div>
-                        `;
-                        selectHtml += `<option value="${p.id}" data-price="${p.selling_price}" data-name="${p.product_name}">${p.product_name} - ${formatMoney(p.selling_price)} (${p.remaining_qty} left)</option>`;
+                        totalValue += p.remaining_qty * p.selling_price;
+                        html += `<div class="product-item"><h4>${p.product_name}</h4><div class="stock">Available: ${p.remaining_qty} units</div><div class="price">${formatMoney(p.selling_price)} per unit</div><div class="total-value">Total Value: ${formatMoney(p.remaining_qty * p.selling_price)}</div></div>`;
+                        selectHtml += `<option value="${p.id}" data-price="${p.selling_price}">${p.product_name} - ${formatMoney(p.selling_price)} (${p.remaining_qty} left)</option>`;
                     });
-                    
-                    container.innerHTML = html;
-                    select.innerHTML = selectHtml;
-                    
+                    document.getElementById('allocatedStock').innerHTML = html;
+                    document.getElementById('productSelect').innerHTML = selectHtml;
                     document.getElementById('totalAllocatedValue').innerHTML = formatMoney(totalValue);
-                    allocationSummary.style.display = 'block';
-                    
-                    const today = new Date().toISOString().split('T')[0];
-                    const savedConfirmation = localStorage.getItem(`confirmed_${currentUser.team_id}_${today}`);
-                    
-                    if (savedConfirmation === 'true') {
-                        isConfirmed = true;
+                    document.getElementById('allocationSummary').style.display = 'block';
+
+                    if (isConfirmed) {
                         document.getElementById('confirmationStatus').innerHTML = '✅ Confirmed';
                         document.getElementById('confirmationStatus').className = 'status-confirmed';
-                        confirmBtn.style.display = 'none';
+                        document.getElementById('confirmReceiptBtn').style.display = 'none';
                         enableSelling(true);
+                        document.getElementById('todaySales').innerHTML = '₦0';
+                        document.getElementById('itemsSold').innerHTML = '0';
                     } else {
-                        isConfirmed = false;
                         document.getElementById('confirmationStatus').innerHTML = '⏳ Pending Confirmation';
                         document.getElementById('confirmationStatus').className = 'status-pending';
-                        confirmBtn.style.display = 'block';
+                        document.getElementById('confirmReceiptBtn').style.display = 'block';
                         enableSelling(false);
+                        document.getElementById('todaySales').innerHTML = '₦0';
+                        document.getElementById('itemsSold').innerHTML = '0';
                     }
                 }
-                
-                loadingDiv.style.display = 'none';
-                container.style.display = 'grid';
-            } else {
-                loadingDiv.innerHTML = 'Failed to load allocated stock';
+                document.getElementById('stockLoading').style.display = 'none';
+                document.getElementById('allocatedStock').style.display = 'grid';
             }
         }
 
         function enableSelling(enabled) {
-            const sellBtn = document.getElementById('sellBtn');
-            const saleDisabledWarning = document.getElementById('saleDisabledWarning');
-            const productSelect = document.getElementById('productSelect');
-            const quantity = document.getElementById('quantity');
-            const customerName = document.getElementById('customerName');
-            
-            sellBtn.disabled = !enabled;
-            if (enabled) {
-                saleDisabledWarning.style.display = 'none';
-                productSelect.disabled = false;
-                quantity.disabled = false;
-                customerName.disabled = false;
-            } else {
-                saleDisabledWarning.style.display = 'block';
-                productSelect.disabled = true;
-                quantity.disabled = true;
-                customerName.disabled = true;
-            }
+            document.getElementById('sellBtn').disabled = !enabled;
+            document.getElementById('saleDisabledWarning').style.display = enabled ? 'none' : 'block';
+            document.getElementById('customerName').disabled = !enabled;
+            document.getElementById('productSelect').disabled = !enabled;
+            document.getElementById('quantity').disabled = !enabled;
         }
 
         async function confirmAllocation() {
-            const today = new Date().toISOString().split('T')[0];
-            let totalValue = 0;
-            allocatedProducts.forEach(p => {
-                totalValue += p.remaining_qty * p.selling_price;
-            });
-            
-            if (confirm(`Please confirm you have received ALL physical goods valued at ${formatMoney(totalValue)}.\n\nOnce confirmed, you will be able to sell these items.`)) {
+            if (confirm('Confirm you have received ALL physical goods?')) {
+                const today = new Date().toISOString().split('T')[0];
                 localStorage.setItem(`confirmed_${currentUser.team_id}_${today}`, 'true');
                 isConfirmed = true;
-                
                 document.getElementById('confirmationStatus').innerHTML = '✅ Confirmed';
                 document.getElementById('confirmationStatus').className = 'status-confirmed';
                 document.getElementById('confirmReceiptBtn').style.display = 'none';
-                
                 enableSelling(true);
-                showMessage('✅ Allocation confirmed! You can now start selling.');
+                showMessage('✅ Allocation confirmed. You can now sell.');
             }
         }
 
+        document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                document.getElementById('creditDueDateGroup').style.display = this.value === 'credit' ? 'block' : 'none';
+            });
+        });
+
         document.getElementById('saleForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            if (!isConfirmed) {
-                showMessage('You must confirm receipt of goods before selling', true);
-                return;
-            }
-            
-            const customerName = document.getElementById('customerName').value;
-            const customerPhone = document.getElementById('customerPhone').value;
+            if (!isConfirmed) { showMessage('Confirm goods receipt first', true); return; }
             const productSelect = document.getElementById('productSelect');
             const productId = parseInt(productSelect.value);
             const quantity = parseInt(document.getElementById('quantity').value);
             const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
-            
-            if (!productId) {
-                showMessage('Please select a product', true);
-                return;
-            }
-            
             const product = allocatedProducts.find(p => p.id === productId);
-            
-            if (!product || quantity > product.remaining_qty) {
-                showMessage(`Only ${product?.remaining_qty || 0} units available`, true);
-                return;
-            }
-            
+            if (!productId || !product || quantity > product.remaining_qty) { showMessage('Invalid product or quantity', true); return; }
             const totalAmount = quantity * product.selling_price;
-            const today = new Date().toISOString().split('T')[0];
-            
-            const result = await fetchAPI('/sales', {
-                method: 'POST',
-                body: JSON.stringify({
-                    team_id: currentUser.team_id,
-                    customer_name: customerName,
-                    customer_phone: customerPhone,
-                    items: [{ product_id: productId, quantity: quantity, unit_price: product.selling_price }],
-                    payment_method: paymentMethod,
-                    sales_date: today
-                })
-            });
-            
+            const body = {
+                team_id: currentUser.team_id,
+                customer_name: document.getElementById('customerName').value,
+                customer_phone: document.getElementById('customerPhone').value,
+                items: [{ product_id: productId, quantity, unit_price: product.selling_price }],
+                payment_method: paymentMethod,
+                sales_date: new Date().toISOString().split('T')[0]
+            };
+            if (paymentMethod === 'credit') body.credit_due_date = document.getElementById('creditDueDate').value;
+            const result = await fetchAPI('/sales', { method: 'POST', body: JSON.stringify(body) });
             if (result && result.success) {
-                let message = `✅ Sale recorded! `;
-                if (paymentMethod === 'credit') {
-                    message += `${formatCreditMoney(totalAmount)} - Pending manager approval. Will appear in red once approved.`;
-                } else if (paymentMethod === 'transfer') {
-                    message += `${formatMoney(totalAmount)} - Awaiting bank transfer confirmation.`;
-                } else {
-                    message += `${formatMoney(totalAmount)} - Awaiting cash confirmation.`;
-                }
-                showMessage(message);
-                
-                document.getElementById('customerName').value = '';
-                document.getElementById('customerPhone').value = '';
-                document.getElementById('quantity').value = '';
+                showMessage(`✅ Sale recorded! ${paymentMethod === 'credit' ? formatCreditMoney(totalAmount) + ' - Pending manager approval' : formatMoney(totalAmount)}`);
+                document.getElementById('saleForm').reset();
                 document.getElementById('productSelect').value = '';
-                
                 loadAllocatedStock();
                 loadSalesHistory();
-                if (paymentMethod === 'credit') {
-                    loadCreditRequests();
-                }
-                updateStats();
-            } else {
-                showMessage('Failed to record sale: ' + (result?.message || 'Unknown error'), true);
+                if (paymentMethod === 'credit') loadCreditRequests();
             }
         });
-        
+
         async function loadSalesHistory() {
-            const loadingDiv = document.getElementById('historyLoading');
-            const table = document.getElementById('historyTable');
-            const tbody = document.getElementById('salesHistoryBody');
-            
-            loadingDiv.style.display = 'block';
-            table.style.display = 'none';
-            
             const data = await fetchAPI(`/sales/team/${currentUser.team_id}/history`);
-            
             if (data && data.success) {
-                let totalCashTransfer = 0;
-                let totalCredit = 0;
-                let totalItems = 0;
-                let html = '';
-                
+                let totalCashTransfer = 0, totalCredit = 0, totalItems = 0, html = '';
                 for (const sale of data.data) {
-                    const itemsResponse = await fetch(`${API_URL}/sales/order/${sale.id}/items`, {
-                        headers: { 'Authorization': `Bearer ${authToken}` }
-                    });
-                    const itemsData = await itemsResponse.json();
-                    
+                    const itemsRes = await fetch(`${API_URL}/sales/order/${sale.id}/items`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+                    const itemsData = await itemsRes.json();
                     const isCredit = sale.payment_method === 'credit';
                     const isApproved = sale.approval_status === 'approved';
                     const isReconciled = sale.payment_status === 'reconciled';
-                    
-                    // Only show credits if approved, only show cash/transfer if reconciled
                     const shouldShow = (!isCredit && isReconciled) || (isCredit && isApproved);
-                    
-                    if (shouldShow && itemsData && itemsData.success && itemsData.data.length > 0) {
+                    if (shouldShow && itemsData.success) {
                         itemsData.data.forEach(item => {
                             totalItems += item.quantity;
-                            if (isCredit) {
-                                totalCredit += item.total_price;
-                            } else {
-                                totalCashTransfer += item.total_price;
-                            }
-                            
-                            const rowClass = isCredit ? 'credit-row' : '';
-                            const amountClass = isCredit ? 'credit-amount' : '';
-                            const amountDisplay = isCredit ? formatCreditMoney(item.total_price) : formatMoney(item.total_price);
-                            
-                            html += `
-                                <tr class="${rowClass}">
-                                    <td>${new Date(sale.created_at).toLocaleTimeString()}</td>
-                                    <td>${sale.customer_name}</td>
-                                    <td>${item.product_name}</td>
-                                    <td>${item.quantity}</td>
-                                    <td class="${amountClass}">${amountDisplay}</td>
-                                    <td>${isCredit ? '📝 Credit' : (sale.payment_method === 'cash' ? '💵 Cash' : '🏦 Transfer')}</td>
-                                    <td>${isCredit ? '✅ Approved Credit' : '✅ Completed'}</td>
-                                </tr>
-                            `;
+                            if (isCredit) totalCredit += item.total_price;
+                            else totalCashTransfer += item.total_price;
+                            html += `<tr class="${isCredit ? 'credit-row' : ''}">
+                                <td>${new Date(sale.created_at).toLocaleTimeString()}</td>
+                                <td>${sale.customer_name}</td>
+                                <td>${item.product_name}</td>
+                                <td>${item.quantity}</td>
+                                <td class="${isCredit ? 'credit-amount' : ''}">${isCredit ? formatCreditMoney(item.total_price) : formatMoney(item.total_price)}</td>
+                                <td>${isCredit ? '📝 Credit' : (sale.payment_method === 'cash' ? '💵 Cash' : '🏦 Transfer')}</td>
+                                <td>${isCredit ? '✅ Approved Credit' : '✅ Completed'}</td>
+                            </tr>`;
                         });
                     }
                 }
-                
-                if (html === '') {
-                    html = '<tr><td colspan="7">No completed transactions yet. Cash/Transfer show after confirmation. Credit shows after manager approval.</td></tr>';
-                }
-                
-                tbody.innerHTML = html;
+                document.getElementById('salesHistoryBody').innerHTML = html || '<tr><td colspan="7">No transactions yet</td></tr>';
                 document.getElementById('todaySales').innerHTML = formatMoney(totalCashTransfer);
                 document.getElementById('creditTotal').innerHTML = formatCreditMoney(totalCredit);
                 document.getElementById('itemsSold').innerHTML = totalItems;
-                
-                loadingDiv.style.display = 'none';
-                table.style.display = 'table';
-            } else {
-                loadingDiv.innerHTML = 'Failed to load transaction history';
-                table.style.display = 'table';
+                document.getElementById('historyLoading').style.display = 'none';
+                document.getElementById('historyTable').style.display = 'table';
             }
         }
-        
-        async function updateStats() {
-            const data = await fetchAPI(`/sales/team/${currentUser.team_id}/history`);
-            if (data && data.success) {
-                let totalCashTransfer = 0;
-                let totalCredit = 0;
-                
-                for (const sale of data.data) {
-                    const isCredit = sale.payment_method === 'credit';
-                    const isApproved = sale.approval_status === 'approved';
-                    const isReconciled = sale.payment_status === 'reconciled';
-                    
-                    const shouldShow = (!isCredit && isReconciled) || (isCredit && isApproved);
-                    
-                    if (shouldShow) {
-                        if (isCredit) {
-                            totalCredit += sale.total_amount;
-                        } else {
-                            totalCashTransfer += sale.total_amount;
-                        }
-                    }
-                }
-                
-                document.getElementById('todaySales').innerHTML = formatMoney(totalCashTransfer);
-                document.getElementById('creditTotal').innerHTML = formatCreditMoney(totalCredit);
-            }
-        }
-        
+
         async function loadCreditRequests() {
-            const loadingDiv = document.getElementById('creditLoading');
-            const table = document.getElementById('creditTable');
-            const tbody = document.getElementById('creditTableBody');
-            
-            loadingDiv.style.display = 'block';
-            table.style.display = 'none';
-            
             const data = await fetchAPI('/approvals/my-requests');
-            
             if (data && data.success) {
                 let html = '';
-                if (data.data.length === 0) {
-                    html = '<tr><td colspan="5">No credit requests pending approval</td></tr>';
-                } else {
-                    data.data.forEach(req => {
-                        let statusText = req.status === 'pending' ? '🟡 Waiting for Manager Approval' : (req.status === 'approved' ? '🟢 Approved - Will appear in history' : '🔴 Rejected');
-                        html += `
-                            <tr>
-                                <td>${req.order_number}</td>
-                                <td>${req.customer_name}</td>
-                                <td class="credit-amount">${formatCreditMoney(req.total_amount)}</td>
-                                <td>${statusText}</td>
-                                <td>${new Date(req.requested_at).toLocaleDateString()}</td>
-                            </tr>
-                        `;
-                    });
-                }
-                tbody.innerHTML = html;
-                loadingDiv.style.display = 'none';
-                table.style.display = 'table';
-            } else {
-                loadingDiv.innerHTML = 'Failed to load credit requests';
+                data.data.forEach(req => {
+                    html += `<tr><td>${req.order_number}</td><td>${req.customer_name}</td><td class="credit-amount">${formatCreditMoney(req.total_amount)}</td>
+                        <td>${req.status === 'pending' ? '🟡 Pending' : (req.status === 'approved' ? '🟢 Approved' : '🔴 Rejected')}</td>
+                        <td>${req.due_date || '-'}</td></tr>`;
+                });
+                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests</td></tr>';
+                document.getElementById('creditLoading').style.display = 'none';
+                document.getElementById('creditTable').style.display = 'table';
             }
         }
-        
-        function logout() {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = 'login.html';
+
+        async function submitDaySales() {
+            if (confirm('Submit all sales for the day? You cannot edit after submission.')) {
+                const result = await fetchAPI('/sales/submit-day', { method: 'POST', body: JSON.stringify({ team_id: currentUser.team_id, sales_date: new Date().toISOString().split('T')[0] }) });
+                if (result && result.success) {
+                    showMessage('✅ Sales submitted to manager.');
+                    document.getElementById('submitDayBtn').disabled = true;
+                    document.getElementById('sellBtn').disabled = true;
+                }
+            }
         }
-        
+
+        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+
         document.getElementById('teamName').innerText = currentUser.full_name?.split(' ')[0] || 'Sales';
-        
-        if (!authToken) {
-            window.location.href = 'login.html';
-        } else {
-            loadAllocatedStock();
-            loadSalesHistory();
-            loadCreditRequests();
-        }
+        if (!authToken) window.location.href = 'login.html';
+        else { loadAllocatedStock(); loadSalesHistory(); loadCreditRequests(); }
     </script>
 </body>
 </html>
