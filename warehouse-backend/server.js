@@ -575,3 +575,70 @@ async function startServer() {
 }
 
 startServer();
+// ============================================================
+// CREDIT APPROVAL WITH AMOUNT MODIFICATION
+// ============================================================
+app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const { approval_id, approved_amount } = req.body;
+        const connection = await pool.getConnection();
+        await connection.beginTransaction();
+        try {
+            // Get order_id from approval
+            const [approval] = await connection.query('SELECT order_id FROM credit_approvals WHERE id = ?', [approval_id]);
+            if (approval.length === 0) throw new Error('Approval not found');
+            const order_id = approval[0].order_id;
+            // Update order amount if changed
+            if (approved_amount) {
+                await connection.query('UPDATE sales_orders SET total_amount = ? WHERE id = ?', [approved_amount, order_id]);
+            }
+            // Update approval status
+            await connection.query('UPDATE credit_approvals SET status = "approved", approved_by = ?, approved_at = NOW() WHERE id = ?', [req.user.id, approval_id]);
+            await connection.query('UPDATE sales_orders SET approval_status = "approved", payment_status = "pending" WHERE id = ?', [order_id]);
+            // Get order items to update stock allocations
+            const [items] = await connection.query('SELECT product_id, quantity, cost_of_goods, team_id FROM sales_order_items oi JOIN sales_orders o ON oi.order_id = o.id WHERE o.id = ?', [order_id]);
+            for (const item of items) {
+                await connection.query('UPDATE sales_team_allocations SET sold_qty = sold_qty + ? WHERE team_id = ? AND product_id = ? AND allocated_date = CURDATE()', [item.quantity, item.team_id, item.product_id]);
+                await connection.query('INSERT INTO stock_transactions (transaction_type, product_id, quantity_change, unit_cost_at_time, reference_type, reference_id, team_id, created_by) VALUES ("sale_out", ?, ?, ?, "sales_order", ?, ?, ?)', [item.product_id, -item.quantity, item.cost_of_goods, order_id, item.team_id, req.user.id]);
+            }
+            await connection.commit();
+            res.json({ success: true, message: 'Credit approved' });
+        } catch (error) { await connection.rollback(); throw error; } finally { connection.release(); }
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const { approval_id } = req.body;
+        await pool.query('UPDATE credit_approvals SET status = "rejected", approved_by = ?, approved_at = NOW() WHERE id = ?', [req.user.id, approval_id]);
+        await pool.query('UPDATE sales_orders SET approval_status = "rejected" WHERE id = (SELECT order_id FROM credit_approvals WHERE id = ?)', [approval_id]);
+        res.json({ success: true, message: 'Credit rejected' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+// ============================================================
+// SUBMIT DAY SALES & PENDING RETURNS
+// ============================================================
+app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
+    try {
+        const { team_id, sales_date } = req.body;
+        await pool.query('UPDATE sales_orders SET submitted_for_review = 1 WHERE team_id = ? AND sales_date = ? AND submitted_for_review = 0', [team_id, sales_date]);
+        res.json({ success: true, message: 'Sales submitted' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.get('/api/sales/pending-submissions', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const [items] = await pool.query(`SELECT so.id, st.team_name, so.customer_name, p.product_name, soi.quantity, soi.total_price as amount, so.payment_method as type FROM sales_orders so JOIN sales_teams st ON so.team_id = st.id JOIN sales_order_items soi ON so.id = soi.order_id JOIN products p ON soi.product_id = p.id WHERE so.submitted_for_review = 1 AND so.manager_confirmed = 0`);
+        res.json({ success: true, data: items });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const { item_id, action } = req.body;
+        if (action === 'accept') await pool.query('UPDATE sales_orders SET manager_confirmed = 1 WHERE id = ?', [item_id]);
+        else if (action === 'reject') await pool.query('UPDATE sales_orders SET submitted_for_review = 0 WHERE id = ?', [item_id]);
+        res.json({ success: true });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
