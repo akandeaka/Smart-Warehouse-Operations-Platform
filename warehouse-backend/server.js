@@ -155,7 +155,6 @@ app.post('/api/allocations', authMiddleware, requireRole(['warehouse_manager']),
         await connection.beginTransaction();
         
         try {
-            // Check if product has enough stock
             const [product] = await connection.query('SELECT unit_cost, current_qty FROM products WHERE id = ?', [product_id]);
             if (product.length === 0) {
                 throw new Error('Product not found');
@@ -164,7 +163,6 @@ app.post('/api/allocations', authMiddleware, requireRole(['warehouse_manager']),
                 throw new Error(`Only ${product[0].current_qty} units available in warehouse`);
             }
             
-            // Check if allocation already exists for today
             const [existing] = await connection.query(
                 'SELECT id FROM sales_team_allocations WHERE team_id = ? AND product_id = ? AND allocated_date = ?',
                 [team_id, product_id, allocated_date]
@@ -183,7 +181,6 @@ app.post('/api/allocations', authMiddleware, requireRole(['warehouse_manager']),
                 );
             }
             
-            // Record stock transaction (trigger will update products.current_qty)
             await connection.query(
                 `INSERT INTO stock_transactions 
                  (transaction_type, product_id, quantity_change, unit_cost_at_time, reference_type, team_id, created_by, notes)
@@ -204,7 +201,6 @@ app.post('/api/allocations', authMiddleware, requireRole(['warehouse_manager']),
     }
 });
 
-// Get today's allocations
 app.get('/api/allocations/today', authMiddleware, async (req, res) => {
     try {
         const today = new Date().toISOString().split('T')[0];
@@ -223,7 +219,6 @@ app.get('/api/allocations/today', authMiddleware, async (req, res) => {
     }
 });
 
-// Get team's allocated stock for today
 app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) => {
     try {
         const { teamId } = req.params;
@@ -250,7 +245,7 @@ app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) 
 // ============================================================
 app.post('/api/sales', authMiddleware, async (req, res) => {
     try {
-        const { team_id, customer_name, customer_phone, items, payment_method, sales_date } = req.body;
+        const { team_id, customer_name, customer_phone, items, payment_method, sales_date, credit_due_date } = req.body;
         
         if (!team_id || !customer_name || !items || items.length === 0 || !payment_method) {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
@@ -285,7 +280,6 @@ app.post('/api/sales', authMiddleware, async (req, res) => {
                     [order_id, item.product_id, item.quantity, item.unit_price, item.product_id]
                 );
                 
-                // Update allocation sold_qty
                 await connection.query(
                     `UPDATE sales_team_allocations 
                      SET sold_qty = sold_qty + ?
@@ -297,8 +291,8 @@ app.post('/api/sales', authMiddleware, async (req, res) => {
             if (payment_method === 'credit') {
                 await connection.query(
                     `INSERT INTO credit_approvals (order_id, requested_by, status, amount_due, due_date)
-                     VALUES (?, ?, 'pending', ?, DATE_ADD(CURDATE(), INTERVAL 14 DAY))`,
-                    [order_id, req.user.id, total_amount]
+                     VALUES (?, ?, 'pending', ?, ?)`,
+                    [order_id, req.user.id, total_amount, credit_due_date || null]
                 );
             } else {
                 await connection.query(
@@ -327,13 +321,12 @@ app.post('/api/sales', authMiddleware, async (req, res) => {
     }
 });
 
-// Get team's sales history
 app.get('/api/sales/team/:teamId/history', authMiddleware, async (req, res) => {
     try {
         const { teamId } = req.params;
         
         const [orders] = await pool.query(
-            `SELECT id, order_number, customer_name, total_amount, payment_method, payment_status, created_at
+            `SELECT id, order_number, customer_name, total_amount, payment_method, payment_status, approval_status, created_at
              FROM sales_orders
              WHERE team_id = ?
              ORDER BY created_at DESC
@@ -347,7 +340,6 @@ app.get('/api/sales/team/:teamId/history', authMiddleware, async (req, res) => {
     }
 });
 
-// Get order items
 app.get('/api/sales/order/:orderId/items', authMiddleware, async (req, res) => {
     try {
         const { orderId } = req.params;
@@ -372,7 +364,7 @@ app.get('/api/sales/order/:orderId/items', authMiddleware, async (req, res) => {
 app.get('/api/approvals/pending', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
         const [approvals] = await pool.query(
-            `SELECT c.id, o.order_number, o.customer_name, o.total_amount, u.full_name as requested_by, c.requested_at
+            `SELECT c.id, o.order_number, o.customer_name, o.total_amount, o.payment_method, u.full_name as requested_by, c.requested_at, c.due_date
              FROM credit_approvals c
              JOIN sales_orders o ON c.order_id = o.id
              JOIN users u ON c.requested_by = u.id
@@ -387,7 +379,7 @@ app.get('/api/approvals/pending', authMiddleware, requireRole(['warehouse_manage
 app.get('/api/approvals/my-requests', authMiddleware, async (req, res) => {
     try {
         const [requests] = await pool.query(
-            `SELECT c.id, o.order_number, o.customer_name, o.total_amount, c.status, c.requested_at
+            `SELECT c.id, o.order_number, o.customer_name, o.total_amount, c.status, c.requested_at, c.due_date
              FROM credit_approvals c
              JOIN sales_orders o ON c.order_id = o.id
              WHERE o.created_by = ?
@@ -468,6 +460,70 @@ app.put('/api/approvals/:id', authMiddleware, requireRole(['warehouse_manager'])
 });
 
 // ============================================================
+// CREDIT APPROVAL WITH AMOUNT MODIFICATION (NEW)
+// ============================================================
+app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const { approval_id, approved_amount } = req.body;
+        const connection = await pool.getConnection();
+        await connection.beginTransaction();
+        try {
+            const [approval] = await connection.query('SELECT order_id FROM credit_approvals WHERE id = ?', [approval_id]);
+            if (approval.length === 0) throw new Error('Approval not found');
+            const order_id = approval[0].order_id;
+            if (approved_amount) {
+                await connection.query('UPDATE sales_orders SET total_amount = ? WHERE id = ?', [approved_amount, order_id]);
+            }
+            await connection.query('UPDATE credit_approvals SET status = "approved", approved_by = ?, approved_at = NOW() WHERE id = ?', [req.user.id, approval_id]);
+            await connection.query('UPDATE sales_orders SET approval_status = "approved", payment_status = "pending" WHERE id = ?', [order_id]);
+            const [items] = await connection.query('SELECT product_id, quantity, cost_of_goods, team_id FROM sales_order_items oi JOIN sales_orders o ON oi.order_id = o.id WHERE o.id = ?', [order_id]);
+            for (const item of items) {
+                await connection.query('UPDATE sales_team_allocations SET sold_qty = sold_qty + ? WHERE team_id = ? AND product_id = ? AND allocated_date = CURDATE()', [item.quantity, item.team_id, item.product_id]);
+                await connection.query('INSERT INTO stock_transactions (transaction_type, product_id, quantity_change, unit_cost_at_time, reference_type, reference_id, team_id, created_by) VALUES ("sale_out", ?, ?, ?, "sales_order", ?, ?, ?)', [item.product_id, -item.quantity, item.cost_of_goods, order_id, item.team_id, req.user.id]);
+            }
+            await connection.commit();
+            res.json({ success: true, message: 'Credit approved' });
+        } catch (error) { await connection.rollback(); throw error; } finally { connection.release(); }
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const { approval_id } = req.body;
+        await pool.query('UPDATE credit_approvals SET status = "rejected", approved_by = ?, approved_at = NOW() WHERE id = ?', [req.user.id, approval_id]);
+        await pool.query('UPDATE sales_orders SET approval_status = "rejected" WHERE id = (SELECT order_id FROM credit_approvals WHERE id = ?)', [approval_id]);
+        res.json({ success: true, message: 'Credit rejected' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+// ============================================================
+// SUBMIT DAY SALES & PENDING RETURNS
+// ============================================================
+app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
+    try {
+        const { team_id, sales_date } = req.body;
+        await pool.query('UPDATE sales_orders SET submitted_for_review = 1 WHERE team_id = ? AND sales_date = ? AND submitted_for_review = 0', [team_id, sales_date]);
+        res.json({ success: true, message: 'Sales submitted' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.get('/api/sales/pending-submissions', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const [items] = await pool.query(`SELECT so.id, st.team_name, so.customer_name, p.product_name, soi.quantity, soi.total_price as amount, so.payment_method as type FROM sales_orders so JOIN sales_teams st ON so.team_id = st.id JOIN sales_order_items soi ON so.id = soi.order_id JOIN products p ON soi.product_id = p.id WHERE so.submitted_for_review = 1 AND so.manager_confirmed = 0`);
+        res.json({ success: true, data: items });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const { item_id, action } = req.body;
+        if (action === 'accept') await pool.query('UPDATE sales_orders SET manager_confirmed = 1 WHERE id = ?', [item_id]);
+        else if (action === 'reject') await pool.query('UPDATE sales_orders SET submitted_for_review = 0 WHERE id = ?', [item_id]);
+        res.json({ success: true });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+// ============================================================
 // REPORTS
 // ============================================================
 app.get('/api/reports/daily', authMiddleware, async (req, res) => {
@@ -527,7 +583,6 @@ app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']),
                 );
             }
             
-            // Get warehouse values
             const [beforeValue] = await connection.query('SELECT SUM(current_qty * unit_cost) as value FROM products');
             const [salesTotal] = await connection.query(
                 'SELECT COALESCE(SUM(total_amount),0) as total FROM sales_orders WHERE sales_date = ?',
@@ -575,70 +630,3 @@ async function startServer() {
 }
 
 startServer();
-// ============================================================
-// CREDIT APPROVAL WITH AMOUNT MODIFICATION
-// ============================================================
-app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    try {
-        const { approval_id, approved_amount } = req.body;
-        const connection = await pool.getConnection();
-        await connection.beginTransaction();
-        try {
-            // Get order_id from approval
-            const [approval] = await connection.query('SELECT order_id FROM credit_approvals WHERE id = ?', [approval_id]);
-            if (approval.length === 0) throw new Error('Approval not found');
-            const order_id = approval[0].order_id;
-            // Update order amount if changed
-            if (approved_amount) {
-                await connection.query('UPDATE sales_orders SET total_amount = ? WHERE id = ?', [approved_amount, order_id]);
-            }
-            // Update approval status
-            await connection.query('UPDATE credit_approvals SET status = "approved", approved_by = ?, approved_at = NOW() WHERE id = ?', [req.user.id, approval_id]);
-            await connection.query('UPDATE sales_orders SET approval_status = "approved", payment_status = "pending" WHERE id = ?', [order_id]);
-            // Get order items to update stock allocations
-            const [items] = await connection.query('SELECT product_id, quantity, cost_of_goods, team_id FROM sales_order_items oi JOIN sales_orders o ON oi.order_id = o.id WHERE o.id = ?', [order_id]);
-            for (const item of items) {
-                await connection.query('UPDATE sales_team_allocations SET sold_qty = sold_qty + ? WHERE team_id = ? AND product_id = ? AND allocated_date = CURDATE()', [item.quantity, item.team_id, item.product_id]);
-                await connection.query('INSERT INTO stock_transactions (transaction_type, product_id, quantity_change, unit_cost_at_time, reference_type, reference_id, team_id, created_by) VALUES ("sale_out", ?, ?, ?, "sales_order", ?, ?, ?)', [item.product_id, -item.quantity, item.cost_of_goods, order_id, item.team_id, req.user.id]);
-            }
-            await connection.commit();
-            res.json({ success: true, message: 'Credit approved' });
-        } catch (error) { await connection.rollback(); throw error; } finally { connection.release(); }
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    try {
-        const { approval_id } = req.body;
-        await pool.query('UPDATE credit_approvals SET status = "rejected", approved_by = ?, approved_at = NOW() WHERE id = ?', [req.user.id, approval_id]);
-        await pool.query('UPDATE sales_orders SET approval_status = "rejected" WHERE id = (SELECT order_id FROM credit_approvals WHERE id = ?)', [approval_id]);
-        res.json({ success: true, message: 'Credit rejected' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-// ============================================================
-// SUBMIT DAY SALES & PENDING RETURNS
-// ============================================================
-app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
-    try {
-        const { team_id, sales_date } = req.body;
-        await pool.query('UPDATE sales_orders SET submitted_for_review = 1 WHERE team_id = ? AND sales_date = ? AND submitted_for_review = 0', [team_id, sales_date]);
-        res.json({ success: true, message: 'Sales submitted' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.get('/api/sales/pending-submissions', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    try {
-        const [items] = await pool.query(`SELECT so.id, st.team_name, so.customer_name, p.product_name, soi.quantity, soi.total_price as amount, so.payment_method as type FROM sales_orders so JOIN sales_teams st ON so.team_id = st.id JOIN sales_order_items soi ON so.id = soi.order_id JOIN products p ON soi.product_id = p.id WHERE so.submitted_for_review = 1 AND so.manager_confirmed = 0`);
-        res.json({ success: true, data: items });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    try {
-        const { item_id, action } = req.body;
-        if (action === 'accept') await pool.query('UPDATE sales_orders SET manager_confirmed = 1 WHERE id = ?', [item_id]);
-        else if (action === 'reject') await pool.query('UPDATE sales_orders SET submitted_for_review = 0 WHERE id = ?', [item_id]);
-        res.json({ success: true });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
