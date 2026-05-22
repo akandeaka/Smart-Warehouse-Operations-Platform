@@ -3,268 +3,343 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Warehouse Manager Dashboard</title>
+    <title>Sales Team Dashboard</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f5f5f5;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .stats-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            padding: 20px;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        .stat-card .value {
-            font-size: 28px;
-            font-weight: bold;
-            color: #667eea;
-        }
-
-        .tabs {
-            background: white;
-            padding: 0 20px;
-            display: flex;
-            gap: 5px;
-            border-bottom: 2px solid #ddd;
-        }
-
-        .tab {
-            padding: 12px 24px;
-            cursor: pointer;
-            border: none;
-            background: none;
-            font-size: 16px;
-        }
-
-        .tab.active {
-            border-bottom: 3px solid #667eea;
-            color: #667eea;
-            font-weight: bold;
-        }
-
-        .panel {
-            display: none;
-            padding: 20px;
-        }
-
-        .panel.active {
-            display: block;
-        }
-
-        table {
-            width: 100%;
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-
-        th {
-            background: #f8f9fa;
-            padding: 12px;
-            text-align: left;
-        }
-
-        td {
-            padding: 12px;
-            border-top: 1px solid #eee;
-        }
-
-        button.approve-btn {
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        button.close-day-btn {
-            background: #ffc107;
-            color: #333;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
-
-        .logout-btn {
-            background: rgba(255,255,255,0.2);
-            padding: 8px 16px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
+        .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; padding: 20px; }
+        .stat-card { background: white; padding: 20px; border-radius: 10px; text-align: center; }
+        .stat-card .value { font-size: 28px; font-weight: bold; color: #28a745; }
+        .card { background: white; padding: 20px; margin: 20px; border-radius: 10px; }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; margin-top: 15px; }
+        .product-item { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fafafa; }
+        .product-item h4 { color: #333; margin-bottom: 10px; }
+        .product-item .price { color: #28a745; font-weight: bold; font-size: 18px; }
+        .product-item .stock { color: #666; font-size: 14px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 500; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .payment-options { display: flex; gap: 15px; margin: 15px 0; }
+        button.sell-btn { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
+        button.sell-btn:hover { background: #218838; }
+        .logout-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; }
+        .success-msg { background: #d4edda; color: #155724; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
+        .error-msg { background: #f8d7da; color: #721c24; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
+        table { width: 100%; margin-top: 15px; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f8f9fa; }
+        .loading { text-align: center; padding: 40px; color: #666; }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>🏪 Warehouse Manager Dashboard</h1>
+        <h1>💰 <span id="teamName">Sales Team</span> Dashboard</h1>
         <div class="logout-btn" onclick="logout()">Logout</div>
     </div>
 
+    <div id="successMsg" class="success-msg"></div>
+    <div id="errorMsg" class="error-msg"></div>
+
     <div class="stats-container">
         <div class="stat-card">
-            <div>Total Products</div>
-            <div class="value" id="totalProducts">0</div>
+            <div>Today's Sales</div>
+            <div class="value" id="todaySales">₦0</div>
         </div>
         <div class="stat-card">
-            <div>Warehouse Value (₦)</div>
-            <div class="value" id="totalValue">0</div>
-        </div>
-        <div class="stat-card">
-            <div>Pending Approvals</div>
-            <div class="value" id="pendingApprovals">0</div>
+            <div>Items Sold</div>
+            <div class="value" id="itemsSold">0</div>
         </div>
     </div>
 
-    <div class="tabs">
-        <button class="tab active" onclick="showPanel('stock')">Stock Management</button>
-        <button class="tab" onclick="showPanel('approvals')">Credit Approvals</button>
-        <button class="tab" onclick="showPanel('reports')">Daily Reports</button>
+    <div class="card">
+        <h3>📦 My Allocated Stock (Today)</h3>
+        <div id="stockLoading" class="loading">Loading your allocated stock...</div>
+        <div id="allocatedStock" class="product-grid" style="display: none;"></div>
     </div>
 
-    <div id="stockPanel" class="panel active">
-        <h2>Current Warehouse Stock</h2>
-        <table id="stockTable">
-            <thead><tr><th>Product</th><th>Quantity</th><th>Unit Cost</th><th>Total Value</th></tr></thead>
-            <tbody id="stockTableBody"></tbody>
+    <div class="card">
+        <h3>➕ Record New Sale</h3>
+        <form id="saleForm">
+            <div class="form-group">
+                <label>Customer Name *</label>
+                <input type="text" id="customerName" required>
+            </div>
+            <div class="form-group">
+                <label>Customer Phone</label>
+                <input type="tel" id="customerPhone">
+            </div>
+            <div class="form-group">
+                <label>Product *</label>
+                <select id="productSelect" required></select>
+            </div>
+            <div class="form-group">
+                <label>Quantity *</label>
+                <input type="number" id="quantity" min="1" required>
+            </div>
+            <div class="payment-options">
+                <label><input type="radio" name="paymentMethod" value="cash" checked> 💵 Cash</label>
+                <label><input type="radio" name="paymentMethod" value="transfer"> 🏦 Bank Transfer</label>
+                <label><input type="radio" name="paymentMethod" value="credit"> 📝 Credit (Needs Approval)</label>
+            </div>
+            <button type="submit" class="sell-btn">Sell Now</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h3>📋 My Credit Requests</h3>
+        <div id="creditLoading" class="loading">Loading credit requests...</div>
+        <table id="creditTable" style="display: none;">
+            <thead><tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+            <tbody id="creditTableBody"></tbody>
         </table>
     </div>
 
-    <div id="approvalsPanel" class="panel">
-        <h2>Pending Credit Approvals</h2>
-        <table id="approvalsTable">
-            <thead><tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Action</th></tr></thead>
-            <tbody id="approvalsTableBody"></tbody>
-        </table>
-    </div>
-
-    <div id="reportsPanel" class="panel">
-        <button class="close-day-btn" onclick="closeDay()">🔒 Close Day (5 PM)</button>
-        <h2>Today's Sales Report</h2>
-        <table id="salesReportTable">
-            <thead><tr><th>Team</th><th>Orders</th><th>Total Sales</th></tr></thead>
-            <tbody id="salesReportBody"></tbody>
+    <div class="card">
+        <h3>📊 Today's Sales History</h3>
+        <div id="historyLoading" class="loading">Loading sales history...</div>
+        <table id="historyTable" style="display: none;">
+            <thead><tr><th>Time</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Payment</th><th>Status</th></tr></thead>
+            <tbody id="salesHistoryBody"></tbody>
         </table>
     </div>
 
     <script>
-        let products = [
-            {name: 'Premium Rice', qty: 500, cost: 3500},
-            {name: 'Vegetable Oil', qty: 300, cost: 1800},
-            {name: 'Tomato Paste', qty: 1000, cost: 150}
-        ];
-        
-        let pendingApprovals = [
-            {order: 'SALE-002', customer: 'XYZ Supermarket', amount: 168000}
-        ];
-        
-        let salesReport = [
-            {team: 'Alpha Team', orders: 5, total: 210000},
-            {team: 'Beta Team', orders: 3, total: 168000}
-        ];
+        const API_URL = 'https://warehouse-backend-api-2fye.onrender.com/api';
+        let authToken = localStorage.getItem('token');
+        let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        let allocatedProducts = [];
 
-        function updateStats() {
-            let totalValue = products.reduce((sum, p) => sum + (p.qty * p.cost), 0);
-            document.getElementById('totalProducts').innerText = products.length;
-            document.getElementById('totalValue').innerText = totalValue.toLocaleString();
-            document.getElementById('pendingApprovals').innerText = pendingApprovals.length;
+        function showMessage(msg, isError = false) {
+            const msgDiv = isError ? document.getElementById('errorMsg') : document.getElementById('successMsg');
+            msgDiv.innerHTML = msg;
+            msgDiv.style.display = 'block';
+            setTimeout(() => { msgDiv.style.display = 'none'; }, 3000);
         }
 
-        function loadStockTable() {
-            let html = '';
-            products.forEach(p => {
-                html += `<tr><td>${p.name}</td><td>${p.qty}</td><td>₦${p.cost.toLocaleString()}</td><td>₦${(p.qty * p.cost).toLocaleString()}</td></tr>`;
-            });
-            document.getElementById('stockTableBody').innerHTML = html;
-        }
-
-        function loadApprovalsTable() {
-            let html = '';
-            pendingApprovals.forEach(a => {
-                html += `<tr>
-                    <td>${a.order}</td>
-                    <td>${a.customer}</td>
-                    <td>₦${a.amount.toLocaleString()}</td>
-                    <td><button class="approve-btn" onclick="approveCredit('${a.order}')">Approve</button></td>
-                </tr>`;
-            });
-            document.getElementById('approvalsTableBody').innerHTML = html || '<tr><td colspan="4">No pending approvals</td></tr>';
-        }
-
-        function loadSalesReport() {
-            let html = '';
-            salesReport.forEach(s => {
-                html += `<tr><td>${s.team}</td><td>${s.orders}</td><td>₦${s.total.toLocaleString()}</td></tr>`;
-            });
-            document.getElementById('salesReportBody').innerHTML = html;
-        }
-
-        function approveCredit(order) {
-            pendingApprovals = pendingApprovals.filter(a => a.order !== order);
-            loadApprovalsTable();
-            updateStats();
-            alert(`✅ Credit approved for ${order}. Stock deducted.`);
-        }
-
-        function closeDay() {
-            if (confirm('Close the day at 5 PM? This will return unsold stock and lock transactions.')) {
-                alert('✅ Day closed successfully!');
+        async function fetchAPI(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${API_URL}${endpoint}`, {
+                    ...options,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`,
+                        ...options.headers
+                    }
+                });
+                
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    window.location.href = 'login.html';
+                    return null;
+                }
+                
+                return await response.json();
+            } catch (error) {
+                showMessage('Network error: ' + error.message, true);
+                return null;
             }
         }
 
-        function showPanel(panelName) {
-            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            if (panelName === 'stock') {
-                document.getElementById('stockPanel').classList.add('active');
-                document.querySelector('.tab:nth-child(1)').classList.add('active');
-            } else if (panelName === 'approvals') {
-                document.getElementById('approvalsPanel').classList.add('active');
-                document.querySelector('.tab:nth-child(2)').classList.add('active');
-                loadApprovalsTable();
-            } else if (panelName === 'reports') {
-                document.getElementById('reportsPanel').classList.add('active');
-                document.querySelector('.tab:nth-child(3)').classList.add('active');
-                loadSalesReport();
+        async function loadAllocatedStock() {
+            const loadingDiv = document.getElementById('stockLoading');
+            const container = document.getElementById('allocatedStock');
+            const select = document.getElementById('productSelect');
+            
+            loadingDiv.style.display = 'block';
+            container.style.display = 'none';
+            
+            const data = await fetchAPI(`/sales/team/${currentUser.team_id}/allocations`);
+            
+            if (data && data.success) {
+                allocatedProducts = data.data;
+                
+                if (allocatedProducts.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; color:#666;">No stock allocated today. Contact warehouse manager.</p>';
+                } else {
+                    let html = '';
+                    let selectHtml = '<option value="">Select Product</option>';
+                    
+                    allocatedProducts.forEach(p => {
+                        html += `
+                            <div class="product-item">
+                                <h4>${p.product_name}</h4>
+                                <div class="stock">Available: ${p.remaining_qty} units</div>
+                                <div class="price">₦${p.selling_price.toLocaleString()}</div>
+                            </div>
+                        `;
+                        if (p.remaining_qty > 0) {
+                            selectHtml += `<option value="${p.id}" data-price="${p.selling_price}" data-name="${p.product_name}">${p.product_name} - ₦${p.selling_price} (${p.remaining_qty} left)</option>`;
+                        }
+                    });
+                    
+                    container.innerHTML = html;
+                    select.innerHTML = selectHtml;
+                }
+                
+                loadingDiv.style.display = 'none';
+                container.style.display = 'grid';
+            } else {
+                loadingDiv.innerHTML = 'Failed to load allocated stock';
             }
         }
 
+        document.getElementById('saleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const customerName = document.getElementById('customerName').value;
+            const customerPhone = document.getElementById('customerPhone').value;
+            const productSelect = document.getElementById('productSelect');
+            const productId = parseInt(productSelect.value);
+            const quantity = parseInt(document.getElementById('quantity').value);
+            const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+            
+            if (!productId) {
+                showMessage('Please select a product', true);
+                return;
+            }
+            
+            const product = allocatedProducts.find(p => p.id === productId);
+            
+            if (!product || quantity > product.remaining_qty) {
+                showMessage(`Only ${product?.remaining_qty || 0} units available`, true);
+                return;
+            }
+            
+            const totalAmount = quantity * product.selling_price;
+            const today = new Date().toISOString().split('T')[0];
+            
+            const result = await fetchAPI('/sales', {
+                method: 'POST',
+                body: JSON.stringify({
+                    team_id: currentUser.team_id,
+                    customer_name: customerName,
+                    customer_phone: customerPhone,
+                    items: [{ product_id: productId, quantity: quantity, unit_price: product.selling_price }],
+                    payment_method: paymentMethod,
+                    sales_date: today
+                })
+            });
+            
+            if (result && result.success) {
+                showMessage(`✅ Sale recorded! ₦${totalAmount.toLocaleString()} - ${paymentMethod === 'credit' ? 'Pending approval' : 'Awaiting payment confirmation'}`);
+                
+                document.getElementById('customerName').value = '';
+                document.getElementById('customerPhone').value = '';
+                document.getElementById('quantity').value = '';
+                document.getElementById('productSelect').value = '';
+                
+                loadAllocatedStock();
+                loadSalesHistory();
+                if (paymentMethod === 'credit') {
+                    loadCreditRequests();
+                }
+            } else {
+                showMessage('Failed to record sale', true);
+            }
+        });
+        
+        async function loadSalesHistory() {
+            const loadingDiv = document.getElementById('historyLoading');
+            const table = document.getElementById('historyTable');
+            const tbody = document.getElementById('salesHistoryBody');
+            
+            loadingDiv.style.display = 'block';
+            table.style.display = 'none';
+            
+            const data = await fetchAPI(`/sales/team/${currentUser.team_id}/history`);
+            
+            if (data && data.success) {
+                let totalSalesAmount = 0;
+                let totalItems = 0;
+                let html = '';
+                
+                if (data.data.length === 0) {
+                    html = '<tr><td colspan="7">No sales today</td></tr>';
+                } else {
+                    for (const sale of data.data) {
+                        totalSalesAmount += sale.total_amount;
+                        // Fetch items for each sale
+                        const itemsData = await fetchAPI(`/sales/order/${sale.id}/items`);
+                        if (itemsData && itemsData.success) {
+                            itemsData.data.forEach(item => {
+                                totalItems += item.quantity;
+                                html += `<tr>
+                                    <td>${new Date(sale.created_at).toLocaleTimeString()}</td>
+                                    <td>${sale.customer_name}</td>
+                                    <td>${item.product_name}</td>
+                                    <td>${item.quantity}</td>
+                                    <td>₦${item.total_price.toLocaleString()}</td>
+                                    <td>${sale.payment_method}</td>
+                                    <td>${sale.payment_status}</td>
+                                </tr>`;
+                            });
+                        }
+                    }
+                }
+                
+                tbody.innerHTML = html;
+                document.getElementById('todaySales').innerHTML = `₦${totalSalesAmount.toLocaleString()}`;
+                document.getElementById('itemsSold').innerHTML = totalItems;
+                
+                loadingDiv.style.display = 'none';
+                table.style.display = 'table';
+            } else {
+                loadingDiv.innerHTML = 'Failed to load sales history';
+                table.style.display = 'table';
+            }
+        }
+        
+        async function loadCreditRequests() {
+            const loadingDiv = document.getElementById('creditLoading');
+            const table = document.getElementById('creditTable');
+            const tbody = document.getElementById('creditTableBody');
+            
+            loadingDiv.style.display = 'block';
+            table.style.display = 'none';
+            
+            const data = await fetchAPI('/approvals/my-requests');
+            
+            if (data && data.success) {
+                let html = '';
+                if (data.data.length === 0) {
+                    html = '<tr><td colspan="5">No credit requests</td></tr>';
+                } else {
+                    data.data.forEach(req => {
+                        let statusClass = req.status === 'pending' ? '🟡 Pending' : (req.status === 'approved' ? '🟢 Approved' : '🔴 Rejected');
+                        html += `<tr>
+                            <td>${req.order_number}</td>
+                            <td>${req.customer_name}</td>
+                            <td>₦${req.total_amount.toLocaleString()}</td>
+                            <td>${statusClass}</td>
+                            <td>${new Date(req.requested_at).toLocaleDateString()}</td>
+                        </tr>`;
+                    });
+                }
+                tbody.innerHTML = html;
+                loadingDiv.style.display = 'none';
+                table.style.display = 'table';
+            } else {
+                loadingDiv.innerHTML = 'Failed to load credit requests';
+            }
+        }
+        
         function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
             window.location.href = 'login.html';
         }
-
-        updateStats();
-        loadStockTable();
-        loadApprovalsTable();
-        loadSalesReport();
+        
+        document.getElementById('teamName').innerText = currentUser.full_name?.split(' ')[0] || 'Sales';
+        
+        if (!authToken) {
+            window.location.href = 'login.html';
+        } else {
+            loadAllocatedStock();
+            loadSalesHistory();
+            loadCreditRequests();
+        }
     </script>
 </body>
 </html>
