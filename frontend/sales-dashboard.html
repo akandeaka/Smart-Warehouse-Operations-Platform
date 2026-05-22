@@ -13,22 +13,20 @@
         .stat-card .value { font-size: 28px; font-weight: bold; color: #28a745; }
         .card { background: white; padding: 20px; margin: 20px; border-radius: 10px; }
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px; }
-        .product-item { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fafafa; position: relative; }
+        .product-item { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fafafa; }
         .product-item h4 { color: #333; margin-bottom: 10px; }
         .product-item .price { color: #28a745; font-weight: bold; font-size: 20px; }
         .product-item .stock { color: #666; font-size: 14px; margin: 5px 0; }
         .product-item .total-value { color: #667eea; font-weight: bold; margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; }
         .confirm-btn { background: #28a745; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; margin-top: 15px; }
         .confirm-btn:hover { background: #218838; }
-        .confirmed-badge { background: #28a745; color: white; padding: 5px 10px; border-radius: 5px; font-size: 12px; display: inline-block; margin-bottom: 10px; }
-        .pending-badge { background: #ffc107; color: #333; padding: 5px 10px; border-radius: 5px; font-size: 12px; display: inline-block; margin-bottom: 10px; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: 500; }
         input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
-        .payment-options { display: flex; gap: 15px; margin: 15px 0; }
+        .payment-options { display: flex; gap: 15px; margin: 15px 0; flex-wrap: wrap; }
+        .payment-options label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
         button.sell-btn { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
         button.sell-btn:disabled { background: #ccc; cursor: not-allowed; }
-        button.sell-btn:hover:enabled { background: #218838; }
         .logout-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; }
         .success-msg { background: #d4edda; color: #155724; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
         .error-msg { background: #f8d7da; color: #721c24; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
@@ -38,8 +36,14 @@
         th { background: #f8f9fa; }
         .loading { text-align: center; padding: 40px; color: #666; }
         .allocation-summary { background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-        .allocation-summary h4 { margin-bottom: 10px; }
         .total-goods-value { font-size: 24px; font-weight: bold; color: #28a745; }
+        .status-confirmed { color: #28a745; font-weight: bold; }
+        .status-pending { color: #ffc107; font-weight: bold; }
+        /* Credit sale row styling */
+        .credit-row { background-color: #fff5f5 !important; border-left: 4px solid #dc3545; }
+        .credit-amount { color: #dc3545 !important; font-weight: bold; }
+        .credit-amount::before { content: "- "; }
+        .negative-sign { color: #dc3545; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -54,12 +58,16 @@
 
     <div class="stats-container">
         <div class="stat-card">
-            <div>Today's Sales</div>
+            <div>Today's Sales (Cash + Transfer)</div>
             <div class="value" id="todaySales">₦0</div>
         </div>
         <div class="stat-card">
             <div>Items Sold</div>
             <div class="value" id="itemsSold">0</div>
+        </div>
+        <div class="stat-card">
+            <div>Credit Sales (Not Included in Total)</div>
+            <div class="value" id="creditTotal" style="color: #dc3545;">-₦0</div>
         </div>
     </div>
 
@@ -68,7 +76,7 @@
         <div id="allocationSummary" class="allocation-summary" style="display: none;">
             <h4>📋 Allocation Summary</h4>
             <div>Total Goods Value: <span id="totalAllocatedValue" class="total-goods-value">₦0</span></div>
-            <div>Status: <span id="confirmationStatus">Not Confirmed</span></div>
+            <div>Status: <span id="confirmationStatus" class="status-pending">Not Confirmed</span></div>
         </div>
         
         <div id="stockLoading" class="loading">Loading your allocated stock...</div>
@@ -98,16 +106,16 @@
                 <input type="number" id="quantity" min="1" required>
             </div>
             <div class="payment-options">
-                <label><input type="radio" name="paymentMethod" value="cash" checked> 💵 Cash</label>
-                <label><input type="radio" name="paymentMethod" value="transfer"> 🏦 Bank Transfer</label>
-                <label><input type="radio" name="paymentMethod" value="credit"> 📝 Credit (Needs Approval)</label>
+                <label><input type="radio" name="paymentMethod" value="cash" checked> 💵 Cash (Adds to Total)</label>
+                <label><input type="radio" name="paymentMethod" value="transfer"> 🏦 Bank Transfer (Adds to Total)</label>
+                <label><input type="radio" name="paymentMethod" value="credit"> 📝 Credit (Shows in Red - NOT Added to Total)</label>
             </div>
             <button type="submit" class="sell-btn" id="sellBtn" disabled>Sell Now</button>
         </form>
     </div>
 
     <div class="card">
-        <h3>📋 My Credit Requests</h3>
+        <h3>📋 My Credit Requests (Pending Manager Approval)</h3>
         <div id="creditLoading" class="loading">Loading credit requests...</div>
         <table id="creditTable" style="display: none;">
             <thead><tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
@@ -116,10 +124,10 @@
     </div>
 
     <div class="card">
-        <h3>📊 Today's Sales History</h3>
-        <div id="historyLoading" class="loading">Loading sales history...</div>
+        <h3>📊 Today's Transaction History</h3>
+        <div id="historyLoading" class="loading">Loading transaction history...</div>
         <table id="historyTable" style="display: none;">
-            <thead><tr><th>Time</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Payment</th><th>Status</th></tr></thead>
+            <thead><tr><th>Time</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Status</th></tr></thead>
             <tbody id="salesHistoryBody"></tbody>
         </table>
     </div>
@@ -133,6 +141,10 @@
 
         function formatMoney(amount) {
             return '₦' + amount.toLocaleString('en-NG');
+        }
+
+        function formatCreditMoney(amount) {
+            return '-₦' + amount.toLocaleString('en-NG');
         }
 
         function showMessage(msg, isError = false, isWarning = false) {
@@ -184,14 +196,14 @@
             const data = await fetchAPI(`/sales/team/${currentUser.team_id}/allocations`);
             
             if (data && data.success) {
-                allocatedProducts = data.data;
+                allocatedProducts = data.data.filter(p => p.remaining_qty > 0);
                 
                 if (allocatedProducts.length === 0) {
                     container.innerHTML = '<p style="text-align:center; color:#666;">No stock allocated today. Contact warehouse manager.</p>';
                     confirmBtn.style.display = 'none';
                     allocationSummary.style.display = 'none';
+                    enableSelling(false);
                 } else {
-                    // Calculate total value of allocated goods
                     let totalValue = 0;
                     let html = '';
                     let selectHtml = '<option value="">Select Product</option>';
@@ -207,30 +219,28 @@
                                 <div class="total-value">📊 Total Value: ${formatMoney(productTotal)}</div>
                             </div>
                         `;
-                        if (p.remaining_qty > 0) {
-                            selectHtml += `<option value="${p.id}" data-price="${p.selling_price}" data-name="${p.product_name}">${p.product_name} - ${formatMoney(p.selling_price)} (${p.remaining_qty} left)</option>`;
-                        }
+                        selectHtml += `<option value="${p.id}" data-price="${p.selling_price}" data-name="${p.product_name}">${p.product_name} - ${formatMoney(p.selling_price)} (${p.remaining_qty} left)</option>`;
                     });
                     
                     container.innerHTML = html;
                     select.innerHTML = selectHtml;
                     
-                    // Show allocation summary
                     document.getElementById('totalAllocatedValue').innerHTML = formatMoney(totalValue);
                     allocationSummary.style.display = 'block';
                     
-                    // Check if already confirmed
-                    const savedConfirmation = localStorage.getItem(`confirmed_${currentUser.team_id}_${new Date().toISOString().split('T')[0]}`);
+                    const today = new Date().toISOString().split('T')[0];
+                    const savedConfirmation = localStorage.getItem(`confirmed_${currentUser.team_id}_${today}`);
+                    
                     if (savedConfirmation === 'true') {
                         isConfirmed = true;
                         document.getElementById('confirmationStatus').innerHTML = '✅ Confirmed';
-                        document.getElementById('confirmationStatus').style.color = '#28a745';
+                        document.getElementById('confirmationStatus').className = 'status-confirmed';
                         confirmBtn.style.display = 'none';
                         enableSelling(true);
                     } else {
                         isConfirmed = false;
                         document.getElementById('confirmationStatus').innerHTML = '⏳ Pending Confirmation';
-                        document.getElementById('confirmationStatus').style.color = '#ffc107';
+                        document.getElementById('confirmationStatus').className = 'status-pending';
                         confirmBtn.style.display = 'block';
                         enableSelling(false);
                     }
@@ -246,34 +256,37 @@
         function enableSelling(enabled) {
             const sellBtn = document.getElementById('sellBtn');
             const saleDisabledWarning = document.getElementById('saleDisabledWarning');
-            const formInputs = document.querySelectorAll('#saleForm input, #saleForm select');
+            const productSelect = document.getElementById('productSelect');
+            const quantity = document.getElementById('quantity');
+            const customerName = document.getElementById('customerName');
             
             sellBtn.disabled = !enabled;
             if (enabled) {
                 saleDisabledWarning.style.display = 'none';
-                formInputs.forEach(input => { if(input.id !== 'sellBtn') input.disabled = false; });
+                productSelect.disabled = false;
+                quantity.disabled = false;
+                customerName.disabled = false;
             } else {
                 saleDisabledWarning.style.display = 'block';
-                formInputs.forEach(input => { if(input.id !== 'sellBtn') input.disabled = true; });
+                productSelect.disabled = true;
+                quantity.disabled = true;
+                customerName.disabled = true;
             }
         }
 
         async function confirmAllocation() {
             const today = new Date().toISOString().split('T')[0];
-            
-            // Calculate total value
             let totalValue = 0;
             allocatedProducts.forEach(p => {
                 totalValue += p.remaining_qty * p.selling_price;
             });
             
             if (confirm(`Please confirm you have received ALL physical goods valued at ${formatMoney(totalValue)}.\n\nOnce confirmed, you will be able to sell these items.`)) {
-                // Save confirmation to localStorage
                 localStorage.setItem(`confirmed_${currentUser.team_id}_${today}`, 'true');
                 isConfirmed = true;
                 
                 document.getElementById('confirmationStatus').innerHTML = '✅ Confirmed';
-                document.getElementById('confirmationStatus').style.color = '#28a745';
+                document.getElementById('confirmationStatus').className = 'status-confirmed';
                 document.getElementById('confirmReceiptBtn').style.display = 'none';
                 
                 enableSelling(true);
@@ -324,7 +337,15 @@
             });
             
             if (result && result.success) {
-                showMessage(`✅ Sale recorded! ${formatMoney(totalAmount)} - ${paymentMethod === 'credit' ? 'Pending approval' : 'Awaiting payment confirmation'}`);
+                let message = `✅ Sale recorded! `;
+                if (paymentMethod === 'credit') {
+                    message += `${formatCreditMoney(totalAmount)} - Pending manager approval. Will appear in red once approved.`;
+                } else if (paymentMethod === 'transfer') {
+                    message += `${formatMoney(totalAmount)} - Awaiting bank transfer confirmation.`;
+                } else {
+                    message += `${formatMoney(totalAmount)} - Awaiting cash confirmation.`;
+                }
+                showMessage(message);
                 
                 document.getElementById('customerName').value = '';
                 document.getElementById('customerPhone').value = '';
@@ -338,7 +359,7 @@
                 }
                 updateStats();
             } else {
-                showMessage('Failed to record sale', true);
+                showMessage('Failed to record sale: ' + (result?.message || 'Unknown error'), true);
             }
         });
         
@@ -353,47 +374,65 @@
             const data = await fetchAPI(`/sales/team/${currentUser.team_id}/history`);
             
             if (data && data.success) {
-                let totalSalesAmount = 0;
+                let totalCashTransfer = 0;
+                let totalCredit = 0;
                 let totalItems = 0;
                 let html = '';
                 
-                if (data.data.length === 0) {
-                    html = '<tr><td colspan="7">No sales recorded today</td></tr>';
-                } else {
-                    for (const sale of data.data) {
-                        totalSalesAmount += sale.total_amount;
-                        const itemsResponse = await fetch(`${API_URL}/sales/order/${sale.id}/items`, {
-                            headers: { 'Authorization': `Bearer ${authToken}` }
+                for (const sale of data.data) {
+                    const itemsResponse = await fetch(`${API_URL}/sales/order/${sale.id}/items`, {
+                        headers: { 'Authorization': `Bearer ${authToken}` }
+                    });
+                    const itemsData = await itemsResponse.json();
+                    
+                    const isCredit = sale.payment_method === 'credit';
+                    const isApproved = sale.approval_status === 'approved';
+                    const isReconciled = sale.payment_status === 'reconciled';
+                    
+                    // Only show credits if approved, only show cash/transfer if reconciled
+                    const shouldShow = (!isCredit && isReconciled) || (isCredit && isApproved);
+                    
+                    if (shouldShow && itemsData && itemsData.success && itemsData.data.length > 0) {
+                        itemsData.data.forEach(item => {
+                            totalItems += item.quantity;
+                            if (isCredit) {
+                                totalCredit += item.total_price;
+                            } else {
+                                totalCashTransfer += item.total_price;
+                            }
+                            
+                            const rowClass = isCredit ? 'credit-row' : '';
+                            const amountClass = isCredit ? 'credit-amount' : '';
+                            const amountDisplay = isCredit ? formatCreditMoney(item.total_price) : formatMoney(item.total_price);
+                            
+                            html += `
+                                <tr class="${rowClass}">
+                                    <td>${new Date(sale.created_at).toLocaleTimeString()}</td>
+                                    <td>${sale.customer_name}</td>
+                                    <td>${item.product_name}</td>
+                                    <td>${item.quantity}</td>
+                                    <td class="${amountClass}">${amountDisplay}</td>
+                                    <td>${isCredit ? '📝 Credit' : (sale.payment_method === 'cash' ? '💵 Cash' : '🏦 Transfer')}</td>
+                                    <td>${isCredit ? '✅ Approved Credit' : '✅ Completed'}</td>
+                                </tr>
+                            `;
                         });
-                        const itemsData = await itemsResponse.json();
-                        
-                        if (itemsData && itemsData.success && itemsData.data.length > 0) {
-                            itemsData.data.forEach(item => {
-                                totalItems += item.quantity;
-                                html += `
-                                    <tr>
-                                        <td>${new Date(sale.created_at).toLocaleTimeString()}</td>
-                                        <td>${sale.customer_name}</td>
-                                        <td>${item.product_name}</td>
-                                        <td>${item.quantity}</td>
-                                        <td>${formatMoney(item.total_price)}</td>
-                                        <td>${sale.payment_method}</td>
-                                        <td>${sale.payment_status}</td>
-                                    </tr>
-                                `;
-                            });
-                        }
                     }
                 }
                 
+                if (html === '') {
+                    html = '<tr><td colspan="7">No completed transactions yet. Cash/Transfer show after confirmation. Credit shows after manager approval.</td></tr>';
+                }
+                
                 tbody.innerHTML = html;
-                document.getElementById('todaySales').innerHTML = formatMoney(totalSalesAmount);
+                document.getElementById('todaySales').innerHTML = formatMoney(totalCashTransfer);
+                document.getElementById('creditTotal').innerHTML = formatCreditMoney(totalCredit);
                 document.getElementById('itemsSold').innerHTML = totalItems;
                 
                 loadingDiv.style.display = 'none';
                 table.style.display = 'table';
             } else {
-                loadingDiv.innerHTML = 'Failed to load sales history';
+                loadingDiv.innerHTML = 'Failed to load transaction history';
                 table.style.display = 'table';
             }
         }
@@ -401,11 +440,27 @@
         async function updateStats() {
             const data = await fetchAPI(`/sales/team/${currentUser.team_id}/history`);
             if (data && data.success) {
-                let total = 0;
+                let totalCashTransfer = 0;
+                let totalCredit = 0;
+                
                 for (const sale of data.data) {
-                    total += sale.total_amount;
+                    const isCredit = sale.payment_method === 'credit';
+                    const isApproved = sale.approval_status === 'approved';
+                    const isReconciled = sale.payment_status === 'reconciled';
+                    
+                    const shouldShow = (!isCredit && isReconciled) || (isCredit && isApproved);
+                    
+                    if (shouldShow) {
+                        if (isCredit) {
+                            totalCredit += sale.total_amount;
+                        } else {
+                            totalCashTransfer += sale.total_amount;
+                        }
+                    }
                 }
-                document.getElementById('todaySales').innerHTML = formatMoney(total);
+                
+                document.getElementById('todaySales').innerHTML = formatMoney(totalCashTransfer);
+                document.getElementById('creditTotal').innerHTML = formatCreditMoney(totalCredit);
             }
         }
         
@@ -422,15 +477,15 @@
             if (data && data.success) {
                 let html = '';
                 if (data.data.length === 0) {
-                    html = '<tr><td colspan="5">No credit requests</td></tr>';
+                    html = '<tr><td colspan="5">No credit requests pending approval</td></tr>';
                 } else {
                     data.data.forEach(req => {
-                        let statusText = req.status === 'pending' ? '🟡 Pending' : (req.status === 'approved' ? '🟢 Approved' : '🔴 Rejected');
+                        let statusText = req.status === 'pending' ? '🟡 Waiting for Manager Approval' : (req.status === 'approved' ? '🟢 Approved - Will appear in history' : '🔴 Rejected');
                         html += `
                             <tr>
                                 <td>${req.order_number}</td>
                                 <td>${req.customer_name}</td>
-                                <td>${formatMoney(req.total_amount)}</td>
+                                <td class="credit-amount">${formatCreditMoney(req.total_amount)}</td>
                                 <td>${statusText}</td>
                                 <td>${new Date(req.requested_at).toLocaleDateString()}</td>
                             </tr>
