@@ -19,7 +19,7 @@
         .product-item .price { color: #28a745; font-weight: bold; font-size: 20px; }
         .product-item .stock { color: #666; font-size: 14px; margin: 5px 0; }
         .product-item .total-value { color: #667eea; font-weight: bold; margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; }
-        .confirm-btn { background: #28a745; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%; margin-top: 15px; }
+        .confirm-btn { background: #28a745; color: white; border: none; padding: 15px 25px; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; width: 100%; margin-top: 15px; }
         .confirm-btn:hover { background: #218838; }
         .submit-btn { background: #ffc107; color: #333; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; width: calc(100% - 40px); margin: 0 20px 20px 20px; }
         .submit-btn:hover { background: #e0a800; }
@@ -42,7 +42,7 @@
         .allocation-summary { background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
         .total-goods-value { font-size: 24px; font-weight: bold; color: #28a745; }
         .status-confirmed { color: #28a745; font-weight: bold; }
-        .status-pending { color: #ffc107; font-weight: bold; }
+        .status-pending { color: #dc3545; font-weight: bold; }
         .credit-row { background-color: #fff0f0; border-left: 3px solid #dc3545; }
         .credit-amount { color: #dc3545; font-weight: bold; }
         .credit-amount::before { content: "- "; }
@@ -78,11 +78,11 @@
         <div id="allocationSummary" class="allocation-summary" style="display: none;">
             <h4>📋 Allocation Summary</h4>
             <div>Total Goods Value: <span id="totalAllocatedValue" class="total-goods-value">₦0</span></div>
-            <div>Status: <span id="confirmationStatus" class="status-pending">Not Confirmed</span></div>
+            <div>Status: <span id="confirmationStatus" class="status-pending">⚠️ Not Confirmed</span></div>
         </div>
         <div id="stockLoading" class="loading">Loading your allocated stock...</div>
         <div id="allocatedStock" class="product-grid" style="display: none;"></div>
-        <button id="confirmReceiptBtn" class="confirm-btn" onclick="confirmAllocation()" style="display: none;">✅ Confirm Receipt of Goods</button>
+        <button id="confirmReceiptBtn" class="confirm-btn" onclick="confirmAllocation()" style="display: none;">✅ Confirm Receipt of All Goods</button>
     </div>
 
     <div class="card">
@@ -145,8 +145,13 @@
         let allocatedProducts = [];
         let isConfirmed = false;
 
-        function formatMoney(amount) { return '₦' + amount.toLocaleString('en-NG'); }
-        function formatCreditMoney(amount) { return '-₦' + amount.toLocaleString('en-NG'); }
+        function formatMoney(amount) {
+            return '₦' + amount.toLocaleString('en-NG');
+        }
+
+        function formatCreditMoney(amount) {
+            return '-₦' + amount.toLocaleString('en-NG');
+        }
 
         function showMessage(msg, isError = false, isWarning = false) {
             let msgDiv = isError ? document.getElementById('errorMsg') : (isWarning ? document.getElementById('warningMsg') : document.getElementById('successMsg'));
@@ -167,8 +172,17 @@
         }
 
         async function loadAllocatedStock() {
-            document.getElementById('stockLoading').style.display = 'block';
+            const loadingDiv = document.getElementById('stockLoading');
+            const container = document.getElementById('allocatedStock');
+            const select = document.getElementById('productSelect');
+            const confirmBtn = document.getElementById('confirmReceiptBtn');
+            const allocationSummary = document.getElementById('allocationSummary');
+            
+            loadingDiv.style.display = 'block';
+            container.style.display = 'none';
+            
             const data = await fetchAPI(`/sales/team/${currentUser.team_id}/allocations`);
+            
             if (data && data.success) {
                 allocatedProducts = data.data.filter(p => p.remaining_qty > 0);
                 const today = new Date().toISOString().split('T')[0];
@@ -176,10 +190,12 @@
                 isConfirmed = savedConfirmation === 'true';
 
                 if (allocatedProducts.length === 0) {
-                    document.getElementById('allocatedStock').innerHTML = '<p style="text-align:center;">No stock allocated today. Contact manager.</p>';
-                    document.getElementById('confirmReceiptBtn').style.display = 'none';
-                    document.getElementById('allocationSummary').style.display = 'none';
+                    container.innerHTML = '<p style="text-align:center;">No stock allocated today. Contact manager.</p>';
+                    confirmBtn.style.display = 'none';
+                    allocationSummary.style.display = 'none';
                     enableSelling(false);
+                    document.getElementById('todaySales').innerHTML = '₦0';
+                    document.getElementById('itemsSold').innerHTML = '0';
                 } else {
                     let totalValue = 0, html = '', selectHtml = '<option value="">Select Product</option>';
                     allocatedProducts.forEach(p => {
@@ -187,29 +203,28 @@
                         html += `<div class="product-item"><h4>${p.product_name}</h4><div class="stock">Available: ${p.remaining_qty} units</div><div class="price">${formatMoney(p.selling_price)} per unit</div><div class="total-value">Total Value: ${formatMoney(p.remaining_qty * p.selling_price)}</div></div>`;
                         selectHtml += `<option value="${p.id}" data-price="${p.selling_price}">${p.product_name} - ${formatMoney(p.selling_price)} (${p.remaining_qty} left)</option>`;
                     });
-                    document.getElementById('allocatedStock').innerHTML = html;
+                    container.innerHTML = html;
                     document.getElementById('productSelect').innerHTML = selectHtml;
                     document.getElementById('totalAllocatedValue').innerHTML = formatMoney(totalValue);
-                    document.getElementById('allocationSummary').style.display = 'block';
+                    allocationSummary.style.display = 'block';
 
                     if (isConfirmed) {
                         document.getElementById('confirmationStatus').innerHTML = '✅ Confirmed';
                         document.getElementById('confirmationStatus').className = 'status-confirmed';
-                        document.getElementById('confirmReceiptBtn').style.display = 'none';
+                        confirmBtn.style.display = 'none';
                         enableSelling(true);
-                        document.getElementById('todaySales').innerHTML = '₦0';
-                        document.getElementById('itemsSold').innerHTML = '0';
                     } else {
-                        document.getElementById('confirmationStatus').innerHTML = '⏳ Pending Confirmation';
+                        document.getElementById('confirmationStatus').innerHTML = '⚠️ Not Confirmed - Must confirm goods before selling';
                         document.getElementById('confirmationStatus').className = 'status-pending';
-                        document.getElementById('confirmReceiptBtn').style.display = 'block';
+                        confirmBtn.style.display = 'block';
                         enableSelling(false);
                         document.getElementById('todaySales').innerHTML = '₦0';
                         document.getElementById('itemsSold').innerHTML = '0';
+                        document.getElementById('creditTotal').innerHTML = '-₦0';
                     }
                 }
-                document.getElementById('stockLoading').style.display = 'none';
-                document.getElementById('allocatedStock').style.display = 'grid';
+                loadingDiv.style.display = 'none';
+                container.style.display = 'grid';
             }
         }
 
@@ -222,7 +237,12 @@
         }
 
         async function confirmAllocation() {
-            if (confirm('Confirm you have received ALL physical goods?')) {
+            let totalValue = 0;
+            allocatedProducts.forEach(p => {
+                totalValue += p.remaining_qty * p.selling_price;
+            });
+            
+            if (confirm(`Confirm you have received ALL physical goods valued at ${formatMoney(totalValue)}?\n\nOnce confirmed, you will be able to start selling.`)) {
                 const today = new Date().toISOString().split('T')[0];
                 localStorage.setItem(`confirmed_${currentUser.team_id}_${today}`, 'true');
                 isConfirmed = true;
@@ -230,7 +250,7 @@
                 document.getElementById('confirmationStatus').className = 'status-confirmed';
                 document.getElementById('confirmReceiptBtn').style.display = 'none';
                 enableSelling(true);
-                showMessage('✅ Allocation confirmed. You can now sell.');
+                showMessage('✅ Allocation confirmed! You can now start selling.');
             }
         }
 
@@ -264,9 +284,11 @@
                 showMessage(`✅ Sale recorded! ${paymentMethod === 'credit' ? formatCreditMoney(totalAmount) + ' - Pending manager approval' : formatMoney(totalAmount)}`);
                 document.getElementById('saleForm').reset();
                 document.getElementById('productSelect').value = '';
+                document.getElementById('creditDueDate').value = '';
                 loadAllocatedStock();
                 loadSalesHistory();
                 if (paymentMethod === 'credit') loadCreditRequests();
+                updateStats();
             }
         });
 
@@ -307,14 +329,37 @@
             }
         }
 
+        async function updateStats() {
+            const data = await fetchAPI(`/sales/team/${currentUser.team_id}/history`);
+            if (data && data.success) {
+                let totalCashTransfer = 0, totalCredit = 0;
+                for (const sale of data.data) {
+                    const isCredit = sale.payment_method === 'credit';
+                    const isApproved = sale.approval_status === 'approved';
+                    const isReconciled = sale.payment_status === 'reconciled';
+                    const shouldShow = (!isCredit && isReconciled) || (isCredit && isApproved);
+                    if (shouldShow) {
+                        if (isCredit) totalCredit += sale.total_amount;
+                        else totalCashTransfer += sale.total_amount;
+                    }
+                }
+                document.getElementById('todaySales').innerHTML = formatMoney(totalCashTransfer);
+                document.getElementById('creditTotal').innerHTML = formatCreditMoney(totalCredit);
+            }
+        }
+
         async function loadCreditRequests() {
             const data = await fetchAPI('/approvals/my-requests');
             if (data && data.success) {
                 let html = '';
                 data.data.forEach(req => {
-                    html += `<tr><td>${req.order_number}</td><td>${req.customer_name}</td><td class="credit-amount">${formatCreditMoney(req.total_amount)}</td>
+                    html += `<tr>
+                        <td>${req.order_number}</td>
+                        <td>${req.customer_name}</td>
+                        <td class="${req.status === 'pending' ? 'credit-amount' : ''}">${req.status === 'pending' ? formatCreditMoney(req.total_amount) : formatMoney(req.total_amount)}</td>
                         <td>${req.status === 'pending' ? '🟡 Pending' : (req.status === 'approved' ? '🟢 Approved' : '🔴 Rejected')}</td>
-                        <td>${req.due_date || '-'}</td></tr>`;
+                        <td>${req.due_date || '-'}</td>
+                    </tr>`;
                 });
                 document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests</td></tr>';
                 document.getElementById('creditLoading').style.display = 'none';
