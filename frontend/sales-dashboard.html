@@ -154,17 +154,14 @@
         let isConfirmed = false;
 
         function formatMoney(amount) {
-            if (amount === undefined || amount === null || isNaN(amount)) {
+            if (amount === undefined || amount === null || isNaN(amount) || amount === 0) {
                 return '₦0';
             }
             return '₦' + Math.round(amount).toLocaleString('en-NG');
         }
 
         function formatCreditMoney(amount) {
-            if (amount === undefined || amount === null || isNaN(amount)) {
-                return '-₦0';
-            }
-            if (amount === 0) {
+            if (amount === undefined || amount === null || isNaN(amount) || amount === 0) {
                 return '-₦0';
             }
             return '-₦' + Math.round(amount).toLocaleString('en-NG');
@@ -322,9 +319,9 @@
                 if (paymentMethod === 'credit') {
                     successMsg = `✅ Credit sale of ${formatMoney(totalAmount)} recorded. Pending manager approval.`;
                 } else if (paymentMethod === 'bank_transfer') {
-                    successMsg = `✅ Transfer sale of ${formatMoney(totalAmount)} recorded.`;
+                    successMsg = `✅ Transfer sale of ${formatMoney(totalAmount)} recorded. Will appear in history.`;
                 } else {
-                    successMsg = `✅ Cash sale of ${formatMoney(totalAmount)} recorded.`;
+                    successMsg = `✅ Cash sale of ${formatMoney(totalAmount)} recorded. Will appear in history.`;
                 }
                 showMessage(successMsg);
                 
@@ -370,33 +367,23 @@
                                     if (isApproved) {
                                         totalCredit += item.total_price;
                                         html += `<tr class="credit-row">
-                                            <td>${new Date(sale.created_at).toLocaleTimeString()}这些
-                                            <td>${sale.customer_name}这些
-                                            <td>${item.product_name}这些
-                                            <td>${item.quantity}这些
+                                            <td>${new Date(sale.created_at).toLocaleTimeString()}</td>
+                                            <td>${sale.customer_name}</td>
+                                            <td>${item.product_name}</td>
+                                            <td>${item.quantity}</td>
                                             <td class="credit-amount">${formatCreditMoney(item.total_price)}</td>
                                             <td>📝 Credit</td>
                                             <td>✅ Approved</td>
-                                        </tr>`;
-                                    } else {
-                                        html += `<tr>
-                                            <td>${new Date(sale.created_at).toLocaleTimeString()}这些
-                                            <td>${sale.customer_name}这些
-                                            <td>${item.product_name}这些
-                                            <td>${item.quantity}这些
-                                            <td>${formatMoney(item.total_price)}</td>
-                                            <td>📝 Credit</td>
-                                            <td>⏳ Pending Approval</td>
                                         </tr>`;
                                     }
                                 } else if (isCash) {
                                     cashTotal += item.total_price;
                                     totalItems += item.quantity;
                                     html += `<tr>
-                                        <td>${new Date(sale.created_at).toLocaleTimeString()}这些
-                                        <td>${sale.customer_name}这些
-                                        <td>${item.product_name}这些
-                                        <td>${item.quantity}这些
+                                        <td>${new Date(sale.created_at).toLocaleTimeString()}</td>
+                                        <td>${sale.customer_name}</td>
+                                        <td>${item.product_name}</td>
+                                        <td>${item.quantity}</td>
                                         <td>${formatMoney(item.total_price)}</td>
                                         <td>💵 Cash</td>
                                         <td>✅ Completed</td>
@@ -405,10 +392,10 @@
                                     transferTotal += item.total_price;
                                     totalItems += item.quantity;
                                     html += `<tr>
-                                        <td>${new Date(sale.created_at).toLocaleTimeString()}这些
-                                        <td>${sale.customer_name}这些
-                                        <td>${item.product_name}这些
-                                        <td>${item.quantity}这些
+                                        <td>${new Date(sale.created_at).toLocaleTimeString()}</td>
+                                        <td>${sale.customer_name}</td>
+                                        <td>${item.product_name}</td>
+                                        <td>${item.quantity}</td>
                                         <td>${formatMoney(item.total_price)}</td>
                                         <td>🏦 Transfer</td>
                                         <td>✅ Completed</td>
@@ -440,14 +427,14 @@
                 let html = '';
                 for (const req of data.data) {
                     html += `<tr>
-                        <td>${req.order_number}这些
-                        <td>${req.customer_name}这些
+                        <td>${req.order_number}</td>
+                        <td>${req.customer_name}</td>
                         <td class="credit-amount">${formatCreditMoney(req.total_amount)}</td>
                         <td>${req.status === 'pending' ? '🟡 Pending' : (req.status === 'approved' ? '🟢 Approved' : '🔴 Rejected')}</td>
                         <td>${req.due_date ? new Date(req.due_date).toLocaleDateString() : '-'}</td>
                     </tr>`;
                 }
-                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests</td></tr>';
+                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests</tr>';
                 document.getElementById('creditLoading').style.display = 'none';
                 document.getElementById('creditTable').style.display = 'table';
             }
