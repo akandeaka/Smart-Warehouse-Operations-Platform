@@ -434,7 +434,7 @@
                         <td>${req.due_date ? new Date(req.due_date).toLocaleDateString() : '-'}</td>
                     </tr>`;
                 }
-                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests</td></tr>';
+                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests</tr>';
                 document.getElementById('creditLoading').style.display = 'none';
                 document.getElementById('creditTable').style.display = 'table';
             }
