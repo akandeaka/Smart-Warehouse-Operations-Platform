@@ -158,7 +158,6 @@
         }
 
         function formatCreditMoney(amount) {
-            if (amount === 0) return '-₦0';
             return '-₦' + Math.round(amount).toLocaleString('en-NG');
         }
 
@@ -319,7 +318,6 @@
                     
                     if (itemsData.success) {
                         itemsData.data.forEach(item => {
-                            totalItems += item.quantity;
                             if (isCredit) {
                                 if (isApproved) {
                                     totalCredit += item.total_price;
@@ -334,9 +332,10 @@
                                     </tr>`;
                                 }
                             } else {
-                                // Cash or Transfer - show immediately when recorded
+                                // Cash or Transfer - add to totals and show as completed
                                 if (sale.payment_method === 'cash') cashTotal += item.total_price;
                                 if (sale.payment_method === 'transfer') transferTotal += item.total_price;
+                                totalItems += item.quantity;
                                 html += `<tr>
                                     <td>${new Date(sale.created_at).toLocaleTimeString()}</td>
                                     <td>${sale.customer_name}</td>
@@ -344,14 +343,14 @@
                                     <td>${item.quantity}</td>
                                     <td>${formatMoney(item.total_price)}</td>
                                     <td>${sale.payment_method === 'cash' ? '💵 Cash' : '🏦 Transfer'}</td>
-                                    <td>⏳ Pending Confirmation</td>
+                                    <td>✅ Completed</td>
                                 </tr>`;
                             }
                         });
                     }
                 }
                 
-                // Update stats
+                // Update stats - only completed sales
                 document.getElementById('cashSales').innerHTML = formatMoney(cashTotal);
                 document.getElementById('transferSales').innerHTML = formatMoney(transferTotal);
                 document.getElementById('totalSales').innerHTML = formatMoney(cashTotal + transferTotal);
@@ -369,17 +368,16 @@
             if (data && data.success) {
                 let html = '';
                 data.data.forEach(req => {
-                    let amountDisplay = req.status === 'pending' ? formatCreditMoney(req.total_amount) : formatMoney(req.total_amount);
-                    let amountClass = req.status === 'pending' ? 'credit-amount' : '';
+                    let amountDisplay = formatCreditMoney(req.total_amount);
                     html += `<tr>
                         <td>${req.order_number}</td>
                         <td>${req.customer_name}</td>
-                        <td class="${amountClass}">${amountDisplay}</td>
+                        <td class="credit-amount">${amountDisplay}</td>
                         <td>${req.status === 'pending' ? '🟡 Pending' : (req.status === 'approved' ? '🟢 Approved' : '🔴 Rejected')}</td>
                         <td>${req.due_date ? new Date(req.due_date).toLocaleDateString() : '-'}</td>
                     </tr>`;
                 });
-                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests</td></tr>';
+                document.getElementById('creditTableBody').innerHTML = html || '<td><td colspan="5">No credit requests</td></tr>';
                 document.getElementById('creditLoading').style.display = 'none';
                 document.getElementById('creditTable').style.display = 'table';
             }
