@@ -23,7 +23,6 @@
         .confirm-btn:hover { background: #218838; }
         .submit-btn { background: #ffc107; color: #333; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; width: calc(100% - 40px); margin: 0 20px 20px 20px; }
         .submit-btn:hover { background: #e0a800; }
-        .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: 500; }
         input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
@@ -136,7 +135,7 @@
         </table>
     </div>
 
-    <button id="submitDayBtn" class="submit-btn" onclick="submitDaySales()" disabled>📤 Submit Final Sales for the Day</button>
+    <button id="submitDayBtn" class="submit-btn" onclick="submitDaySales()">📤 Submit Final Sales for the Day</button>
 
     <script>
         const API_URL = 'https://warehouse-backend-api-2fye.onrender.com/api';
@@ -190,7 +189,7 @@
                 isConfirmed = savedConfirmation === 'true';
 
                 if (allocatedProducts.length === 0) {
-                    container.innerHTML = '<p style="text-align:center;">No stock allocated today. Contact manager.</p>';
+                    container.innerHTML = '<p style="text-align:center; color:#28a745;">✅ All goods sold for today. Thank you!</p>';
                     confirmBtn.style.display = 'none';
                     allocationSummary.style.display = 'none';
                     enableSelling(false);
@@ -316,7 +315,7 @@
                                 <td class="${isCredit ? 'credit-amount' : ''}">${isCredit ? formatCreditMoney(item.total_price) : formatMoney(item.total_price)}</td>
                                 <td>${isCredit ? '📝 Credit' : (sale.payment_method === 'cash' ? '💵 Cash' : '🏦 Transfer')}</td>
                                 <td>${isCredit ? '✅ Approved Credit' : '✅ Completed'}</td>
-                            </tr>`;
+                            </table>`;
                         });
                     }
                 }
@@ -368,7 +367,7 @@
         }
 
         async function submitDaySales() {
-            if (confirm('Submit all sales for the day? You cannot edit after submission.')) {
+            if (confirm('Are you sure you have finished all sales for today? You cannot edit after submission.')) {
                 const result = await fetchAPI('/sales/submit-day', { method: 'POST', body: JSON.stringify({ team_id: currentUser.team_id, sales_date: new Date().toISOString().split('T')[0] }) });
                 if (result && result.success) {
                     showMessage('✅ Sales submitted to manager.');
