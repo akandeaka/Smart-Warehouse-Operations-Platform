@@ -118,9 +118,9 @@
                 <input type="date" id="creditDueDate">
             </div>
             <div class="payment-options">
-                <label><input type="radio" name="paymentMethod" value="cash" checked id="cashRadio"> 💵 Cash</label>
-                <label><input type="radio" name="paymentMethod" value="transfer" id="transferRadio"> 🏦 Bank Transfer</label>
-                <label><input type="radio" name="paymentMethod" value="credit" id="creditRadio"> 📝 Credit (Needs Approval)</label>
+                <label><input type="radio" name="paymentMethod" value="cash" checked> 💵 Cash</label>
+                <label><input type="radio" name="paymentMethod" value="bank_transfer"> 🏦 Bank Transfer</label>
+                <label><input type="radio" name="paymentMethod" value="credit"> 📝 Credit (Needs Approval)</label>
             </div>
             <button type="submit" class="sell-btn" id="sellBtn" disabled>Sell Now</button>
         </form>
@@ -154,14 +154,14 @@
         let isConfirmed = false;
 
         function formatMoney(amount) {
-            if (isNaN(amount) || amount === null || amount === undefined || amount === 0) {
+            if (amount === undefined || amount === null || isNaN(amount) || amount === 0) {
                 return '₦0';
             }
             return '₦' + Math.round(amount).toLocaleString('en-NG');
         }
 
         function formatCreditMoney(amount) {
-            if (isNaN(amount) || amount === null || amount === undefined || amount === 0) {
+            if (amount === undefined || amount === null || isNaN(amount) || amount === 0) {
                 return '-₦0';
             }
             return '-₦' + Math.round(amount).toLocaleString('en-NG');
@@ -248,9 +248,6 @@
             document.getElementById('customerName').disabled = !enabled;
             document.getElementById('productSelect').disabled = !enabled;
             document.getElementById('quantity').disabled = !enabled;
-            document.getElementById('cashRadio').disabled = !enabled;
-            document.getElementById('transferRadio').disabled = !enabled;
-            document.getElementById('creditRadio').disabled = !enabled;
         }
 
         async function confirmAllocation() {
@@ -321,7 +318,7 @@
                 let successMsg = '';
                 if (paymentMethod === 'credit') {
                     successMsg = `✅ Credit sale of ${formatMoney(totalAmount)} recorded. Pending manager approval.`;
-                } else if (paymentMethod === 'transfer') {
+                } else if (paymentMethod === 'bank_transfer') {
                     successMsg = `✅ Transfer sale of ${formatMoney(totalAmount)} recorded. Will appear in history.`;
                 } else {
                     successMsg = `✅ Cash sale of ${formatMoney(totalAmount)} recorded. Will appear in history.`;
@@ -361,6 +358,8 @@
                         const itemsData = await itemsRes.json();
                         const isCredit = sale.payment_method === 'credit';
                         const isApproved = sale.approval_status === 'approved';
+                        const isCash = sale.payment_method === 'cash';
+                        const isTransfer = sale.payment_method === 'bank_transfer';
                         
                         if (itemsData.success && itemsData.data) {
                             for (const item of itemsData.data) {
@@ -377,20 +376,28 @@
                                             <td>✅ Approved</td>
                                         </tr>`;
                                     }
-                                } else {
+                                } else if (isCash) {
+                                    cashTotal += item.total_price;
                                     totalItems += item.quantity;
-                                    if (sale.payment_method === 'cash') {
-                                        cashTotal += item.total_price;
-                                    } else if (sale.payment_method === 'transfer') {
-                                        transferTotal += item.total_price;
-                                    }
                                     html += `<tr>
                                         <td>${new Date(sale.created_at).toLocaleTimeString()}</td>
                                         <td>${sale.customer_name}</td>
                                         <td>${item.product_name}</td>
                                         <td>${item.quantity}</td>
                                         <td>${formatMoney(item.total_price)}</td>
-                                        <td>${sale.payment_method === 'cash' ? '💵 Cash' : '🏦 Transfer'}</td>
+                                        <td>💵 Cash</td>
+                                        <td>✅ Completed</td>
+                                    </tr>`;
+                                } else if (isTransfer) {
+                                    transferTotal += item.total_price;
+                                    totalItems += item.quantity;
+                                    html += `<tr>
+                                        <td>${new Date(sale.created_at).toLocaleTimeString()}</td>
+                                        <td>${sale.customer_name}</td>
+                                        <td>${item.product_name}</td>
+                                        <td>${item.quantity}</td>
+                                        <td>${formatMoney(item.total_price)}</td>
+                                        <td>🏦 Transfer</td>
                                         <td>✅ Completed</td>
                                     </tr>`;
                                 }
