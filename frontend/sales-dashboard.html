@@ -154,10 +154,16 @@
         let isConfirmed = false;
 
         function formatMoney(amount) {
+            if (isNaN(amount) || amount === null || amount === undefined) {
+                return '₦0';
+            }
             return '₦' + Math.round(amount).toLocaleString('en-NG');
         }
 
         function formatCreditMoney(amount) {
+            if (isNaN(amount) || amount === null || amount === undefined || amount === 0) {
+                return '-₦0';
+            }
             return '-₦' + Math.round(amount).toLocaleString('en-NG');
         }
 
@@ -224,7 +230,6 @@
                         document.getElementById('confirmationStatus').className = 'status-pending';
                         confirmBtn.style.display = 'block';
                         enableSelling(false);
-                        // Reset all sales to zero until confirmation
                         document.getElementById('cashSales').innerHTML = '₦0';
                         document.getElementById('transferSales').innerHTML = '₦0';
                         document.getElementById('totalSales').innerHTML = '₦0';
@@ -260,7 +265,6 @@
                 document.getElementById('confirmReceiptBtn').style.display = 'none';
                 enableSelling(true);
                 showMessage('✅ Allocation confirmed! You can now start selling.');
-                // Reload stats after confirmation
                 loadSalesHistory();
             }
         }
@@ -274,33 +278,60 @@
         document.getElementById('saleForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!isConfirmed) { showMessage('Confirm goods receipt first', true); return; }
+            
             const productSelect = document.getElementById('productSelect');
             const productId = parseInt(productSelect.value);
             const quantity = parseInt(document.getElementById('quantity').value);
             const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
             const product = allocatedProducts.find(p => p.id === productId);
-            if (!productId || !product || quantity > product.remaining_qty) { showMessage('Invalid product or quantity', true); return; }
+            
+            if (!productId || !product || quantity > product.remaining_qty) { 
+                showMessage('Invalid product or quantity', true); 
+                return; 
+            }
+            
             const totalAmount = quantity * product.selling_price;
+            const today = new Date().toISOString().split('T')[0];
+            
             const body = {
                 team_id: currentUser.team_id,
                 customer_name: document.getElementById('customerName').value,
                 customer_phone: document.getElementById('customerPhone').value,
-                items: [{ product_id: productId, quantity, unit_price: product.selling_price }],
+                items: [{ product_id: productId, quantity: quantity, unit_price: product.selling_price }],
                 payment_method: paymentMethod,
-                sales_date: new Date().toISOString().split('T')[0]
+                sales_date: today
             };
-            if (paymentMethod === 'credit') body.credit_due_date = document.getElementById('creditDueDate').value;
+            
+            if (paymentMethod === 'credit') {
+                body.credit_due_date = document.getElementById('creditDueDate').value;
+            }
+            
+            showMessage('Processing sale...', false, false);
             
             const result = await fetchAPI('/sales', { method: 'POST', body: JSON.stringify(body) });
+            
             if (result && result.success) {
-                showMessage(`✅ Sale recorded! ${paymentMethod === 'credit' ? formatCreditMoney(totalAmount) + ' - Pending manager approval' : formatMoney(totalAmount)}`);
-                document.getElementById('saleForm').reset();
+                let successMsg = `✅ Sale recorded! ${formatMoney(totalAmount)} - `;
+                if (paymentMethod === 'credit') {
+                    successMsg += `Pending manager approval. Will show as -${formatMoney(totalAmount)} when approved.`;
+                } else if (paymentMethod === 'transfer') {
+                    successMsg += `Bank transfer recorded. Will appear in history.`;
+                } else {
+                    successMsg += `Cash sale recorded. Will appear in history.`;
+                }
+                showMessage(successMsg);
+                
+                document.getElementById('customerName').value = '';
+                document.getElementById('customerPhone').value = '';
+                document.getElementById('quantity').value = '';
                 document.getElementById('productSelect').value = '';
                 document.getElementById('creditDueDate').value = '';
-                // Reload all data
-                loadAllocatedStock();
-                loadSalesHistory();
-                if (paymentMethod === 'credit') loadCreditRequests();
+                
+                await loadAllocatedStock();
+                await loadSalesHistory();
+                if (paymentMethod === 'credit') {
+                    await loadCreditRequests();
+                }
             } else {
                 showMessage('Failed to record sale: ' + (result?.message || 'Unknown error'), true);
             }
@@ -309,15 +340,22 @@
         async function loadSalesHistory() {
             const data = await fetchAPI(`/sales/team/${currentUser.team_id}/history`);
             if (data && data.success) {
-                let cashTotal = 0, transferTotal = 0, totalCredit = 0, totalItems = 0, html = '';
+                let cashTotal = 0;
+                let transferTotal = 0;
+                let totalCredit = 0;
+                let totalItems = 0;
+                let html = '';
+                
                 for (const sale of data.data) {
-                    const itemsRes = await fetch(`${API_URL}/sales/order/${sale.id}/items`, { headers: { 'Authorization': `Bearer ${authToken}` } });
+                    const itemsRes = await fetch(`${API_URL}/sales/order/${sale.id}/items`, { 
+                        headers: { 'Authorization': `Bearer ${authToken}` } 
+                    });
                     const itemsData = await itemsRes.json();
                     const isCredit = sale.payment_method === 'credit';
                     const isApproved = sale.approval_status === 'approved';
                     
-                    if (itemsData.success) {
-                        itemsData.data.forEach(item => {
+                    if (itemsData.success && itemsData.data) {
+                        for (const item of itemsData.data) {
                             if (isCredit) {
                                 if (isApproved) {
                                     totalCredit += item.total_price;
@@ -332,10 +370,12 @@
                                     </tr>`;
                                 }
                             } else {
-                                // Cash or Transfer - add to totals and show as completed
-                                if (sale.payment_method === 'cash') cashTotal += item.total_price;
-                                if (sale.payment_method === 'transfer') transferTotal += item.total_price;
                                 totalItems += item.quantity;
+                                if (sale.payment_method === 'cash') {
+                                    cashTotal += item.total_price;
+                                } else if (sale.payment_method === 'transfer') {
+                                    transferTotal += item.total_price;
+                                }
                                 html += `<tr>
                                     <td>${new Date(sale.created_at).toLocaleTimeString()}</td>
                                     <td>${sale.customer_name}</td>
@@ -346,11 +386,10 @@
                                     <td>✅ Completed</td>
                                 </tr>`;
                             }
-                        });
+                        }
                     }
                 }
                 
-                // Update stats - only completed sales
                 document.getElementById('cashSales').innerHTML = formatMoney(cashTotal);
                 document.getElementById('transferSales').innerHTML = formatMoney(transferTotal);
                 document.getElementById('totalSales').innerHTML = formatMoney(cashTotal + transferTotal);
@@ -360,6 +399,8 @@
                 document.getElementById('salesHistoryBody').innerHTML = html || '<tr><td colspan="7">No transactions yet</td></tr>';
                 document.getElementById('historyLoading').style.display = 'none';
                 document.getElementById('historyTable').style.display = 'table';
+            } else {
+                document.getElementById('historyLoading').innerHTML = 'Failed to load history';
             }
         }
 
@@ -367,17 +408,16 @@
             const data = await fetchAPI('/approvals/my-requests');
             if (data && data.success) {
                 let html = '';
-                data.data.forEach(req => {
-                    let amountDisplay = formatCreditMoney(req.total_amount);
+                for (const req of data.data) {
                     html += `<tr>
                         <td>${req.order_number}</td>
                         <td>${req.customer_name}</td>
-                        <td class="credit-amount">${amountDisplay}</td>
+                        <td class="credit-amount">${formatCreditMoney(req.total_amount)}</td>
                         <td>${req.status === 'pending' ? '🟡 Pending' : (req.status === 'approved' ? '🟢 Approved' : '🔴 Rejected')}</td>
                         <td>${req.due_date ? new Date(req.due_date).toLocaleDateString() : '-'}</td>
                     </tr>`;
-                });
-                document.getElementById('creditTableBody').innerHTML = html || '<td><td colspan="5">No credit requests</td></tr>';
+                }
+                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests</td></tr>';
                 document.getElementById('creditLoading').style.display = 'none';
                 document.getElementById('creditTable').style.display = 'table';
             }
@@ -385,7 +425,13 @@
 
         async function submitDaySales() {
             if (confirm('Are you sure you have finished all sales for today? You cannot edit after submission.')) {
-                const result = await fetchAPI('/sales/submit-day', { method: 'POST', body: JSON.stringify({ team_id: currentUser.team_id, sales_date: new Date().toISOString().split('T')[0] }) });
+                const result = await fetchAPI('/sales/submit-day', { 
+                    method: 'POST', 
+                    body: JSON.stringify({ 
+                        team_id: currentUser.team_id, 
+                        sales_date: new Date().toISOString().split('T')[0] 
+                    }) 
+                });
                 if (result && result.success) {
                     showMessage('✅ Sales submitted to manager.');
                     document.getElementById('submitDayBtn').disabled = true;
@@ -394,11 +440,20 @@
             }
         }
 
-        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+        function logout() { 
+            localStorage.clear(); 
+            window.location.href = 'login.html'; 
+        }
 
         document.getElementById('teamName').innerText = currentUser.full_name?.split(' ')[0] || 'Sales';
-        if (!authToken) window.location.href = 'login.html';
-        else { loadAllocatedStock(); loadSalesHistory(); loadCreditRequests(); }
+        
+        if (!authToken) {
+            window.location.href = 'login.html';
+        } else {
+            loadAllocatedStock();
+            loadSalesHistory();
+            loadCreditRequests();
+        }
     </script>
 </body>
 </html>
