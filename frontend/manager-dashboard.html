@@ -260,7 +260,7 @@
                     html += '<td>' + remaining + '</td>';
                     html += '</tr>';
                 }
-                document.getElementById('allocationsTableBody').innerHTML = html || '<tr><td colspan="5">No allocations today</td></tr>';
+                document.getElementById('allocationsTableBody').innerHTML = html || '<tr><td colspan="5">No allocations today</tr>';
                 document.getElementById('allocationsLoading').style.display = 'none';
                 document.getElementById('allocationsTable').style.display = 'table';
             }
@@ -292,9 +292,11 @@
         async function loadPendingApprovals() {
             const data = await fetchAPI('/approvals/pending');
             if (data && data.success) {
-                document.getElementById('pendingApprovals').innerText = data.data.length;
+                const pendingCount = data.data.length;
+                document.getElementById('pendingApprovals').innerText = pendingCount;
+                
                 let html = '';
-                if (data.data.length === 0) {
+                if (pendingCount === 0) {
                     html = '<tr><td colspan="6">No pending credit approvals</td></tr>';
                 } else {
                     for (let i = 0; i < data.data.length; i++) {
@@ -332,7 +334,9 @@
             
             if (result && result.success) {
                 showMessage('Credit approved successfully');
+                // Refresh the approvals list immediately
                 await loadPendingApprovals();
+                // Refresh stock and allocations
                 await loadProducts();
                 await loadTodayAllocations();
             } else {
@@ -349,7 +353,8 @@
             });
             
             if (result && result.success) {
-                showMessage('Credit rejected');
+                showMessage('Credit rejected successfully');
+                // Refresh the approvals list immediately
                 await loadPendingApprovals();
             } else {
                 showMessage('Failed to reject credit: ' + (result?.message || 'Unknown error'), true);
@@ -380,7 +385,7 @@
                     html += '</td>';
                     html += '</tr>';
                 }
-                document.getElementById('returnsTableBody').innerHTML = html || '<tr><td colspan="7">No pending returns</td></tr>';
+                document.getElementById('returnsTableBody').innerHTML = html || '<tr><td colspan="7">No pending returns</tr>';
                 document.getElementById('returnsLoading').style.display = 'none';
                 document.getElementById('returnsTable').style.display = 'table';
             }
@@ -411,7 +416,7 @@
                     html += '<td>' + formatMoney(t.cash_sales || 0) + '</td>';
                     html += '<td>' + formatMoney(t.transfer_sales || 0) + '</td>';
                     if (creditAmount > 0) {
-                        html += '<td class="credit-amount">' + formatCreditMoney(creditAmount) + '</td>';
+                        html += '<td class="credit-amount">' + formatCreditMoney(creditAmount) + '</tr>';
                     } else {
                         html += '<td>' + formatMoney(0) + '</td>';
                     }
