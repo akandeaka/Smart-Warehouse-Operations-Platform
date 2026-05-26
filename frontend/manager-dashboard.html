@@ -68,7 +68,6 @@
         <button class="tab" onclick="showPanel('reports')">Daily Reports</button>
     </div>
 
-    <!-- Allocate Stock Panel -->
     <div id="allocatePanel" class="panel">
         <div class="form-card">
             <h3>New Allocation</h3>
@@ -93,14 +92,11 @@
         <h3>Today's Allocations</h3>
         <div id="allocationsLoading" class="loading">Loading allocations...</div>
         <table id="allocationsTable" style="display:none">
-            <thead>
-                <tr><th>Team Name</th><th>Product Name</th><th>Allocated</th><th>Sold</th><th>Remaining</th></tr>
-            </thead>
+            <thead><tr><th>Team Name</th><th>Product Name</th><th>Allocated</th><th>Sold</th><th>Remaining</th></tr></thead>
             <tbody id="allocationsTableBody"></tbody>
         </table>
     </div>
 
-    <!-- Stock Management Panel -->
     <div id="stockPanel" class="panel">
         <div id="stockLoading" class="loading">Loading stock data...</div>
         <table id="stockTable" style="display:none">
@@ -109,36 +105,27 @@
         </table>
     </div>
 
-    <!-- Credit Approvals Panel -->
     <div id="approvalsPanel" class="panel">
         <div id="approvalsLoading" class="loading">Loading pending credit approvals...</div>
         <table id="approvalsTable" style="display:none">
-            <thead>
-                <tr><th>Order Number</th><th>Customer Name</th><th>Original Amount</th><th>Modified Amount</th><th>Requested By</th><th>Action</th></tr>
-            </thead>
+            <thead><tr><th>Order Number</th><th>Customer Name</th><th>Original Amount</th><th>Modified Amount</th><th>Requested By</th><th>Action</th></tr></thead>
             <tbody id="approvalsTableBody"></tbody>
         </table>
     </div>
 
-    <!-- Pending Returns Panel -->
     <div id="returnsPanel" class="panel">
         <div id="returnsLoading" class="loading">Loading pending returns...</div>
         <table id="returnsTable" style="display:none">
-            <thead>
-                <tr><th>Team Name</th><th>Customer Name</th><th>Product Name</th><th>Quantity</th><th>Amount</th><th>Payment Type</th><th>Action</th></tr>
-            </thead>
+            <thead><tr><th>Team Name</th><th>Customer Name</th><th>Product Name</th><th>Quantity</th><th>Amount</th><th>Payment Type</th><th>Action</th></tr></thead>
             <tbody id="returnsTableBody"></tbody>
         </table>
     </div>
 
-    <!-- Daily Reports Panel -->
     <div id="reportsPanel" class="panel">
         <button class="close-day-btn" onclick="closeDay()">Close Day (5 PM)</button>
         <div id="reportLoading" class="loading">Loading daily report...</div>
         <table id="salesReportTable" style="display:none">
-            <thead>
-                <tr><th>Team Name</th><th>Number of Orders</th><th>Cash Sales</th><th>Transfer Sales</th><th>Credit Sales</th><th>Total Sales</th></tr>
-            </thead>
+            <thead><tr><th>Team Name</th><th>Orders</th><th>Cash Sales</th><th>Transfer Sales</th><th>Credit Sales</th><th>Total Sales</th></tr></thead>
             <tbody id="salesReportBody"></tbody>
         </table>
     </div>
@@ -153,19 +140,11 @@
             return 'NGN ' + Math.round(Number(amount)).toLocaleString('en-NG');
         }
 
-        function formatCreditMoney(amount) {
-            if (amount === undefined || amount === null || isNaN(amount)) return '-NGN 0';
-            if (Number(amount) === 0) return '-NGN 0';
-            return '-NGN ' + Math.round(Number(amount)).toLocaleString('en-NG');
-        }
-
         function showMessage(msg, isError = false) {
             const msgDiv = document.getElementById(isError ? 'errorMsg' : 'successMsg');
             msgDiv.innerHTML = msg;
             msgDiv.style.display = 'block';
-            setTimeout(function() { 
-                msgDiv.style.display = 'none'; 
-            }, 3000);
+            setTimeout(function() { msgDiv.style.display = 'none'; }, 3000);
         }
 
         async function fetchAPI(endpoint, options = {}) {
@@ -252,15 +231,9 @@
                 for (let i = 0; i < data.data.length; i++) {
                     const a = data.data[i];
                     const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
-                    html += '<tr>';
-                    html += '<td>' + a.team_name + '</td>';
-                    html += '<td>' + a.product_name + '</td>';
-                    html += '<td>' + a.allocated_qty + '</td>';
-                    html += '<td>' + a.sold_qty + '</td>';
-                    html += '<td>' + remaining + '</td>';
-                    html += '</tr>';
+                    html += '<tr><td>' + a.team_name + '</td><td>' + a.product_name + '</td><td>' + a.allocated_qty + '</td><td>' + a.sold_qty + '</td><td>' + remaining + '</td></tr>';
                 }
-                document.getElementById('allocationsTableBody').innerHTML = html || '<tr><td colspan="5">No allocations today</tr>';
+                document.getElementById('allocationsTableBody').innerHTML = html || '<tr><td colspan="5">No allocations today</td></tr>';
                 document.getElementById('allocationsLoading').style.display = 'none';
                 document.getElementById('allocationsTable').style.display = 'table';
             }
@@ -274,12 +247,7 @@
                 for (let i = 0; i < data.data.length; i++) {
                     const p = data.data[i];
                     totalValue += p.current_qty * p.unit_cost;
-                    html += '<tr>';
-                    html += '<td>' + p.product_name + '</td>';
-                    html += '<td>' + p.current_qty + '</td>';
-                    html += '<td>' + formatMoney(p.unit_cost) + '</td>';
-                    html += '<td>' + formatMoney(p.current_qty * p.unit_cost) + '</td>';
-                    html += '</tr>';
+                    html += '<tr><td>' + p.product_name + '</td><td>' + p.current_qty + '</td><td>' + formatMoney(p.unit_cost) + '</td><td>' + formatMoney(p.current_qty * p.unit_cost) + '</td></tr>';
                 }
                 document.getElementById('stockTableBody').innerHTML = html;
                 document.getElementById('totalProducts').innerText = data.data.length;
@@ -327,18 +295,20 @@
             
             if (!confirm('Approve this credit for ' + formatMoney(approvedAmount) + '?')) return;
             
+            showMessage('Processing approval...');
+            
             const result = await fetchAPI('/approvals/approve', {
                 method: 'POST',
                 body: JSON.stringify({ approval_id: approvalId, approved_amount: parseFloat(approvedAmount) })
             });
             
             if (result && result.success) {
-                showMessage('Credit approved successfully');
+                showMessage('Credit approved successfully!');
                 // Refresh the approvals list immediately
                 await loadPendingApprovals();
-                // Refresh stock and allocations
                 await loadProducts();
                 await loadTodayAllocations();
+                // Also refresh the sales rep portal will show the credit when they refresh
             } else {
                 showMessage('Failed to approve credit: ' + (result?.message || 'Unknown error'), true);
             }
@@ -347,13 +317,15 @@
         async function rejectCredit(approvalId) {
             if (!confirm('Reject this credit request?')) return;
             
+            showMessage('Processing rejection...');
+            
             const result = await fetchAPI('/approvals/reject', {
                 method: 'POST',
                 body: JSON.stringify({ approval_id: approvalId })
             });
             
             if (result && result.success) {
-                showMessage('Credit rejected successfully');
+                showMessage('Credit rejected successfully!');
                 // Refresh the approvals list immediately
                 await loadPendingApprovals();
             } else {
@@ -373,11 +345,7 @@
                     html += '<td>' + item.customer_name + '</td>';
                     html += '<td>' + item.product_name + '</td>';
                     html += '<td>' + item.quantity + '</td>';
-                    if (isCredit) {
-                        html += '<td class="credit-amount">' + formatCreditMoney(item.amount) + '</td>';
-                    } else {
-                        html += '<td>' + formatMoney(item.amount) + '</td>';
-                    }
+                    html += '<td>' + (isCredit ? '-' : '') + formatMoney(item.amount) + '</td>';
                     html += '<td>' + (isCredit ? 'Credit' : (item.type === 'cash' ? 'Cash' : 'Bank Transfer')) + '</td>';
                     html += '<td>';
                     html += '<button class="approve-btn" onclick="confirmReturn(' + item.id + ', \'accept\')">Accept</button>';
@@ -385,7 +353,7 @@
                     html += '</td>';
                     html += '</tr>';
                 }
-                document.getElementById('returnsTableBody').innerHTML = html || '<tr><td colspan="7">No pending returns</tr>';
+                document.getElementById('returnsTableBody').innerHTML = html || '<tr><td colspan="7">No pending returns</td></tr>';
                 document.getElementById('returnsLoading').style.display = 'none';
                 document.getElementById('returnsTable').style.display = 'table';
             }
@@ -415,11 +383,7 @@
                     html += '<td>' + (t.num_orders || 0) + '</td>';
                     html += '<td>' + formatMoney(t.cash_sales || 0) + '</td>';
                     html += '<td>' + formatMoney(t.transfer_sales || 0) + '</td>';
-                    if (creditAmount > 0) {
-                        html += '<td class="credit-amount">' + formatCreditMoney(creditAmount) + '</tr>';
-                    } else {
-                        html += '<td>' + formatMoney(0) + '</td>';
-                    }
+                    html += '<td>' + (creditAmount > 0 ? '-' + formatMoney(Math.abs(creditAmount)) : formatMoney(0)) + '</td>';
                     html += '<td>' + formatMoney(t.total_sales || 0) + '</td>';
                     html += '</tr>';
                 }
@@ -444,41 +408,25 @@
         }
 
         function showPanel(name) {
-            document.querySelectorAll('.panel').forEach(function(p) { 
-                p.classList.remove('active'); 
-            });
-            document.querySelectorAll('.tab').forEach(function(t) { 
-                t.classList.remove('active'); 
-            });
+            document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+            document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
             
             const panels = ['allocate', 'stock', 'approvals', 'returns', 'reports'];
             const index = panels.indexOf(name);
             document.querySelectorAll('.tab')[index].classList.add('active');
             document.getElementById(name + 'Panel').classList.add('active');
             
-            if (name === 'allocate') { 
-                loadTodayAllocations(); 
-                loadTeams(); 
-                loadProductsForAllocation(); 
-            }
+            if (name === 'allocate') { loadTodayAllocations(); loadTeams(); loadProductsForAllocation(); }
             if (name === 'stock') loadProducts();
             if (name === 'approvals') loadPendingApprovals();
             if (name === 'returns') loadPendingReturns();
             if (name === 'reports') loadDailyReport();
         }
 
-        function logout() { 
-            localStorage.clear(); 
-            window.location.href = 'login.html'; 
-        }
+        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
 
-        if (!authToken) { 
-            window.location.href = 'login.html'; 
-        } else { 
-            loadProducts(); 
-            loadTeams(); 
-            loadProductsForAllocation(); 
-        }
+        if (!authToken) { window.location.href = 'login.html'; } 
+        else { loadProducts(); loadTeams(); loadProductsForAllocation(); }
     </script>
 </body>
 </html>
