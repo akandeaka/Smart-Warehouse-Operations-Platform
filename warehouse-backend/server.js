@@ -403,7 +403,7 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
     let connection;
     try {
         const { approval_id, approved_amount } = req.body;
-        console.log('Approving credit ID:', approval_id, 'Amount:', approved_amount);
+        console.log('Approving credit ID:', approval_id);
         
         connection = await pool.getConnection();
         await connection.beginTransaction();
@@ -412,7 +412,6 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
         const [approval] = await connection.query('SELECT order_id FROM credit_approvals WHERE id = ?', [approval_id]);
         if (approval.length === 0) throw new Error('Approval not found');
         const order_id = approval[0].order_id;
-        console.log('Order ID:', order_id);
         
         // Update order amount if changed by manager
         if (approved_amount && approved_amount > 0) {
@@ -441,13 +440,11 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
         );
         
         for (const item of items) {
-            // Update allocation sold_qty
             await connection.query(
                 'UPDATE sales_team_allocations SET sold_qty = sold_qty + ? WHERE team_id = ? AND product_id = ? AND allocated_date = CURDATE()',
                 [item.quantity, item.team_id, item.product_id]
             );
             
-            // Record stock transaction
             await connection.query(
                 `INSERT INTO stock_transactions 
                  (transaction_type, product_id, quantity_change, unit_cost_at_time, 
@@ -642,22 +639,3 @@ async function startServer() {
 }
 
 startServer();
-// SIMPLE TEST ENDPOINT FOR APPROVE
-app.post('/api/approvals/approve-test', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    try {
-        const { approval_id } = req.body;
-        console.log('Test approve for ID:', approval_id);
-        
-        // Simple update - change status to 'approved'
-        const result = await pool.query(
-            'UPDATE credit_approvals SET status = "approved" WHERE id = ?',
-            [approval_id]
-        );
-        
-        console.log('Update result:', result);
-        res.json({ success: true, message: 'Test approve completed' });
-    } catch (error) {
-        console.error('Test approve error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
