@@ -642,3 +642,22 @@ async function startServer() {
 }
 
 startServer();
+// SIMPLE TEST ENDPOINT FOR APPROVE
+app.post('/api/approvals/approve-test', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const { approval_id } = req.body;
+        console.log('Test approve for ID:', approval_id);
+        
+        // Simple update - change status to 'approved'
+        const result = await pool.query(
+            'UPDATE credit_approvals SET status = "approved" WHERE id = ?',
+            [approval_id]
+        );
+        
+        console.log('Update result:', result);
+        res.json({ success: true, message: 'Test approve completed' });
+    } catch (error) {
+        console.error('Test approve error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
