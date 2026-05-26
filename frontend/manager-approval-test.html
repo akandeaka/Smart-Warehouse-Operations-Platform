@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager - Credit Approval Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .approve { background-color: #4CAF50; color: white; padding: 5px 10px; cursor: pointer; border: none; }
+        .reject { background-color: #f44336; color: white; padding: 5px 10px; cursor: pointer; border: none; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Manager - Credit Approval Test</h1>
+    <div id="message"></div>
+    <div id="approvals"></div>
+
+    <script>
+        const API_URL = 'https://warehouse-backend-api-2fye.onrender.com/api';
+        let authToken = localStorage.getItem('token');
+
+        function showMessage(msg, isError = false) {
+            const msgDiv = document.getElementById('message');
+            msgDiv.innerHTML = '<div class="' + (isError ? 'error' : 'success') + '">' + msg + '</div>';
+            setTimeout(() => { msgDiv.innerHTML = ''; }, 3000);
+        }
+
+        async function loadPendingApprovals() {
+            try {
+                const response = await fetch(API_URL + '/approvals/pending', {
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                const data = await response.json();
+                console.log('Pending approvals:', data);
+                
+                if (data && data.success && data.data.length > 0) {
+                    let html = '<h2>Pending Credit Approvals</h2>';
+                    html += '<table><tr><th>Order Number</th><th>Customer</th><th>Amount</th><th>Action</th></tr>';
+                    for (let i = 0; i < data.data.length; i++) {
+                        const a = data.data[i];
+                        html += '<tr>';
+                        html += '<td>' + a.order_number + '</td>';
+                        html += '<td>' + a.customer_name + '</td>';
+                        html += '<td>' + a.total_amount + '</td>';
+                        html += '<td>';
+                        html += '<button class="approve" onclick="approveCredit(' + a.id + ', ' + a.total_amount + ')">Approve</button>';
+                        html += '<button class="reject" onclick="rejectCredit(' + a.id + ')">Reject</button>';
+                        html += '</td>';
+                        html += '</tr>';
+                    }
+                    html += '</table>';
+                    document.getElementById('approvals').innerHTML = html;
+                } else {
+                    document.getElementById('approvals').innerHTML = '<p>No pending credit approvals.</p>';
+                }
+            } catch (error) {
+                console.error('Error loading approvals:', error);
+                document.getElementById('approvals').innerHTML = '<p class="error">Error loading approvals: ' + error.message + '</p>';
+            }
+        }
+
+        async function approveCredit(approvalId, amount) {
+            if (!confirm('Approve credit for amount ' + amount + '?')) return;
+            
+            showMessage('Processing approval...');
+            
+            try {
+                const response = await fetch(API_URL + '/approvals/approve', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ approval_id: approvalId, approved_amount: amount })
+                });
+                
+                const result = await response.json();
+                console.log('Approve result:', result);
+                
+                if (result && result.success) {
+                    showMessage('Credit approved successfully!');
+                    loadPendingApprovals(); // Refresh the list
+                } else {
+                    showMessage('Failed: ' + (result?.message || 'Unknown error'), true);
+                }
+            } catch (error) {
+                console.error('Approve error:', error);
+                showMessage('Error: ' + error.message, true);
+            }
+        }
+
+        async function rejectCredit(approvalId) {
+            if (!confirm('Reject this credit request?')) return;
+            
+            showMessage('Processing rejection...');
+            
+            try {
+                const response = await fetch(API_URL + '/approvals/reject', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ approval_id: approvalId })
+                });
+                
+                const result = await response.json();
+                console.log('Reject result:', result);
+                
+                if (result && result.success) {
+                    showMessage('Credit rejected successfully!');
+                    loadPendingApprovals(); // Refresh the list
+                } else {
+                    showMessage('Failed: ' + (result?.message || 'Unknown error'), true);
+                }
+            } catch (error) {
+                console.error('Reject error:', error);
+                showMessage('Error: ' + error.message, true);
+            }
+        }
+
+        // Check if logged in
+        if (!authToken) {
+            document.getElementById('approvals').innerHTML = '<p class="error">Please login first. <a href="login.html">Go to Login</a></p>';
+        } else {
+            loadPendingApprovals();
+        }
+    </script>
+</body>
+</html>
