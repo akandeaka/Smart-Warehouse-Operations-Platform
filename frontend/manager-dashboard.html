@@ -108,7 +108,9 @@
     <div id="approvalsPanel" class="panel">
         <div id="approvalsLoading" class="loading">Loading pending credit approvals...</div>
         <table id="approvalsTable" style="display:none">
-            <thead><tr><th>Order Number</th><th>Customer Name</th><th>Original Amount</th><th>Modified Amount</th><th>Requested By</th><th>Action</th></tr></thead>
+            <thead>
+                <tr><th>Order Number</th><th>Customer Name</th><th>Original Amount</th><th>Modified Amount</th><th>Requested By</th><th>Action</th></tr>
+            </thead>
             <tbody id="approvalsTableBody"></tbody>
         </table>
     </div>
@@ -144,7 +146,7 @@
             const msgDiv = document.getElementById(isError ? 'errorMsg' : 'successMsg');
             msgDiv.innerHTML = msg;
             msgDiv.style.display = 'block';
-            setTimeout(function() { msgDiv.style.display = 'none'; }, 3000);
+            setTimeout(function() { msgDiv.style.display = 'none'; }, 4000);
         }
 
         async function fetchAPI(endpoint, options = {}) {
@@ -231,9 +233,9 @@
                 for (let i = 0; i < data.data.length; i++) {
                     const a = data.data[i];
                     const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
-                    html += '<tr><td>' + a.team_name + '</td><td>' + a.product_name + '</td><td>' + a.allocated_qty + '</td><td>' + a.sold_qty + '</td><td>' + remaining + '</td></tr>';
+                    html += '<td>' + a.team_name + '</td><td>' + a.product_name + '<tr><td>' + a.allocated_qty + '</td><td>' + a.sold_qty + '</td><td>' + remaining + '</td></tr>';
                 }
-                document.getElementById('allocationsTableBody').innerHTML = html || '<tr><td colspan="5">No allocations today</td></tr>';
+                document.getElementById('allocationsTableBody').innerHTML = html || '<td><td colspan="5">No allocations today</td>';
                 document.getElementById('allocationsLoading').style.display = 'none';
                 document.getElementById('allocationsTable').style.display = 'table';
             }
@@ -247,7 +249,7 @@
                 for (let i = 0; i < data.data.length; i++) {
                     const p = data.data[i];
                     totalValue += p.current_qty * p.unit_cost;
-                    html += '<tr><td>' + p.product_name + '</td><td>' + p.current_qty + '</td><td>' + formatMoney(p.unit_cost) + '</td><td>' + formatMoney(p.current_qty * p.unit_cost) + '</td></tr>';
+                    html += '<td>' + p.product_name + '</td><td>' + p.current_qty + '</td><td>' + formatMoney(p.unit_cost) + '</td><td>' + formatMoney(p.current_qty * p.unit_cost) + '</td></tr>';
                 }
                 document.getElementById('stockTableBody').innerHTML = html;
                 document.getElementById('totalProducts').innerText = data.data.length;
@@ -265,7 +267,7 @@
                 
                 let html = '';
                 if (pendingCount === 0) {
-                    html = '<tr><td colspan="6">No pending credit approvals</td></tr>';
+                    html = '<tr><td colspan="6">No pending credit approvals</td>';
                 } else {
                     for (let i = 0; i < data.data.length; i++) {
                         const a = data.data[i];
@@ -274,7 +276,7 @@
                         html += '<td>' + a.order_number + '</td>';
                         html += '<td>' + a.customer_name + '</td>';
                         html += '<td>' + formatMoney(a.total_amount) + '</td>';
-                        html += '<td><input type="number" id="amount_' + approvalId + '" value="' + a.total_amount + '" step="1000" style="width:120px"></td>';
+                        html += '<td><input type="number" id="amount_' + approvalId + '" value="' + a.total_amount + '" step="1000" style="width:120px">这些';
                         html += '<td>' + (a.requested_by || 'Unknown') + '</td>';
                         html += '<td>';
                         html += '<button class="approve-btn" onclick="approveCredit(' + approvalId + ')">Approve</button>';
@@ -291,26 +293,40 @@
 
         async function approveCredit(approvalId) {
             const amountInput = document.getElementById('amount_' + approvalId);
-            const approvedAmount = amountInput ? amountInput.value : null;
+            const approvedAmount = amountInput ? parseFloat(amountInput.value) : null;
             
             if (!confirm('Approve this credit for ' + formatMoney(approvedAmount) + '?')) return;
             
             showMessage('Processing approval...');
             
-            const result = await fetchAPI('/approvals/approve', {
-                method: 'POST',
-                body: JSON.stringify({ approval_id: approvalId, approved_amount: parseFloat(approvedAmount) })
-            });
-            
-            if (result && result.success) {
-                showMessage('Credit approved successfully!');
-                // Refresh the approvals list immediately
-                await loadPendingApprovals();
-                await loadProducts();
-                await loadTodayAllocations();
-                // Also refresh the sales rep portal will show the credit when they refresh
-            } else {
-                showMessage('Failed to approve credit: ' + (result?.message || 'Unknown error'), true);
+            try {
+                const response = await fetch(API_URL + '/approvals/approve', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ 
+                        approval_id: approvalId, 
+                        approved_amount: approvedAmount 
+                    })
+                });
+                
+                const result = await response.json();
+                console.log('Approve response:', result);
+                
+                if (result && result.success) {
+                    showMessage('Credit approved successfully!');
+                    // Refresh the approvals list immediately
+                    await loadPendingApprovals();
+                    await loadProducts();
+                    await loadTodayAllocations();
+                } else {
+                    showMessage('Failed to approve credit: ' + (result?.message || 'Unknown error'), true);
+                }
+            } catch (error) {
+                console.error('Approve error:', error);
+                showMessage('Error: ' + error.message, true);
             }
         }
 
@@ -319,17 +335,28 @@
             
             showMessage('Processing rejection...');
             
-            const result = await fetchAPI('/approvals/reject', {
-                method: 'POST',
-                body: JSON.stringify({ approval_id: approvalId })
-            });
-            
-            if (result && result.success) {
-                showMessage('Credit rejected successfully!');
-                // Refresh the approvals list immediately
-                await loadPendingApprovals();
-            } else {
-                showMessage('Failed to reject credit: ' + (result?.message || 'Unknown error'), true);
+            try {
+                const response = await fetch(API_URL + '/approvals/reject', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ approval_id: approvalId })
+                });
+                
+                const result = await response.json();
+                console.log('Reject response:', result);
+                
+                if (result && result.success) {
+                    showMessage('Credit rejected successfully!');
+                    await loadPendingApprovals();
+                } else {
+                    showMessage('Failed to reject credit: ' + (result?.message || 'Unknown error'), true);
+                }
+            } catch (error) {
+                console.error('Reject error:', error);
+                showMessage('Error: ' + error.message, true);
             }
         }
 
@@ -340,7 +367,6 @@
                 for (let i = 0; i < data.data.length; i++) {
                     const item = data.data[i];
                     const isCredit = item.type === 'credit';
-                    html += '<tr>';
                     html += '<td>' + item.team_name + '</td>';
                     html += '<td>' + item.customer_name + '</td>';
                     html += '<td>' + item.product_name + '</td>';
@@ -353,7 +379,7 @@
                     html += '</td>';
                     html += '</tr>';
                 }
-                document.getElementById('returnsTableBody').innerHTML = html || '<tr><td colspan="7">No pending returns</td></tr>';
+                document.getElementById('returnsTableBody').innerHTML = html || '<td><td colspan="7">No pending returns</td>';
                 document.getElementById('returnsLoading').style.display = 'none';
                 document.getElementById('returnsTable').style.display = 'table';
             }
