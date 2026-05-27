@@ -19,21 +19,12 @@
         table { width: 100%; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         th { background: #f8f9fa; padding: 12px; text-align: left; }
         td { padding: 12px; border-top: 1px solid #eee; }
-        .form-card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-        .form-row { display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
-        .form-group { flex: 1; min-width: 150px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
-        .allocate-btn { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
         .approve-btn { background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
         .reject-btn { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
-        .close-day-btn { background: #ffc107; color: #333; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; }
         .logout-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; }
         .loading { text-align: center; padding: 40px; color: #666; }
         .success-msg { background: #d4edda; color: #155724; padding: 12px; margin: 20px; border-radius: 5px; display: none; }
         .error-msg { background: #f8d7da; color: #721c24; padding: 12px; margin: 20px; border-radius: 5px; display: none; }
-        .credit-amount { color: #dc3545; font-weight: bold; }
-        .credit-amount::before { content: "- "; }
     </style>
 </head>
 <body>
@@ -61,92 +52,34 @@
     </div>
 
     <div class="tabs">
-        <button class="tab" onclick="showPanel('allocate')">Allocate Stock</button>
-        <button class="tab" onclick="showPanel('stock')">Stock Management</button>
         <button class="tab" onclick="showPanel('approvals')">Credit Approvals</button>
-        <button class="tab" onclick="showPanel('returns')">Pending Returns</button>
-        <button class="tab" onclick="showPanel('reports')">Daily Reports</button>
     </div>
 
-    <div id="allocatePanel" class="panel">
-        <div class="form-card">
-            <h3>New Allocation</h3>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Select Team</label>
-                    <select id="allocateTeamId"></select>
-                </div>
-                <div class="form-group">
-                    <label>Select Product</label>
-                    <select id="allocateProductId"></select>
-                </div>
-                <div class="form-group">
-                    <label>Quantity</label>
-                    <input type="number" id="allocateQuantity" min="1" placeholder="Enter quantity">
-                </div>
-                <div class="form-group">
-                    <button class="allocate-btn" onclick="allocateStock()">Allocate Stock</button>
-                </div>
-            </div>
-        </div>
-        <h3>Today's Allocations</h3>
-        <div id="allocationsLoading" class="loading">Loading allocations...</div>
-        <table id="allocationsTable" style="display:none">
-            <thead><tr><th>Team Name</th><th>Product Name</th><th>Allocated</th><th>Sold</th><th>Remaining</th></tr></thead>
-            <tbody id="allocationsTableBody"></tbody>
-        </table>
-    </div>
-
-    <div id="stockPanel" class="panel">
-        <div id="stockLoading" class="loading">Loading stock data...</div>
-        <table id="stockTable" style="display:none">
-            <thead><tr><th>Product Name</th><th>Quantity</th><th>Unit Cost</th><th>Total Value</th></tr></thead>
-            <tbody id="stockTableBody"></tbody>
-        </table>
-    </div>
-
-    <div id="approvalsPanel" class="panel">
-        <div id="approvalsLoading" class="loading">Loading pending credit approvals...</div>
+    <div id="approvalsPanel" class="panel active">
+        <h2>Pending Credit Approvals</h2>
+        <div id="approvalsLoading" class="loading">Loading pending approvals...</div>
         <table id="approvalsTable" style="display:none">
             <thead>
-                <tr><th>Order Number</th><th>Customer Name</th><th>Original Amount</th><th>Modified Amount</th><th>Requested By</th><th>Action</th></tr>
+                <tr><th>Order Number</th><th>Customer Name</th><th>Amount (NGN)</th><th>Requested By</th><th>Action</th></tr>
             </thead>
             <tbody id="approvalsTableBody"></tbody>
-        </table>
-    </div>
-
-    <div id="returnsPanel" class="panel">
-        <div id="returnsLoading" class="loading">Loading pending returns...</div>
-        <table id="returnsTable" style="display:none">
-            <thead><tr><th>Team Name</th><th>Customer Name</th><th>Product Name</th><th>Quantity</th><th>Amount</th><th>Payment Type</th><th>Action</th></tr></thead>
-            <tbody id="returnsTableBody"></tbody>
-        </table>
-    </div>
-
-    <div id="reportsPanel" class="panel">
-        <button class="close-day-btn" onclick="closeDay()">Close Day (5 PM)</button>
-        <div id="reportLoading" class="loading">Loading daily report...</div>
-        <table id="salesReportTable" style="display:none">
-            <thead><tr><th>Team Name</th><th>Orders</th><th>Cash Sales</th><th>Transfer Sales</th><th>Credit Sales</th><th>Total Sales</th></tr></thead>
-            <tbody id="salesReportBody"></tbody>
         </table>
     </div>
 
     <script>
         const API_URL = 'https://warehouse-backend-api-2fye.onrender.com/api';
         let authToken = localStorage.getItem('token');
-        let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
         function formatMoney(amount) {
-            if (amount === undefined || amount === null || isNaN(amount)) return 'NGN 0';
-            return 'NGN ' + Math.round(Number(amount)).toLocaleString('en-NG');
+            if (amount === undefined || amount === null || isNaN(amount)) return '0';
+            return Math.round(Number(amount)).toLocaleString('en-NG');
         }
 
         function showMessage(msg, isError = false) {
             const msgDiv = document.getElementById(isError ? 'errorMsg' : 'successMsg');
             msgDiv.innerHTML = msg;
             msgDiv.style.display = 'block';
-            setTimeout(function() { msgDiv.style.display = 'none'; }, 4000);
+            setTimeout(function() { msgDiv.style.display = 'none'; }, 3000);
         }
 
         async function fetchAPI(endpoint, options = {}) {
@@ -155,8 +88,7 @@
                     ...options,
                     headers: { 
                         'Content-Type': 'application/json', 
-                        'Authorization': 'Bearer ' + authToken, 
-                        ...options.headers 
+                        'Authorization': 'Bearer ' + authToken
                     }
                 });
                 if (response.status === 401) { 
@@ -171,162 +103,59 @@
             }
         }
 
-        async function loadTeams() {
-            const data = await fetchAPI('/teams');
-            if (data && data.success) {
-                let html = '<option value="">Select Team</option>';
-                for (let i = 0; i < data.data.length; i++) {
-                    html += '<option value="' + data.data[i].id + '">' + data.data[i].team_name + '</option>';
-                }
-                document.getElementById('allocateTeamId').innerHTML = html;
-            }
-        }
-
-        async function loadProductsForAllocation() {
-            const data = await fetchAPI('/products');
-            if (data && data.success) {
-                let html = '<option value="">Select Product</option>';
-                for (let i = 0; i < data.data.length; i++) {
-                    if (data.data[i].current_qty > 0) {
-                        html += '<option value="' + data.data[i].id + '">' + data.data[i].product_name + ' (' + data.data[i].current_qty + ' left)</option>';
-                    }
-                }
-                document.getElementById('allocateProductId').innerHTML = html;
-            }
-        }
-
-        async function allocateStock() {
-            const teamId = document.getElementById('allocateTeamId').value;
-            const productId = document.getElementById('allocateProductId').value;
-            const quantity = document.getElementById('allocateQuantity').value;
-            
-            if (!teamId || !productId || quantity < 1) { 
-                showMessage('Please fill all fields', true); 
-                return; 
-            }
-            
-            const result = await fetchAPI('/allocations', {
-                method: 'POST',
-                body: JSON.stringify({ 
-                    team_id: parseInt(teamId), 
-                    product_id: parseInt(productId), 
-                    quantity: parseInt(quantity), 
-                    allocated_date: new Date().toISOString().split('T')[0] 
-                })
-            });
-            
-            if (result && result.success) {
-                showMessage(result.message);
-                document.getElementById('allocateQuantity').value = '';
-                loadTodayAllocations();
-                loadProducts();
-                loadProductsForAllocation();
-            } else {
-                showMessage(result?.message || 'Allocation failed', true);
-            }
-        }
-
-        async function loadTodayAllocations() {
-            const data = await fetchAPI('/allocations/today');
-            if (data && data.success) {
-                let html = '';
-                for (let i = 0; i < data.data.length; i++) {
-                    const a = data.data[i];
-                    const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
-                    html += '<td>' + a.team_name + '</td><td>' + a.product_name + '<tr><td>' + a.allocated_qty + '</td><td>' + a.sold_qty + '</td><td>' + remaining + '</td></tr>';
-                }
-                document.getElementById('allocationsTableBody').innerHTML = html || '<td><td colspan="5">No allocations today</td>';
-                document.getElementById('allocationsLoading').style.display = 'none';
-                document.getElementById('allocationsTable').style.display = 'table';
-            }
-        }
-
-        async function loadProducts() {
-            const data = await fetchAPI('/products');
-            if (data && data.success) {
-                let totalValue = 0;
-                let html = '';
-                for (let i = 0; i < data.data.length; i++) {
-                    const p = data.data[i];
-                    totalValue += p.current_qty * p.unit_cost;
-                    html += '<td>' + p.product_name + '</td><td>' + p.current_qty + '</td><td>' + formatMoney(p.unit_cost) + '</td><td>' + formatMoney(p.current_qty * p.unit_cost) + '</td></tr>';
-                }
-                document.getElementById('stockTableBody').innerHTML = html;
-                document.getElementById('totalProducts').innerText = data.data.length;
-                document.getElementById('totalValue').innerHTML = formatMoney(totalValue);
-                document.getElementById('stockLoading').style.display = 'none';
-                document.getElementById('stockTable').style.display = 'table';
-            }
-        }
-
         async function loadPendingApprovals() {
+            const loadingDiv = document.getElementById('approvalsLoading');
+            const table = document.getElementById('approvalsTable');
+            const tbody = document.getElementById('approvalsTableBody');
+            
+            loadingDiv.style.display = 'block';
+            table.style.display = 'none';
+            
             const data = await fetchAPI('/approvals/pending');
+            
             if (data && data.success) {
-                const pendingCount = data.data.length;
-                document.getElementById('pendingApprovals').innerText = pendingCount;
-                
+                document.getElementById('pendingApprovals').innerText = data.data.length;
                 let html = '';
-                if (pendingCount === 0) {
-                    html = '<tr><td colspan="6">No pending credit approvals</td>';
+                if (data.data.length === 0) {
+                    html = '<tr><td colspan="5">No pending credit approvals</td></tr>';
                 } else {
                     for (let i = 0; i < data.data.length; i++) {
                         const a = data.data[i];
-                        const approvalId = a.id;
                         html += '<tr>';
                         html += '<td>' + a.order_number + '</td>';
                         html += '<td>' + a.customer_name + '</td>';
                         html += '<td>' + formatMoney(a.total_amount) + '</td>';
-                        html += '<td><input type="number" id="amount_' + approvalId + '" value="' + a.total_amount + '" step="1000" style="width:120px">这些';
                         html += '<td>' + (a.requested_by || 'Unknown') + '</td>';
                         html += '<td>';
-                        html += '<button class="approve-btn" onclick="approveCredit(' + approvalId + ')">Approve</button>';
-                        html += '<button class="reject-btn" onclick="rejectCredit(' + approvalId + ')">Reject</button>';
+                        html += '<button class="approve-btn" onclick="approveCredit(' + a.id + ', ' + a.total_amount + ')">Approve</button>';
+                        html += '<button class="reject-btn" onclick="rejectCredit(' + a.id + ')">Reject</button>';
                         html += '</td>';
                         html += '</tr>';
                     }
                 }
-                document.getElementById('approvalsTableBody').innerHTML = html;
-                document.getElementById('approvalsLoading').style.display = 'none';
-                document.getElementById('approvalsTable').style.display = 'table';
+                tbody.innerHTML = html;
+                loadingDiv.style.display = 'none';
+                table.style.display = 'table';
+            } else {
+                loadingDiv.innerHTML = 'Failed to load approvals';
             }
         }
 
-        async function approveCredit(approvalId) {
-            const amountInput = document.getElementById('amount_' + approvalId);
-            const approvedAmount = amountInput ? parseFloat(amountInput.value) : null;
-            
-            if (!confirm('Approve this credit for ' + formatMoney(approvedAmount) + '?')) return;
+        async function approveCredit(approvalId, amount) {
+            if (!confirm('Approve this credit for NGN ' + formatMoney(amount) + '?')) return;
             
             showMessage('Processing approval...');
             
-            try {
-                const response = await fetch(API_URL + '/approvals/approve', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + authToken
-                    },
-                    body: JSON.stringify({ 
-                        approval_id: approvalId, 
-                        approved_amount: approvedAmount 
-                    })
-                });
-                
-                const result = await response.json();
-                console.log('Approve response:', result);
-                
-                if (result && result.success) {
-                    showMessage('Credit approved successfully!');
-                    // Refresh the approvals list immediately
-                    await loadPendingApprovals();
-                    await loadProducts();
-                    await loadTodayAllocations();
-                } else {
-                    showMessage('Failed to approve credit: ' + (result?.message || 'Unknown error'), true);
-                }
-            } catch (error) {
-                console.error('Approve error:', error);
-                showMessage('Error: ' + error.message, true);
+            const result = await fetchAPI('/approvals/approve', {
+                method: 'POST',
+                body: JSON.stringify({ approval_id: approvalId, approved_amount: amount })
+            });
+            
+            if (result && result.success) {
+                showMessage('Credit approved successfully!');
+                await loadPendingApprovals();
+            } else {
+                showMessage('Failed to approve credit: ' + (result?.message || 'Unknown error'), true);
             }
         }
 
@@ -335,124 +164,33 @@
             
             showMessage('Processing rejection...');
             
-            try {
-                const response = await fetch(API_URL + '/approvals/reject', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + authToken
-                    },
-                    body: JSON.stringify({ approval_id: approvalId })
-                });
-                
-                const result = await response.json();
-                console.log('Reject response:', result);
-                
-                if (result && result.success) {
-                    showMessage('Credit rejected successfully!');
-                    await loadPendingApprovals();
-                } else {
-                    showMessage('Failed to reject credit: ' + (result?.message || 'Unknown error'), true);
-                }
-            } catch (error) {
-                console.error('Reject error:', error);
-                showMessage('Error: ' + error.message, true);
-            }
-        }
-
-        async function loadPendingReturns() {
-            const data = await fetchAPI('/sales/pending-submissions');
-            if (data && data.success) {
-                let html = '';
-                for (let i = 0; i < data.data.length; i++) {
-                    const item = data.data[i];
-                    const isCredit = item.type === 'credit';
-                    html += '<td>' + item.team_name + '</td>';
-                    html += '<td>' + item.customer_name + '</td>';
-                    html += '<td>' + item.product_name + '</td>';
-                    html += '<td>' + item.quantity + '</td>';
-                    html += '<td>' + (isCredit ? '-' : '') + formatMoney(item.amount) + '</td>';
-                    html += '<td>' + (isCredit ? 'Credit' : (item.type === 'cash' ? 'Cash' : 'Bank Transfer')) + '</td>';
-                    html += '<td>';
-                    html += '<button class="approve-btn" onclick="confirmReturn(' + item.id + ', \'accept\')">Accept</button>';
-                    html += '<button class="reject-btn" onclick="confirmReturn(' + item.id + ', \'reject\')">Return to Team</button>';
-                    html += '</td>';
-                    html += '</tr>';
-                }
-                document.getElementById('returnsTableBody').innerHTML = html || '<td><td colspan="7">No pending returns</td>';
-                document.getElementById('returnsLoading').style.display = 'none';
-                document.getElementById('returnsTable').style.display = 'table';
-            }
-        }
-
-        async function confirmReturn(itemId, action) {
-            const result = await fetchAPI('/sales/confirm-return', {
+            const result = await fetchAPI('/approvals/reject', {
                 method: 'POST',
-                body: JSON.stringify({ item_id: itemId, action: action })
+                body: JSON.stringify({ approval_id: approvalId })
             });
+            
             if (result && result.success) {
-                showMessage(action === 'accept' ? 'Item accepted and moved to warehouse' : 'Item returned to team');
-                loadPendingReturns();
-                loadProducts();
+                showMessage('Credit rejected successfully!');
+                await loadPendingApprovals();
+            } else {
+                showMessage('Failed to reject credit: ' + (result?.message || 'Unknown error'), true);
             }
         }
 
-        async function loadDailyReport() {
-            const data = await fetchAPI('/reports/daily');
-            if (data && data.success) {
-                let html = '';
-                for (let i = 0; i < data.teams.length; i++) {
-                    const t = data.teams[i];
-                    const creditAmount = t.credit_sales || 0;
-                    html += '<tr>';
-                    html += '<td>' + t.team_name + '</td>';
-                    html += '<td>' + (t.num_orders || 0) + '</td>';
-                    html += '<td>' + formatMoney(t.cash_sales || 0) + '</td>';
-                    html += '<td>' + formatMoney(t.transfer_sales || 0) + '</td>';
-                    html += '<td>' + (creditAmount > 0 ? '-' + formatMoney(Math.abs(creditAmount)) : formatMoney(0)) + '</td>';
-                    html += '<td>' + formatMoney(t.total_sales || 0) + '</td>';
-                    html += '</tr>';
-                }
-                document.getElementById('salesReportBody').innerHTML = html;
-                document.getElementById('reportLoading').style.display = 'none';
-                document.getElementById('salesReportTable').style.display = 'table';
-            }
+        function showPanel() {
+            loadPendingApprovals();
         }
 
-        async function closeDay() {
-            if (confirm('Close the day? This will return unsold stock to warehouse.')) {
-                const result = await fetchAPI('/daily/close', { method: 'POST' });
-                if (result && result.success) {
-                    showMessage('Day closed successfully');
-                    loadDailyReport();
-                    loadTodayAllocations();
-                    loadProducts();
-                } else {
-                    showMessage('Failed to close day', true);
-                }
-            }
+        function logout() { 
+            localStorage.clear(); 
+            window.location.href = 'login.html'; 
         }
 
-        function showPanel(name) {
-            document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
-            document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
-            
-            const panels = ['allocate', 'stock', 'approvals', 'returns', 'reports'];
-            const index = panels.indexOf(name);
-            document.querySelectorAll('.tab')[index].classList.add('active');
-            document.getElementById(name + 'Panel').classList.add('active');
-            
-            if (name === 'allocate') { loadTodayAllocations(); loadTeams(); loadProductsForAllocation(); }
-            if (name === 'stock') loadProducts();
-            if (name === 'approvals') loadPendingApprovals();
-            if (name === 'returns') loadPendingReturns();
-            if (name === 'reports') loadDailyReport();
+        if (!authToken) { 
+            window.location.href = 'login.html'; 
+        } else { 
+            loadPendingApprovals(); 
         }
-
-        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
-
-        if (!authToken) { window.location.href = 'login.html'; } 
-        else { loadProducts(); loadTeams(); loadProductsForAllocation(); }
     </script>
 </body>
 </html>
