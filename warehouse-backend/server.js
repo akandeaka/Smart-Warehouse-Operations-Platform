@@ -359,9 +359,46 @@ app.get('/api/sales/order/:orderId/items', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-// CREDIT APPROVALS - SINGLE CORRECTED VERSION
+// CREDIT APPROVALS - COMPLETE ENDPOINTS
 // ============================================================
-// Approve credit - CORRECTED
+
+// Get pending credit approvals (for manager view)
+app.get('/api/approvals/pending', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const [approvals] = await pool.query(
+            `SELECT c.id, o.order_number, o.customer_name, o.total_amount, o.payment_method, 
+                    u.full_name as requested_by, c.requested_at, c.due_date
+             FROM credit_approvals c
+             JOIN sales_orders o ON c.order_id = o.id
+             JOIN users u ON c.requested_by = u.id
+             WHERE c.status = 'pending'`
+        );
+        console.log('Pending approvals found:', approvals.length);
+        res.json({ success: true, data: approvals });
+    } catch (error) {
+        console.error('Error fetching pending approvals:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Get my credit requests (for sales rep)
+app.get('/api/approvals/my-requests', authMiddleware, async (req, res) => {
+    try {
+        const [requests] = await pool.query(
+            `SELECT c.id, o.order_number, o.customer_name, o.total_amount, c.status, c.requested_at, c.due_date
+             FROM credit_approvals c
+             JOIN sales_orders o ON c.order_id = o.id
+             WHERE o.created_by = ?
+             ORDER BY c.requested_at DESC`,
+            [req.user.id]
+        );
+        res.json({ success: true, data: requests });
+    } catch (error) {
+        res.json({ success: true, data: [] });
+    }
+});
+
+// Approve credit
 app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     let connection;
     try {
@@ -371,29 +408,24 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
         connection = await pool.getConnection();
         await connection.beginTransaction();
         
-        // Get order_id from approval
         const [approval] = await connection.query('SELECT order_id FROM credit_approvals WHERE id = ?', [approval_id]);
         if (approval.length === 0) throw new Error('Approval not found');
         const order_id = approval[0].order_id;
         
-        // Update order amount if changed by manager
         if (approved_amount && approved_amount > 0) {
             await connection.query('UPDATE sales_orders SET total_amount = ? WHERE id = ?', [approved_amount, order_id]);
         }
         
-        // IMPORTANT: Update the 'status' column to 'approved' - NOT a column named 'approved'
         await connection.query(
             'UPDATE credit_approvals SET status = "approved", approved_by = ?, approved_at = NOW() WHERE id = ?',
             [req.user.id, approval_id]
         );
         
-        // Update sales_orders approval_status
         await connection.query(
             'UPDATE sales_orders SET approval_status = "approved", payment_status = "pending" WHERE id = ?',
             [order_id]
         );
         
-        // Get order items to update stock allocations
         const [items] = await connection.query(
             `SELECT oi.product_id, oi.quantity, oi.cost_of_goods, o.team_id 
              FROM sales_order_items oi 
@@ -429,24 +461,22 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
         if (connection) connection.release();
     }
 });
-// Reject credit - CORRECTED
+
+// Reject credit
 app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
         const { approval_id } = req.body;
         console.log('Rejecting credit ID:', approval_id);
         
-        // Get order_id from approval
         const [approval] = await pool.query('SELECT order_id FROM credit_approvals WHERE id = ?', [approval_id]);
         if (approval.length === 0) throw new Error('Approval not found');
         const order_id = approval[0].order_id;
         
-        // IMPORTANT: Update the 'status' column to 'rejected' - NOT a column named 'rejected'
         await pool.query(
             'UPDATE credit_approvals SET status = "rejected", approved_by = ?, approved_at = NOW() WHERE id = ?',
             [req.user.id, approval_id]
         );
         
-        // Update sales_orders approval_status
         await pool.query(
             'UPDATE sales_orders SET approval_status = "rejected" WHERE id = ?',
             [order_id]
@@ -460,7 +490,6 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
         res.status(500).json({ success: false, message: error.message });
     }
 });
-
 
 // ============================================================
 // SUBMIT DAY SALES & PENDING RETURNS
