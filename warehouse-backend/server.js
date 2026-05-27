@@ -401,7 +401,6 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
     let connection;
     try {
         const { approval_id, approved_amount } = req.body;
-        console.log('Approving credit ID:', approval_id);
         
         connection = await pool.getConnection();
         await connection.beginTransaction();
@@ -449,12 +448,10 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
         }
         
         await connection.commit();
-        console.log('Credit approved successfully');
         res.json({ success: true, message: 'Credit approved successfully' });
         
     } catch (error) {
         if (connection) await connection.rollback();
-        console.error('Approve error:', error);
         res.status(500).json({ success: false, message: error.message });
     } finally {
         if (connection) connection.release();
@@ -465,7 +462,6 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
 app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
         const { approval_id } = req.body;
-        console.log('Rejecting credit ID:', approval_id);
         
         const [approval] = await pool.query('SELECT order_id FROM credit_approvals WHERE id = ?', [approval_id]);
         if (approval.length === 0) throw new Error('Approval not found');
@@ -482,11 +478,9 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
             [order_id]
         );
         
-        console.log('Credit rejected successfully');
         res.json({ success: true, message: 'Credit rejected successfully' });
         
     } catch (error) {
-        console.error('Reject error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });
