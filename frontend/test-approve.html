@@ -40,6 +40,9 @@
     </div>
 
     <script>
+        // UPDATED BACKEND URL - Replace with your new backend URL
+        const API_URL = 'https://warehouse-backend-new.onrender.com/api';
+        
         let authToken = null;
 
         async function login() {
@@ -47,7 +50,7 @@
             const password = document.getElementById('password').value;
             
             try {
-                const response = await fetch('https://warehouse-backend-api-2fye.onrender.com/api/auth/login', {
+                const response = await fetch(API_URL + '/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
@@ -69,13 +72,14 @@
 
         async function loadPending() {
             try {
-                const response = await fetch('https://warehouse-backend-api-2fye.onrender.com/api/approvals/pending', {
+                const response = await fetch(API_URL + '/approvals/pending', {
                     headers: { 'Authorization': 'Bearer ' + authToken }
                 });
                 const data = await response.json();
                 
                 if (data.success && data.data.length > 0) {
-                    let html = '<table border="1" cellpadding="5"><tr><th>ID</th><th>Order Number</th><th>Customer</th><th>Amount</th></tr>';
+                    let html = '<table border="1" cellpadding="5">';
+                    html += '<tr><th>ID</th><th>Order Number</th><th>Customer</th><th>Amount</th></tr>';
                     for (let i = 0; i < data.data.length; i++) {
                         const a = data.data[i];
                         html += '<tr>';
@@ -109,7 +113,7 @@
             document.getElementById('result').innerHTML = 'Processing approval...';
             
             try {
-                const response = await fetch('https://warehouse-backend-api-2fye.onrender.com/api/approvals/approve', {
+                const response = await fetch(API_URL + '/approvals/approve', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -122,7 +126,7 @@
                 
                 if (data.success) {
                     document.getElementById('result').innerHTML += '<br><span class="success">✅ ' + data.message + '</span>';
-                    loadPending(); // Refresh the list
+                    loadPending();
                 } else {
                     document.getElementById('result').innerHTML += '<br><span class="error">❌ Failed: ' + data.message + '</span>';
                 }
@@ -142,7 +146,7 @@
             document.getElementById('result').innerHTML = 'Processing rejection...';
             
             try {
-                const response = await fetch('https://warehouse-backend-api-2fye.onrender.com/api/approvals/reject', {
+                const response = await fetch(API_URL + '/approvals/reject', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -155,7 +159,7 @@
                 
                 if (data.success) {
                     document.getElementById('result').innerHTML += '<br><span class="success">✅ ' + data.message + '</span>';
-                    loadPending(); // Refresh the list
+                    loadPending();
                 } else {
                     document.getElementById('result').innerHTML += '<br><span class="error">❌ Failed: ' + data.message + '</span>';
                 }
