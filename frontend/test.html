@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Credit Approval</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        .approve { background: green; color: white; }
+        .reject { background: red; color: white; }
+        pre { background: #f0f0f0; padding: 10px; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Test Credit Approval</h1>
+    
+    <div id="loginSection">
+        <h2>Step 1: Login</h2>
+        <input type="text" id="username" placeholder="Username" value="warehouse_mgr">
+        <input type="password" id="password" placeholder="Password" value="password123">
+        <button onclick="login()">Login</button>
+    </div>
+
+    <div id="approvalSection" style="display:none;">
+        <h2>Step 2: Pending Approvals</h2>
+        <button onclick="loadPending()">Load Pending Approvals</button>
+        <div id="approvalsList"></div>
+        
+        <h2>Step 3: Test Approve</h2>
+        <label>Approval ID: <input type="number" id="approvalId" placeholder="Enter approval ID"></label>
+        <label>Amount: <input type="number" id="amount" placeholder="Enter amount"></label>
+        <button class="approve" onclick="testApprove()">Test Approve</button>
+        <button class="reject" onclick="testReject()">Test Reject</button>
+        
+        <h2>Result:</h2>
+        <pre id="result">Waiting for action...</pre>
+    </div>
+
+    <script>
+        // USING YOUR NEW BACKEND URL
+        const API_URL = 'https://warehouse-backend-new-u9rq.onrender.com/api';
+        
+        let authToken = null;
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch(API_URL + '/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    authToken = data.token;
+                    document.getElementById('result').innerHTML = '<span class="success">✅ Login successful!</span>';
+                    document.getElementById('loginSection').style.display = 'none';
+                    document.getElementById('approvalSection').style.display = 'block';
+                } else {
+                    document.getElementById('result').innerHTML = '<span class="error">❌ Login failed: ' + data.message + '</span>';
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = '<span class="error">❌ Error: ' + error.message + '</span>';
+            }
+        }
+
+        async function loadPending() {
+            try {
+                const response = await fetch(API_URL + '/approvals/pending', {
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                const data = await response.json();
+                
+                if (data.success && data.data.length > 0) {
+                    let html = '<table border="1" cellpadding="5">';
+                    html += '<table><th>ID</th><th>Order Number</th><th>Customer</th><th>Amount</th></tr>';
+                    for (let i = 0; i < data.data.length; i++) {
+                        const a = data.data[i];
+                        html += '<tr>';
+                        html += '<td>' + a.id + '</td>';
+                        html += '<td>' + a.order_number + '</td>';
+                        html += '<td>' + a.customer_name + '</td>';
+                        html += '<td>' + a.total_amount + '</td>';
+                        html += '</tr>';
+                    }
+                    html += '</table>';
+                    document.getElementById('approvalsList').innerHTML = html;
+                    document.getElementById('result').innerHTML = '<span class="success">✅ Found ' + data.data.length + ' pending approvals</span>';
+                } else {
+                    document.getElementById('approvalsList').innerHTML = '<p>No pending approvals found.</p>';
+                    document.getElementById('result').innerHTML = '<span class="error">⚠️ No pending approvals</span>';
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = '<span class="error">❌ Error: ' + error.message + '</span>';
+            }
+        }
+
+        async function testApprove() {
+            const approvalId = document.getElementById('approvalId').value;
+            const amount = document.getElementById('amount').value;
+            
+            if (!approvalId) {
+                document.getElementById('result').innerHTML = '<span class="error">❌ Please enter an Approval ID</span>';
+                return;
+            }
+            
+            document.getElementById('result').innerHTML = 'Processing approval...';
+            
+            try {
+                const response = await fetch(API_URL + '/approvals/approve', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ approval_id: parseInt(approvalId), approved_amount: parseFloat(amount) })
+                });
+                const data = await response.json();
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                
+                if (data.success) {
+                    document.getElementById('result').innerHTML += '<br><span class="success">✅ ' + data.message + '</span>';
+                    loadPending();
+                } else {
+                    document.getElementById('result').innerHTML += '<br><span class="error">❌ Failed: ' + data.message + '</span>';
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = '<span class="error">❌ Error: ' + error.message + '</span>';
+            }
+        }
+
+        async function testReject() {
+            const approvalId = document.getElementById('approvalId').value;
+            
+            if (!approvalId) {
+                document.getElementById('result').innerHTML = '<span class="error">❌ Please enter an Approval ID</span>';
+                return;
+            }
+            
+            document.getElementById('result').innerHTML = 'Processing rejection...';
+            
+            try {
+                const response = await fetch(API_URL + '/approvals/reject', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + authToken
+                    },
+                    body: JSON.stringify({ approval_id: parseInt(approvalId) })
+                });
+                const data = await response.json();
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                
+                if (data.success) {
+                    document.getElementById('result').innerHTML += '<br><span class="success">✅ ' + data.message + '</span>';
+                    loadPending();
+                } else {
+                    document.getElementById('result').innerHTML += '<br><span class="error">❌ Failed: ' + data.message + '</span>';
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = '<span class="error">❌ Error: ' + error.message + '</span>';
+            }
+        }
+    </script>
+</body>
+</html>
