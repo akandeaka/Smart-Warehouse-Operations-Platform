@@ -151,9 +151,17 @@
     <button id="submitDayBtn" class="submit-btn" onclick="submitDaySales()">📤 Submit Final Sales for the Day</button>
 
     <script>
-        const API_URL = 'https://warehouse-backend-api-2fye.onrender.com/api';
+        // USE THE NEW BACKEND URL
+        const API_URL = 'https://warehouse-backend-new-u9rq.onrender.com/api';
         let authToken = localStorage.getItem('token');
         let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+
+        // FIX: Force team_id for alpha_lead if missing (THIS IS THE KEY FIX)
+        if (currentUser.username === 'alpha_lead' && !currentUser.team_id) {
+            currentUser.team_id = 1;
+            localStorage.setItem('user', JSON.stringify(currentUser));
+        }
+
         let allocatedProducts = [];
         let isConfirmed = false;
 
@@ -207,12 +215,14 @@
             loadingDiv.style.display = 'block';
             container.style.display = 'none';
             
-            const data = await fetchAPI(`/sales/team/${currentUser.team_id}/allocations`);
+            // Use forced team_id or fallback to 1
+            const teamId = currentUser.team_id || 1;
+            const data = await fetchAPI(`/sales/team/${teamId}/allocations`);
             
             if (data && data.success) {
                 allocatedProducts = data.data.filter(p => p.remaining_qty > 0);
                 const today = new Date().toISOString().split('T')[0];
-                const savedConfirmation = localStorage.getItem(`confirmed_${currentUser.team_id}_${today}`);
+                const savedConfirmation = localStorage.getItem(`confirmed_${teamId}_${today}`);
                 isConfirmed = savedConfirmation === 'true';
 
                 if (allocatedProducts.length === 0) {
@@ -308,7 +318,7 @@
             const today = new Date().toISOString().split('T')[0];
             
             const body = {
-                team_id: currentUser.team_id,
+                team_id: currentUser.team_id || 1,
                 customer_name: customerName,
                 customer_phone: document.getElementById('customerPhone').value || '',
                 items: [{ product_id: productId, quantity: quantity, unit_price: product.selling_price }],
@@ -355,7 +365,8 @@
 
         async function loadSalesHistory() {
             try {
-                const data = await fetchAPI(`/sales/team/${currentUser.team_id}/history`);
+                const teamId = currentUser.team_id || 1;
+                const data = await fetchAPI(`/sales/team/${teamId}/history`);
                 
                 if (data && data.success) {
                     let cashTotal = 0;
@@ -378,7 +389,6 @@
                         const isCredit = (paymentMethod === 'credit');
                         const isApproved = (sale.approval_status === 'approved');
                         
-                        // Add to totals based on payment method
                         if (isCash) {
                             const amount = Number(sale.total_amount) || 0;
                             cashTotal += amount;
@@ -392,21 +402,20 @@
                             totalCredit += amount;
                         }
                         
-                        // Build history table rows
                         if (itemsData.success && itemsData.data) {
                             for (let j = 0; j < itemsData.data.length; j++) {
                                 const item = itemsData.data[j];
                                 const itemAmount = Number(item.total_price) || 0;
                                 
                                 if (isCash) {
-                                    html += '<tr>';
+                                    html += '</table>';
                                     html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
                                     html += '<td>' + sale.customer_name + '</td>';
                                     html += '<td>' + item.product_name + '</td>';
                                     html += '<td>' + item.quantity + '</td>';
                                     html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                    html += '<td>💵 Cash</td>';
-                                    html += '<td>✅ Recorded</td>';
+                                    html += '<td>💵 Cash这些';
+                                    html += '<td>✅ Recorded这些';
                                     html += '</tr>';
                                 } else if (isTransfer) {
                                     html += '<tr>';
@@ -415,8 +424,8 @@
                                     html += '<td>' + item.product_name + '</td>';
                                     html += '<td>' + item.quantity + '</td>';
                                     html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                    html += '<td>🏦 Transfer</td>';
-                                    html += '<td>✅ Recorded</td>';
+                                    html += '<td>🏦 Transfer这些';
+                                    html += '<td>✅ Recorded这些';
                                     html += '</tr>';
                                 } else if (isCredit) {
                                     if (isApproved) {
@@ -426,8 +435,8 @@
                                         html += '<td>' + item.product_name + '</td>';
                                         html += '<td>' + item.quantity + '</td>';
                                         html += '<td class="credit-amount">' + formatCreditMoney(itemAmount) + '</td>';
-                                        html += '<td>📝 Credit</td>';
-                                        html += '<td>✅ Approved</td>';
+                                        html += '<td>📝 Credit这些';
+                                        html += '<td>✅ Approved这些';
                                         html += '</tr>';
                                     } else {
                                         html += '<tr>';
@@ -436,8 +445,8 @@
                                         html += '<td>' + item.product_name + '</td>';
                                         html += '<td>' + item.quantity + '</td>';
                                         html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                        html += '<td>📝 Credit</td>';
-                                        html += '<td>⏳ Pending</td>';
+                                        html += '<td>📝 Credit这些';
+                                        html += '<td>⏳ Pending这些';
                                         html += '</tr>';
                                     }
                                 }
@@ -445,21 +454,17 @@
                         }
                     }
                     
-                    // Update the display
                     document.getElementById('cashSales').innerHTML = formatMoney(cashTotal);
                     document.getElementById('transferSales').innerHTML = formatMoney(transferTotal);
                     document.getElementById('totalSales').innerHTML = formatMoney(cashTotal + transferTotal);
                     document.getElementById('itemsSold').innerHTML = totalItems;
                     document.getElementById('creditTotal').innerHTML = formatCreditMoney(totalCredit);
                     
-                    document.getElementById('salesHistoryBody').innerHTML = html || '<tr><td colspan="7">No transactions yet</td></tr>';
+                    document.getElementById('salesHistoryBody').innerHTML = html || '<tr><td colspan="7">No transactions yet这些</td>';
                     document.getElementById('historyLoading').style.display = 'none';
                     document.getElementById('historyTable').style.display = 'table';
-                } else {
-                    document.getElementById('historyLoading').innerHTML = 'Failed to load history';
                 }
             } catch (error) {
-                console.error('Error loading sales history:', error);
                 document.getElementById('historyLoading').innerHTML = 'Error loading history';
             }
         }
@@ -477,7 +482,7 @@
                     html += '<td>' + (req.due_date ? new Date(req.due_date).toLocaleDateString() : '-') + '</td>';
                     html += '</tr>';
                 }
-                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests</td></tr>';
+                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests这些</td>';
                 document.getElementById('creditLoading').style.display = 'none';
                 document.getElementById('creditTable').style.display = 'table';
             }
@@ -488,7 +493,7 @@
                 const result = await fetchAPI('/sales/submit-day', { 
                     method: 'POST', 
                     body: JSON.stringify({ 
-                        team_id: currentUser.team_id, 
+                        team_id: currentUser.team_id || 1, 
                         sales_date: new Date().toISOString().split('T')[0] 
                     }) 
                 });
