@@ -73,7 +73,9 @@ app.get('/health', async (req, res) => {
         }
     });
 });
-
+app.get('/api/version', (req, res) => {
+    res.json({ version: 'FINAL_V2', columns: 'approved_and_rejected' });
+});
 // ============================================================
 // LOGIN
 // ============================================================
