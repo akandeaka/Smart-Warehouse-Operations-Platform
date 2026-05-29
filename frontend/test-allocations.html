@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Allocations API</title>
+</head>
+<body>
+    <h1>Test Allocations API</h1>
+    <button onclick="test()">Test API</button>
+    <pre id="result"></pre>
+
+    <script>
+        const API_URL = 'https://warehouse-backend-new-u9rq.onrender.com/api';
+        let token = localStorage.getItem('token');
+
+        async function test() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Loading...';
+            
+            try {
+                const response = await fetch(API_URL + '/sales/team/1/allocations', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await response.json();
+                resultDiv.innerHTML = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultDiv.innerHTML = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
