@@ -130,9 +130,7 @@
         <h3>📋 My Credit Requests</h3>
         <div id="creditLoading" class="loading">Loading credit requests...</div>
         <table id="creditTable" style="display: none;">
-            <thead>
-                <tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Status</th><th>Due Date</th></tr>
-            </thead>
+            <thead><tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Status</th><th>Due Date</th></tr></thead>
             <tbody id="creditTableBody"></tbody>
         </table>
     </div>
@@ -141,9 +139,7 @@
         <h3>📊 Today's Transaction History</h3>
         <div id="historyLoading" class="loading">Loading history...</div>
         <table id="historyTable" style="display: none;">
-            <thead>
-                <tr><th>Time</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Status</th></tr>
-            </thead>
+            <thead><tr><th>Time</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Status</th></tr></thead>
             <tbody id="salesHistoryBody"></tbody>
         </table>
     </div>
@@ -158,25 +154,17 @@
         let isConfirmed = false;
 
         function formatMoney(amount) {
-            if (amount === undefined || amount === null || isNaN(amount)) {
+            if (amount === undefined || amount === null || isNaN(amount) || amount === 0) {
                 return '₦0';
             }
-            const numAmount = Number(amount);
-            if (numAmount === 0) {
-                return '₦0';
-            }
-            return '₦' + Math.round(numAmount).toLocaleString('en-NG');
+            return '₦' + Math.round(amount).toLocaleString('en-NG');
         }
 
         function formatCreditMoney(amount) {
-            if (amount === undefined || amount === null || isNaN(amount)) {
+            if (amount === undefined || amount === null || isNaN(amount) || amount === 0) {
                 return '-₦0';
             }
-            const numAmount = Number(amount);
-            if (numAmount === 0) {
-                return '-₦0';
-            }
-            return '-₦' + Math.round(numAmount).toLocaleString('en-NG');
+            return '-₦' + Math.round(amount).toLocaleString('en-NG');
         }
 
         function showMessage(msg, isError = false, isWarning = false) {
@@ -331,9 +319,9 @@
                 if (paymentMethod === 'credit') {
                     successMsg = `✅ Credit sale of ${formatMoney(totalAmount)} recorded. Pending manager approval.`;
                 } else if (paymentMethod === 'bank_transfer') {
-                    successMsg = `✅ Transfer sale of ${formatMoney(totalAmount)} recorded.`;
+                    successMsg = `✅ Transfer sale of ${formatMoney(totalAmount)} recorded. Will appear in history.`;
                 } else {
-                    successMsg = `✅ Cash sale of ${formatMoney(totalAmount)} recorded.`;
+                    successMsg = `✅ Cash sale of ${formatMoney(totalAmount)} recorded. Will appear in history.`;
                 }
                 showMessage(successMsg);
                 
@@ -356,7 +344,6 @@
         async function loadSalesHistory() {
             try {
                 const data = await fetchAPI(`/sales/team/${currentUser.team_id}/history`);
-                
                 if (data && data.success) {
                     let cashTotal = 0;
                     let transferTotal = 0;
@@ -364,88 +351,60 @@
                     let totalItems = 0;
                     let html = '';
                     
-                    for (let i = 0; i < data.data.length; i++) {
-                        const sale = data.data[i];
-                        
-                        const itemsResponse = await fetch(`${API_URL}/sales/order/${sale.id}/items`, {
-                            headers: { 'Authorization': `Bearer ${authToken}` }
+                    for (const sale of data.data) {
+                        const itemsRes = await fetch(`${API_URL}/sales/order/${sale.id}/items`, { 
+                            headers: { 'Authorization': `Bearer ${authToken}` } 
                         });
-                        const itemsData = await itemsResponse.json();
+                        const itemsData = await itemsRes.json();
+                        const isCredit = sale.payment_method === 'credit';
+                        const isApproved = sale.approval_status === 'approved';
+                        const isCash = sale.payment_method === 'cash';
+                        const isTransfer = sale.payment_method === 'bank_transfer';
                         
-                        const paymentMethod = String(sale.payment_method || '').toLowerCase();
-                        const isCash = (paymentMethod === 'cash');
-                        const isTransfer = (paymentMethod === 'bank_transfer');
-                        const isCredit = (paymentMethod === 'credit');
-                        const isApproved = (sale.approval_status === 'approved');
-                        
-                        // Add to totals based on payment method
-                        if (isCash) {
-                            const amount = Number(sale.total_amount) || 0;
-                            cashTotal += amount;
-                            totalItems += 1;
-                        } else if (isTransfer) {
-                            const amount = Number(sale.total_amount) || 0;
-                            transferTotal += amount;
-                            totalItems += 1;
-                        } else if (isCredit && isApproved) {
-                            const amount = Number(sale.total_amount) || 0;
-                            totalCredit += amount;
-                        }
-                        
-                        // Build history table rows
                         if (itemsData.success && itemsData.data) {
-                            for (let j = 0; j < itemsData.data.length; j++) {
-                                const item = itemsData.data[j];
-                                const itemAmount = Number(item.total_price) || 0;
-                                
-                                if (isCash) {
-                                    html += '<tr>';
-                                    html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
-                                    html += '<td>' + sale.customer_name + '</td>';
-                                    html += '<td>' + item.product_name + '</td>';
-                                    html += '<td>' + item.quantity + '</td>';
-                                    html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                    html += '<td>💵 Cash</td>';
-                                    html += '<td>✅ Recorded</td>';
-                                    html += '</tr>';
-                                } else if (isTransfer) {
-                                    html += '<tr>';
-                                    html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
-                                    html += '<td>' + sale.customer_name + '</td>';
-                                    html += '<td>' + item.product_name + '</td>';
-                                    html += '<td>' + item.quantity + '</td>';
-                                    html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                    html += '<td>🏦 Transfer</td>';
-                                    html += '<td>✅ Recorded</td>';
-                                    html += '</tr>';
-                                } else if (isCredit) {
+                            for (const item of itemsData.data) {
+                                if (isCredit) {
                                     if (isApproved) {
-                                        html += '<tr class="credit-row">';
-                                        html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
-                                        html += '<td>' + sale.customer_name + '</td>';
-                                        html += '<td>' + item.product_name + '</td>';
-                                        html += '<td>' + item.quantity + '</td>';
-                                        html += '<td class="credit-amount">' + formatCreditMoney(itemAmount) + '</td>';
-                                        html += '<td>📝 Credit</td>';
-                                        html += '<td>✅ Approved</td>';
-                                        html += '</tr>';
-                                    } else {
-                                        html += '<tr>';
-                                        html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
-                                        html += '<td>' + sale.customer_name + '</td>';
-                                        html += '<td>' + item.product_name + '</td>';
-                                        html += '<td>' + item.quantity + '</td>';
-                                        html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                        html += '<td>📝 Credit</td>';
-                                        html += '<td>⏳ Pending</td>';
-                                        html += '</tr>';
+                                        totalCredit += item.total_price;
+                                        html += `<tr class="credit-row">
+                                            <td>${new Date(sale.created_at).toLocaleTimeString()}</td>
+                                            <td>${sale.customer_name}</td>
+                                            <td>${item.product_name}</td>
+                                            <td>${item.quantity}</td>
+                                            <td class="credit-amount">${formatCreditMoney(item.total_price)}</td>
+                                            <td>📝 Credit</td>
+                                            <td>✅ Approved</td>
+                                        </tr>`;
                                     }
+                                } else if (isCash) {
+                                    cashTotal += item.total_price;
+                                    totalItems += item.quantity;
+                                    html += `<tr>
+                                        <td>${new Date(sale.created_at).toLocaleTimeString()}</td>
+                                        <td>${sale.customer_name}</td>
+                                        <td>${item.product_name}</td>
+                                        <td>${item.quantity}</td>
+                                        <td>${formatMoney(item.total_price)}</td>
+                                        <td>💵 Cash</td>
+                                        <td>✅ Completed</td>
+                                    </tr>`;
+                                } else if (isTransfer) {
+                                    transferTotal += item.total_price;
+                                    totalItems += item.quantity;
+                                    html += `<tr>
+                                        <td>${new Date(sale.created_at).toLocaleTimeString()}</td>
+                                        <td>${sale.customer_name}</td>
+                                        <td>${item.product_name}</td>
+                                        <td>${item.quantity}</td>
+                                        <td>${formatMoney(item.total_price)}</td>
+                                        <td>🏦 Transfer</td>
+                                        <td>✅ Completed</td>
+                                    </tr>`;
                                 }
                             }
                         }
                     }
                     
-                    // Update the display
                     document.getElementById('cashSales').innerHTML = formatMoney(cashTotal);
                     document.getElementById('transferSales').innerHTML = formatMoney(transferTotal);
                     document.getElementById('totalSales').innerHTML = formatMoney(cashTotal + transferTotal);
@@ -455,12 +414,10 @@
                     document.getElementById('salesHistoryBody').innerHTML = html || '<tr><td colspan="7">No transactions yet</td></tr>';
                     document.getElementById('historyLoading').style.display = 'none';
                     document.getElementById('historyTable').style.display = 'table';
-                } else {
-                    document.getElementById('historyLoading').innerHTML = 'Failed to load history';
                 }
             } catch (error) {
                 console.error('Error loading sales history:', error);
-                document.getElementById('historyLoading').innerHTML = 'Error loading history';
+                document.getElementById('historyLoading').innerHTML = 'Failed to load history';
             }
         }
 
@@ -469,15 +426,15 @@
             if (data && data.success) {
                 let html = '';
                 for (const req of data.data) {
-                    html += '<tr>';
-                    html += '<td>' + req.order_number + '</td>';
-                    html += '<td>' + req.customer_name + '</td>';
-                    html += '<td class="credit-amount">' + formatCreditMoney(req.total_amount) + '</td>';
-                    html += '<td>' + (req.status === 'pending' ? '🟡 Pending' : (req.status === 'approved' ? '🟢 Approved' : '🔴 Rejected')) + '</td>';
-                    html += '<td>' + (req.due_date ? new Date(req.due_date).toLocaleDateString() : '-') + '</td>';
-                    html += '</tr>';
+                    html += `<tr>
+                        <td>${req.order_number}</td>
+                        <td>${req.customer_name}</td>
+                        <td class="credit-amount">${formatCreditMoney(req.total_amount)}</td>
+                        <td>${req.status === 'pending' ? '🟡 Pending' : (req.status === 'approved' ? '🟢 Approved' : '🔴 Rejected')}</td>
+                        <td>${req.due_date ? new Date(req.due_date).toLocaleDateString() : '-'}</td>
+                    </tr>`;
                 }
-                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests</td></tr>';
+                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests</tr>';
                 document.getElementById('creditLoading').style.display = 'none';
                 document.getElementById('creditTable').style.display = 'table';
             }
