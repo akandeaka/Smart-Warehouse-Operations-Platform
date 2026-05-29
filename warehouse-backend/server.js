@@ -73,9 +73,11 @@ app.get('/health', async (req, res) => {
         }
     });
 });
+
 app.get('/api/version', (req, res) => {
     res.json({ version: 'FINAL_V2', columns: 'approved_and_rejected' });
 });
+
 // ============================================================
 // LOGIN
 // ============================================================
@@ -399,7 +401,7 @@ app.get('/api/approvals/my-requests', authMiddleware, async (req, res) => {
     }
 });
 
-// Approve credit - USING approved COLUMN (TINYINT) - NO ENUM ISSUES
+// Approve credit - SIMPLIFIED VERSION (stock updates commented out for testing)
 app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     let connection;
     try {
@@ -416,7 +418,7 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
             await connection.query('UPDATE sales_orders SET total_amount = ? WHERE id = ?', [approved_amount, order_id]);
         }
         
-        // USING approved COLUMN (TINYINT) - This will NEVER give ENUM error
+        // ONLY update credit_approvals - remove the other updates temporarily
         await connection.query(
             'UPDATE credit_approvals SET approved = 1, approved_by = ?, approved_at = NOW() WHERE id = ?',
             [req.user.id, approval_id]
@@ -427,6 +429,8 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
             [order_id]
         );
         
+        // COMMENTED OUT to isolate the error
+        /*
         const [items] = await connection.query(
             `SELECT oi.product_id, oi.quantity, oi.cost_of_goods, o.team_id 
              FROM sales_order_items oi 
@@ -449,6 +453,7 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
                 [item.product_id, -item.quantity, item.cost_of_goods, order_id, item.team_id, req.user.id]
             );
         }
+        */
         
         await connection.commit();
         res.json({ success: true, message: 'Credit approved successfully' });
