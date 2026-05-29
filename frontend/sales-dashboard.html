@@ -148,7 +148,7 @@
                 <tr><th>Time</th><th>Customer</th><th>Product</th><th>Quantity</th><th>Amount</th><th>Type</th><th>Status</th></tr>
             </thead>
             <tbody id="salesHistoryBody"></tbody>
-        </tr>
+        </table>
     </div>
 
     <button id="submitDayBtn" class="submit-btn" onclick="submitDaySales()">Submit Final Sales for the Day</button>
@@ -279,7 +279,7 @@
                 loadingDiv.style.display = 'none';
                 container.style.display = 'grid';
             } else {
-                loadingDiv.innerHTML = 'Failed to load allocated stock: ' + (data?.message || 'Unknown error');
+                loadingDiv.innerHTML = 'Failed to load allocated stock';
             }
         }
 
@@ -434,7 +434,7 @@
                                     html += '<td>' + sale.customer_name + '</td>';
                                     html += '<td>' + item.product_name + '</td>';
                                     html += '<td>' + item.quantity + '</td>';
-                                    html += '<td>' + formatMoney(itemAmount) + '</tr>';
+                                    html += '<td>' + formatMoney(itemAmount) + '</td>';
                                     html += '<td>Credit' + '</td>';
                                     html += '<td class="status-pending-text">Pending Approval' + '</td>';
                                     html += '</tr>';
@@ -461,7 +461,7 @@
                                     html += '<td>' + formatMoney(itemAmount) + '</td>';
                                     html += '<td>Bank Transfer' + '</td>';
                                     html += '<td class="status-approved">Completed' + '</td>';
-                                    html += '</tr>';
+                                    html += '</table>';
                                 }
                             }
                         }
@@ -473,7 +473,7 @@
                     document.getElementById('itemsSold').innerHTML = totalItems;
                     document.getElementById('creditTotal').innerHTML = formatCreditMoney(totalCredit);
                     
-                    document.getElementById('salesHistoryBody').innerHTML = html || '<tr><td colspan="7">No transactions yet这些</td>';
+                    document.getElementById('salesHistoryBody').innerHTML = html || '<td><td colspan="7">No transactions yet</tr>';
                     document.getElementById('historyLoading').style.display = 'none';
                     document.getElementById('historyTable').style.display = 'table';
                 }
@@ -498,7 +498,7 @@
                     html += '<td>' + (req.due_date ? new Date(req.due_date).toLocaleDateString() : '-') + '</td>';
                     html += '</tr>';
                 }
-                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests这些</td>';
+                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests</tr>';
                 document.getElementById('creditLoading').style.display = 'none';
                 document.getElementById('creditTable').style.display = 'table';
             }
