@@ -211,171 +211,76 @@
         }
 
         async function loadAllocatedStock() {
-            const loadingDiv = document.getElementById('stockLoading');
-            const container = document.getElementById('allocatedStock');
-            const select = document.getElementById('productSelect');
-            const confirmBtn = document.getElementById('confirmReceiptBtn');
-            const allocationSummary = document.getElementById('allocationSummary');
-            
-            loadingDiv.style.display = 'block';
-            container.style.display = 'none';
-            
-            if (!currentUser.team_id) {
-                loadingDiv.innerHTML = 'Error: Team ID not found. Please contact administrator.';
-                return;
-            }
-            
-            const data = await fetchAPI('/sales/team/' + currentUser.team_id + '/allocations');
-            
-            if (data && data.success) {
-                allocatedProducts = data.data.filter(function(p) { return p.remaining_qty > 0; });
-                const today = new Date().toISOString().split('T')[0];
-                const savedConfirmation = localStorage.getItem('confirmed_' + currentUser.team_id + '_' + today);
-                isConfirmed = savedConfirmation === 'true';
+    const loadingDiv = document.getElementById('stockLoading');
+    const container = document.getElementById('allocatedStock');
+    const select = document.getElementById('productSelect');
+    const confirmBtn = document.getElementById('confirmReceiptBtn');
+    const allocationSummary = document.getElementById('allocationSummary');
+    
+    loadingDiv.style.display = 'block';
+    container.style.display = 'none';
+    
+    // Use hardcoded team_id 1 for now to test
+    const teamId = currentUser.team_id || 1;
+    const data = await fetchAPI('/sales/team/' + teamId + '/allocations');
+    
+    if (data && data.success) {
+        allocatedProducts = data.data.filter(function(p) { return p.remaining_qty > 0; });
+        const today = new Date().toISOString().split('T')[0];
+        const savedConfirmation = localStorage.getItem('confirmed_' + teamId + '_' + today);
+        isConfirmed = savedConfirmation === 'true';
 
-                if (allocatedProducts.length === 0) {
-                    container.innerHTML = '<p style="text-align:center; color:#28a745;">All goods sold for today. Thank you!</p>';
-                    confirmBtn.style.display = 'none';
-                    allocationSummary.style.display = 'none';
-                    enableSelling(false);
-                } else {
-                    let totalValue = 0;
-                    let html = '';
-                    let selectHtml = '<option value="">Select Product</option>';
-                    
-                    for (var i = 0; i < allocatedProducts.length; i++) {
-                        var p = allocatedProducts[i];
-                        totalValue += p.remaining_qty * p.selling_price;
-                        html += '<div class="product-item"><h4>' + p.product_name + '</h4><div class="stock">Available: ' + p.remaining_qty + ' units</div><div class="price">' + formatMoney(p.selling_price) + ' per unit</div><div class="total-value">Total Value: ' + formatMoney(p.remaining_qty * p.selling_price) + '</div></div>';
-                        selectHtml += '<option value="' + p.id + '" data-price="' + p.selling_price + '">' + p.product_name + ' - ' + formatMoney(p.selling_price) + ' (' + p.remaining_qty + ' left)</option>';
-                    }
-                    
-                    container.innerHTML = html;
-                    document.getElementById('productSelect').innerHTML = selectHtml;
-                    document.getElementById('totalAllocatedValue').innerHTML = formatMoney(totalValue);
-                    allocationSummary.style.display = 'block';
-
-                    if (isConfirmed) {
-                        document.getElementById('confirmationStatus').innerHTML = 'Confirmed';
-                        document.getElementById('confirmationStatus').className = 'status-confirmed';
-                        confirmBtn.style.display = 'none';
-                        enableSelling(true);
-                    } else {
-                        document.getElementById('confirmationStatus').innerHTML = 'Not Confirmed - Must confirm goods before selling';
-                        document.getElementById('confirmationStatus').className = 'status-pending';
-                        confirmBtn.style.display = 'block';
-                        enableSelling(false);
-                        document.getElementById('cashSales').innerHTML = '₦0';
-                        document.getElementById('transferSales').innerHTML = '₦0';
-                        document.getElementById('totalSales').innerHTML = '₦0';
-                        document.getElementById('itemsSold').innerHTML = '0';
-                        document.getElementById('creditTotal').innerHTML = '-₦0';
-                    }
-                }
-                loadingDiv.style.display = 'none';
-                container.style.display = 'grid';
-            } else {
-                loadingDiv.innerHTML = 'Failed to load allocated stock. Please refresh.';
-            }
-        }
-
-        function enableSelling(enabled) {
-            document.getElementById('sellBtn').disabled = !enabled;
-            document.getElementById('saleDisabledWarning').style.display = enabled ? 'none' : 'block';
-            document.getElementById('customerName').disabled = !enabled;
-            document.getElementById('productSelect').disabled = !enabled;
-            document.getElementById('quantity').disabled = !enabled;
-        }
-
-        async function confirmAllocation() {
+        if (allocatedProducts.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#28a745;">All goods sold for today. Thank you!</p>';
+            confirmBtn.style.display = 'none';
+            allocationSummary.style.display = 'none';
+            enableSelling(false);
+        } else {
             let totalValue = 0;
+            let html = '';
+            let selectHtml = '<option value="">Select Product</option>';
+            
             for (var i = 0; i < allocatedProducts.length; i++) {
-                totalValue += allocatedProducts[i].remaining_qty * allocatedProducts[i].selling_price;
+                var p = allocatedProducts[i];
+                var productTotal = p.remaining_qty * parseFloat(p.selling_price);
+                totalValue += productTotal;
+                html += '<div class="product-item">';
+                html += '<h4>' + p.product_name + '</h4>';
+                html += '<div class="stock">Available: ' + p.remaining_qty + ' units</div>';
+                html += '<div class="price">' + formatMoney(parseFloat(p.selling_price)) + ' per unit</div>';
+                html += '<div class="total-value">Total Value: ' + formatMoney(productTotal) + '</div>';
+                html += '</div>';
+                selectHtml += '<option value="' + p.id + '" data-price="' + p.selling_price + '">' + p.product_name + ' - ' + formatMoney(p.selling_price) + ' (' + p.remaining_qty + ' left)</option>';
             }
             
-            if (confirm('Confirm you have received ALL physical goods valued at ' + formatMoney(totalValue) + '?\n\nOnce confirmed, you will be able to start selling.')) {
-                const today = new Date().toISOString().split('T')[0];
-                localStorage.setItem('confirmed_' + currentUser.team_id + '_' + today, 'true');
-                isConfirmed = true;
+            container.innerHTML = html;
+            document.getElementById('productSelect').innerHTML = selectHtml;
+            document.getElementById('totalAllocatedValue').innerHTML = formatMoney(totalValue);
+            allocationSummary.style.display = 'block';
+
+            if (isConfirmed) {
                 document.getElementById('confirmationStatus').innerHTML = 'Confirmed';
                 document.getElementById('confirmationStatus').className = 'status-confirmed';
-                document.getElementById('confirmReceiptBtn').style.display = 'none';
+                confirmBtn.style.display = 'none';
                 enableSelling(true);
-                showMessage('Allocation confirmed! You can now start selling.');
-                loadSalesHistory();
+            } else {
+                document.getElementById('confirmationStatus').innerHTML = 'Not Confirmed - Must confirm goods before selling';
+                document.getElementById('confirmationStatus').className = 'status-pending';
+                confirmBtn.style.display = 'block';
+                enableSelling(false);
+                document.getElementById('cashSales').innerHTML = '₦0';
+                document.getElementById('transferSales').innerHTML = '₦0';
+                document.getElementById('totalSales').innerHTML = '₦0';
+                document.getElementById('itemsSold').innerHTML = '0';
+                document.getElementById('creditTotal').innerHTML = '-₦0';
             }
         }
-
-        document.querySelectorAll('input[name="paymentMethod"]').forEach(function(radio) {
-            radio.addEventListener('change', function() {
-                document.getElementById('creditDueDateGroup').style.display = this.value === 'credit' ? 'block' : 'none';
-            });
-        });
-
-        document.getElementById('saleForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            if (!isConfirmed) { showMessage('Confirm goods receipt first', true); return; }
-            
-            const customerName = document.getElementById('customerName').value;
-            if (!customerName) { showMessage('Customer name is required', true); return; }
-            
-            const productSelect = document.getElementById('productSelect');
-            const productId = parseInt(productSelect.value);
-            const quantity = parseInt(document.getElementById('quantity').value);
-            const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
-            const product = allocatedProducts.find(function(p) { return p.id === productId; });
-            
-            if (!productId || !product) { showMessage('Please select a product', true); return; }
-            if (quantity < 1 || isNaN(quantity)) { showMessage('Please enter a valid quantity', true); return; }
-            if (quantity > product.remaining_qty) { showMessage('Only ' + product.remaining_qty + ' units available', true); return; }
-            
-            const totalAmount = quantity * product.selling_price;
-            const today = new Date().toISOString().split('T')[0];
-            
-            const body = {
-                team_id: currentUser.team_id,
-                customer_name: customerName,
-                customer_phone: document.getElementById('customerPhone').value || '',
-                items: [{ product_id: productId, quantity: quantity, unit_price: product.selling_price }],
-                payment_method: paymentMethod,
-                sales_date: today
-            };
-            
-            if (paymentMethod === 'credit') {
-                const dueDate = document.getElementById('creditDueDate').value;
-                if (!dueDate) { showMessage('Please select expected payment date for credit sale', true); return; }
-                body.credit_due_date = dueDate;
-            }
-            
-            showMessage('Processing sale...');
-            
-            const result = await fetchAPI('/sales', { method: 'POST', body: JSON.stringify(body) });
-            
-            if (result && result.success) {
-                let successMsg = '';
-                if (paymentMethod === 'credit') {
-                    successMsg = 'Credit sale of ' + formatMoney(totalAmount) + ' recorded. Pending manager approval.';
-                } else if (paymentMethod === 'bank_transfer') {
-                    successMsg = 'Transfer sale of ' + formatMoney(totalAmount) + ' recorded.';
-                } else {
-                    successMsg = 'Cash sale of ' + formatMoney(totalAmount) + ' recorded.';
-                }
-                showMessage(successMsg);
-                
-                document.getElementById('customerName').value = '';
-                document.getElementById('customerPhone').value = '';
-                document.getElementById('quantity').value = '';
-                document.getElementById('productSelect').value = '';
-                document.getElementById('creditDueDate').value = '';
-                
-                await loadAllocatedStock();
-                await loadSalesHistory();
-                await loadCreditRequests();
-            } else {
-                showMessage('Failed to record sale: ' + (result?.message || 'Unknown error'), true);
-            }
-        });
-
+        loadingDiv.style.display = 'none';
+        container.style.display = 'grid';
+    } else {
+        loadingDiv.innerHTML = 'Failed to load allocated stock: ' + (data?.message || 'Unknown error');
+    }
+}
         async function loadSalesHistory() {
             const data = await fetchAPI('/sales/team/' + currentUser.team_id + '/history');
             if (data && data.success) {
@@ -419,6 +324,12 @@
                                 html += '<td>Credit</td>';
                                 html += '<td class="status-rejected">Declined</td>';
                                 html += '</tr>';
+                                function formatMoney(amount) {
+    let num = parseFloat(amount);
+    if (isNaN(num)) return '₦0';
+    if (num === 0) return '₦0';
+    return '₦' + Math.round(num).toLocaleString('en-NG');
+}
                             } else if (isCredit && !isApproved && !isRejected) {
                                 html += '<tr>';
                                 html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
