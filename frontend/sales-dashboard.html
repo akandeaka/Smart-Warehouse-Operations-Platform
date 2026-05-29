@@ -157,6 +157,13 @@
         const API_URL = 'https://warehouse-backend-new-u9rq.onrender.com/api';
         let authToken = localStorage.getItem('token');
         let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+
+        // FIX: Force team_id for alpha_lead if missing
+        if (currentUser.username === 'alpha_lead' && !currentUser.team_id) {
+            currentUser.team_id = 1;
+            localStorage.setItem('user', JSON.stringify(currentUser));
+        }
+
         let allocatedProducts = [];
         let isConfirmed = false;
         let refreshInterval = null;
@@ -213,6 +220,11 @@
             loadingDiv.style.display = 'block';
             container.style.display = 'none';
             
+            if (!currentUser.team_id) {
+                loadingDiv.innerHTML = 'Error: Team ID not found. Please contact administrator.';
+                return;
+            }
+            
             const data = await fetchAPI('/sales/team/' + currentUser.team_id + '/allocations');
             
             if (data && data.success) {
@@ -262,6 +274,8 @@
                 }
                 loadingDiv.style.display = 'none';
                 container.style.display = 'grid';
+            } else {
+                loadingDiv.innerHTML = 'Failed to load allocated stock. Please refresh.';
             }
         }
 
@@ -450,7 +464,7 @@
                 document.getElementById('itemsSold').innerHTML = totalItems;
                 document.getElementById('creditTotal').innerHTML = formatCreditMoney(totalCredit);
                 
-                document.getElementById('salesHistoryBody').innerHTML = html || '<tr><td colspan="7">No transactions yet</td></tr>';
+                document.getElementById('salesHistoryBody').innerHTML = html || '<tr><td colspan="7">No transactions yet这些</td>';
                 document.getElementById('historyLoading').style.display = 'none';
                 document.getElementById('historyTable').style.display = 'table';
             }
@@ -472,7 +486,7 @@
                     html += '<td>' + (req.due_date ? new Date(req.due_date).toLocaleDateString() : '-') + '</td>';
                     html += '</tr>';
                 }
-                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests</td></tr>';
+                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests这些</td>';
                 document.getElementById('creditLoading').style.display = 'none';
                 document.getElementById('creditTable').style.display = 'table';
             }
@@ -516,22 +530,5 @@
             loadCreditRequests();
         }
     </script>
-
-let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-
-// FIX: Force team_id for alpha_lead
-if (currentUser.username === 'alpha_lead' && !currentUser.team_id) {
-    currentUser.team_id = 1;
-    // Update localStorage with the corrected team_id
-    localStorage.setItem('user', JSON.stringify(currentUser));
-}
+</body>
 </html>
-const API_URL = 'https://warehouse-backend-new-u9rq.onrender.com/api';
-let authToken = localStorage.getItem('token');
-let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-
-// FIX: Force team_id for alpha_lead if missing
-if (currentUser.username === 'alpha_lead' && !currentUser.team_id) {
-    currentUser.team_id = 1;
-    localStorage.setItem('user', JSON.stringify(currentUser));
-}
