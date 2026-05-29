@@ -3,150 +3,193 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Warehouse Manager Dashboard</title>
+    <title>Sales Team Dashboard</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; padding: 20px; }
-        .stat-card { background: white; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .stat-card .value { font-size: 28px; font-weight: bold; color: #667eea; }
-        .tabs { background: white; padding: 0 20px; display: flex; gap: 5px; border-bottom: 2px solid #ddd; flex-wrap: wrap; }
-        .tab { padding: 12px 24px; cursor: pointer; border: none; background: none; font-size: 16px; }
-        .tab.active { border-bottom: 3px solid #667eea; color: #667eea; font-weight: bold; }
-        .panel { display: none; padding: 20px; }
-        .panel.active { display: block; }
-        table { width: 100%; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        th { background: #f8f9fa; padding: 12px; text-align: left; }
-        td { padding: 12px; border-top: 1px solid #eee; }
-        button.approve-btn { background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
-        button.reject-btn { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
-        .close-day-btn { background: #ffc107; color: #333; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; }
+        .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; padding: 20px; }
+        .stat-card { background: white; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .stat-card .label { font-size: 12px; color: #666; margin-bottom: 5px; }
+        .stat-card .value { font-size: 22px; font-weight: bold; color: #28a745; }
+        .stat-card .credit-value { font-size: 22px; font-weight: bold; color: #dc3545; }
+        .card { background: white; padding: 20px; margin: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px; }
+        .product-item { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fafafa; }
+        .product-item h4 { color: #333; margin-bottom: 10px; }
+        .product-item .price { color: #28a745; font-weight: bold; font-size: 20px; }
+        .product-item .stock { color: #666; font-size: 14px; margin: 5px 0; }
+        .product-item .total-value { color: #667eea; font-weight: bold; margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; }
+        .confirm-btn { background: #28a745; color: white; border: none; padding: 15px 25px; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; width: 100%; margin-top: 15px; }
+        .confirm-btn:hover { background: #218838; }
+        .submit-btn { background: #ffc107; color: #333; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; width: calc(100% - 40px); margin: 0 20px 20px 20px; }
+        .submit-btn:hover { background: #e0a800; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 500; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .payment-options { display: flex; gap: 15px; margin: 15px 0; flex-wrap: wrap; }
+        .payment-options label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+        button.sell-btn { background: #28a745; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
+        button.sell-btn:disabled { background: #ccc; cursor: not-allowed; }
         .logout-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; }
+        .success-msg { background: #d4edda; color: #155724; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
+        .error-msg { background: #f8d7da; color: #721c24; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
+        .warning-msg { background: #fff3cd; color: #856404; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
+        table { width: 100%; margin-top: 15px; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f8f9fa; }
         .loading { text-align: center; padding: 40px; color: #666; }
-        .success-msg { background: #d4edda; color: #155724; padding: 12px; margin: 20px; border-radius: 5px; display: none; }
-        .error-msg { background: #f8d7da; color: #721c24; padding: 12px; margin: 20px; border-radius: 5px; display: none; }
+        .allocation-summary { background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .total-goods-value { font-size: 24px; font-weight: bold; color: #28a745; }
+        .status-confirmed { color: #28a745; font-weight: bold; }
+        .status-pending { color: #dc3545; font-weight: bold; }
+        .credit-row { background-color: #fff0f0; border-left: 3px solid #dc3545; }
         .credit-amount { color: #dc3545; font-weight: bold; }
         .credit-amount::before { content: "- "; }
+        .status-approved { color: #28a745; font-weight: bold; }
+        .status-rejected { color: #dc3545; font-weight: bold; }
+        .status-pending-text { color: #ffc107; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Warehouse Manager Dashboard</h1>
+        <h1>💰 Sales Team Dashboard</h1>
         <div class="logout-btn" onclick="logout()">Logout</div>
     </div>
 
     <div id="successMsg" class="success-msg"></div>
     <div id="errorMsg" class="error-msg"></div>
+    <div id="warningMsg" class="warning-msg"></div>
 
     <div class="stats-container">
         <div class="stat-card">
-            <div>Total Products</div>
-            <div class="value" id="totalProducts">0</div>
+            <div class="label">Cash Sales</div>
+            <div class="value" id="cashSales">₦0</div>
         </div>
         <div class="stat-card">
-            <div>Warehouse Value (Naira)</div>
-            <div class="value" id="totalValue">NGN 0</div>
+            <div class="label">Transfer Sales</div>
+            <div class="value" id="transferSales">₦0</div>
         </div>
         <div class="stat-card">
-            <div>Pending Approvals</div>
-            <div class="value" id="pendingApprovals">0</div>
+            <div class="label">Total Sales (Cash + Transfer)</div>
+            <div class="value" id="totalSales">₦0</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Items Sold</div>
+            <div class="value" id="itemsSold">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Credit Sales</div>
+            <div class="credit-value" id="creditTotal">-₦0</div>
         </div>
     </div>
 
-    <div class="tabs">
-        <button class="tab" onclick="showPanel('allocate')">Allocate Stock</button>
-        <button class="tab" onclick="showPanel('stock')">Stock Management</button>
-        <button class="tab" onclick="showPanel('approvals')">Credit Approvals</button>
-        <button class="tab" onclick="showPanel('returns')">Pending Returns</button>
-        <button class="tab" onclick="showPanel('reports')">Daily Reports</button>
+    <div class="card">
+        <h3>📦 My Allocated Stock (Today)</h3>
+        <div id="allocationSummary" class="allocation-summary" style="display: none;">
+            <h4>📋 Allocation Summary</h4>
+            <div>Total Goods Value: <span id="totalAllocatedValue" class="total-goods-value">₦0</span></div>
+            <div>Status: <span id="confirmationStatus" class="status-pending">Not Confirmed</span></div>
+        </div>
+        <div id="stockLoading" class="loading">Loading your allocated stock...</div>
+        <div id="allocatedStock" class="product-grid" style="display: none;"></div>
+        <button id="confirmReceiptBtn" class="confirm-btn" onclick="confirmAllocation()" style="display: none;">Confirm Receipt of All Goods</button>
     </div>
 
-    <div id="allocatePanel" class="panel">
-        <div class="form-card">
-            <h3>New Allocation</h3>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Select Team</label>
-                    <select id="allocateTeamId"></select>
-                </div>
-                <div class="form-group">
-                    <label>Select Product</label>
-                    <select id="allocateProductId"></select>
-                </div>
-                <div class="form-group">
-                    <label>Quantity</label>
-                    <input type="number" id="allocateQuantity" min="1" placeholder="Enter quantity">
-                </div>
-                <div class="form-group">
-                    <button class="allocate-btn" onclick="allocateStock()">Allocate Stock</button>
-                </div>
+    <div class="card">
+        <h3>➕ Record New Sale</h3>
+        <div id="saleDisabledWarning" class="warning-msg" style="display: none;">You must confirm receipt of goods before selling.</div>
+        <form id="saleForm">
+            <div class="form-group">
+                <label>Customer Name *</label>
+                <input type="text" id="customerName" required>
             </div>
-        </div>
-        <h3>Today's Allocations</h3>
-        <div id="allocationsLoading" class="loading">Loading allocations...</div>
-        <table id="allocationsTable" style="display:none">
-            <thead><tr><th>Team Name</th><th>Product Name</th><th>Allocated</th><th>Sold</th><th>Remaining</th></tr></thead>
-            <tbody id="allocationsTableBody"></tbody>
-        </table>
+            <div class="form-group">
+                <label>Customer Phone</label>
+                <input type="tel" id="customerPhone">
+            </div>
+            <div class="form-group">
+                <label>Product *</label>
+                <select id="productSelect" required></select>
+            </div>
+            <div class="form-group">
+                <label>Quantity *</label>
+                <input type="number" id="quantity" min="1" required>
+            </div>
+            <div class="form-group" id="creditDueDateGroup" style="display: none;">
+                <label>Expected Payment Date</label>
+                <input type="date" id="creditDueDate">
+            </div>
+            <div class="payment-options">
+                <label><input type="radio" name="paymentMethod" value="cash" checked> 💵 Cash</label>
+                <label><input type="radio" name="paymentMethod" value="bank_transfer"> 🏦 Bank Transfer</label>
+                <label><input type="radio" name="paymentMethod" value="credit"> 📝 Credit (Needs Approval)</label>
+            </div>
+            <button type="submit" class="sell-btn" id="sellBtn" disabled>Sell Now</button>
+        </form>
     </div>
 
-    <div id="stockPanel" class="panel">
-        <div id="stockLoading" class="loading">Loading stock data...</div>
-        <table id="stockTable" style="display:none">
-            <thead><tr><th>Product Name</th><th>Quantity</th><th>Unit Cost</th><th>Total Value</th></tr></thead>
-            <tbody id="stockTableBody"></tbody>
-        </table>
-    </div>
-
-    <div id="approvalsPanel" class="panel">
-        <div id="approvalsLoading" class="loading">Loading pending credit approvals...</div>
-        <table id="approvalsTable" style="display:none">
+    <div class="card">
+        <h3>📋 My Credit Requests</h3>
+        <div id="creditLoading" class="loading">Loading credit requests...</div>
+        <table id="creditTable" style="display: none;">
             <thead>
-                <tr><th>Order Number</th><th>Customer Name</th><th>Original Amount</th><th>Modified Amount</th><th>Requested By</th><th>Action</th></tr>
+                <tr><th>Order Number</th><th>Customer Name</th><th>Amount</th><th>Status</th><th>Due Date</th></tr>
             </thead>
-            <tbody id="approvalsTableBody"></tbody>
+            <tbody id="creditTableBody"></tbody>
         </table>
     </div>
 
-    <div id="returnsPanel" class="panel">
-        <div id="returnsLoading" class="loading">Loading pending returns...</div>
-        <table id="returnsTable" style="display:none">
-            <thead><tr><th>Team Name</th><th>Customer Name</th><th>Product Name</th><th>Quantity</th><th>Amount</th><th>Payment Type</th><th>Action</th></tr></thead>
-            <tbody id="returnsTableBody"></tbody>
+    <div class="card">
+        <h3>📊 Today's Transaction History</h3>
+        <div id="historyLoading" class="loading">Loading history...</div>
+        <table id="historyTable" style="display: none;">
+            <thead>
+                <tr><th>Time</th><th>Customer</th><th>Product</th><th>Quantity</th><th>Amount</th><th>Type</th><th>Status</th></tr>
+            </thead>
+            <tbody id="salesHistoryBody"></tbody>
         </table>
     </div>
 
-    <div id="reportsPanel" class="panel">
-        <button class="close-day-btn" onclick="closeDay()">Close Day (5 PM)</button>
-        <div id="reportLoading" class="loading">Loading daily report...</div>
-        <table id="salesReportTable" style="display:none">
-            <thead><tr><th>Team Name</th><th>Orders</th><th>Cash Sales</th><th>Transfer Sales</th><th>Credit Sales</th><th>Total Sales</th></tr></thead>
-            <tbody id="salesReportBody"></tbody>
-        </table>
-    </div>
+    <button id="submitDayBtn" class="submit-btn" onclick="submitDaySales()">Submit Final Sales for the Day</button>
 
     <script>
         const API_URL = 'https://warehouse-backend-new-u9rq.onrender.com/api';
         let authToken = localStorage.getItem('token');
         let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        let allocatedProducts = [];
+        let isConfirmed = false;
+        let refreshInterval = null;
 
         function formatMoney(amount) {
-            if (amount === undefined || amount === null || isNaN(amount)) return 'NGN 0';
-            return 'NGN ' + Math.round(Number(amount)).toLocaleString('en-NG');
+            if (amount === undefined || amount === null || isNaN(amount)) return '₦0';
+            if (amount === 0) return '₦0';
+            return '₦' + Math.round(amount).toLocaleString('en-NG');
         }
 
         function formatCreditMoney(amount) {
-            if (amount === undefined || amount === null || isNaN(amount)) return '-NGN 0';
-            if (Number(amount) === 0) return '-NGN 0';
-            return '-NGN ' + Math.round(Number(amount)).toLocaleString('en-NG');
+            if (amount === undefined || amount === null || isNaN(amount)) return '-₦0';
+            if (amount === 0) return '-₦0';
+            return '-₦' + Math.round(amount).toLocaleString('en-NG');
         }
 
-        function showMessage(msg, isError = false) {
-            const msgDiv = document.getElementById(isError ? 'errorMsg' : 'successMsg');
+        function getStatusText(status) {
+            if (status === 'approved') return '✅ Approved';
+            if (status === 'rejected') return '❌ Declined';
+            return '⏳ Pending';
+        }
+
+        function getStatusClass(status) {
+            if (status === 'approved') return 'status-approved';
+            if (status === 'rejected') return 'status-rejected';
+            return 'status-pending-text';
+        }
+
+        function showMessage(msg, isError = false, isWarning = false) {
+            let msgDiv = isError ? document.getElementById('errorMsg') : (isWarning ? document.getElementById('warningMsg') : document.getElementById('successMsg'));
             msgDiv.innerHTML = msg;
             msgDiv.style.display = 'block';
-            setTimeout(function() { msgDiv.style.display = 'none'; }, 3000);
+            setTimeout(function() { msgDiv.style.display = 'none'; }, 4000);
         }
 
         async function fetchAPI(endpoint, options = {}) {
@@ -160,257 +203,318 @@
             } catch (error) { showMessage('Network error: ' + error.message, true); return null; }
         }
 
-        async function loadTeams() {
-            const data = await fetchAPI('/teams');
-            if (data && data.success) {
-                let html = '<option value="">Select Team</option>';
-                for (let i = 0; i < data.data.length; i++) {
-                    html += '<option value="' + data.data[i].id + '">' + data.data[i].team_name + '</option>';
-                }
-                document.getElementById('allocateTeamId').innerHTML = html;
-            }
-        }
-
-        async function loadProductsForAllocation() {
-            const data = await fetchAPI('/products');
-            if (data && data.success) {
-                let html = '<option value="">Select Product</option>';
-                for (let i = 0; i < data.data.length; i++) {
-                    if (data.data[i].current_qty > 0) {
-                        html += '<option value="' + data.data[i].id + '">' + data.data[i].product_name + ' (' + data.data[i].current_qty + ' left)</option>';
-                    }
-                }
-                document.getElementById('allocateProductId').innerHTML = html;
-            }
-        }
-
-        async function allocateStock() {
-            const teamId = document.getElementById('allocateTeamId').value;
-            const productId = document.getElementById('allocateProductId').value;
-            const quantity = document.getElementById('allocateQuantity').value;
+        async function loadAllocatedStock() {
+            const loadingDiv = document.getElementById('stockLoading');
+            const container = document.getElementById('allocatedStock');
+            const select = document.getElementById('productSelect');
+            const confirmBtn = document.getElementById('confirmReceiptBtn');
+            const allocationSummary = document.getElementById('allocationSummary');
             
-            if (!teamId || !productId || quantity < 1) { showMessage('Please fill all fields', true); return; }
+            loadingDiv.style.display = 'block';
+            container.style.display = 'none';
             
-            const result = await fetchAPI('/allocations', {
-                method: 'POST',
-                body: JSON.stringify({ team_id: parseInt(teamId), product_id: parseInt(productId), quantity: parseInt(quantity), allocated_date: new Date().toISOString().split('T')[0] })
-            });
+            const data = await fetchAPI('/sales/team/' + currentUser.team_id + '/allocations');
             
-            if (result && result.success) {
-                showMessage(result.message);
-                document.getElementById('allocateQuantity').value = '';
-                loadTodayAllocations();
-                loadProducts();
-                loadProductsForAllocation();
-            } else {
-                showMessage(result?.message || 'Allocation failed', true);
-            }
-        }
-
-        async function loadTodayAllocations() {
-            const data = await fetchAPI('/allocations/today');
             if (data && data.success) {
-                let html = '';
-                for (let i = 0; i < data.data.length; i++) {
-                    const a = data.data[i];
-                    const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
-                    html += '<tr>';
-                    html += '<td>' + a.team_name + '</td>';
-                    html += '<td>' + a.product_name + '</td>';
-                    html += '<td>' + a.allocated_qty + '</td>';
-                    html += '<td>' + a.sold_qty + '</td>';
-                    html += '<td>' + remaining + '</td>';
-                    html += '</tr>';
-                }
-                document.getElementById('allocationsTableBody').innerHTML = html || '<tr><td colspan="5">No allocations today</td></tr>';
-                document.getElementById('allocationsLoading').style.display = 'none';
-                document.getElementById('allocationsTable').style.display = 'table';
-            }
-        }
+                allocatedProducts = data.data.filter(function(p) { return p.remaining_qty > 0; });
+                const today = new Date().toISOString().split('T')[0];
+                const savedConfirmation = localStorage.getItem('confirmed_' + currentUser.team_id + '_' + today);
+                isConfirmed = savedConfirmation === 'true';
 
-        async function loadProducts() {
-            const data = await fetchAPI('/products');
-            if (data && data.success) {
-                let totalValue = 0, html = '';
-                for (let i = 0; i < data.data.length; i++) {
-                    const p = data.data[i];
-                    totalValue += p.current_qty * p.unit_cost;
-                    html += '<tr>';
-                    html += '<td>' + p.product_name + '</td>';
-                    html += '<td>' + p.current_qty + '</td>';
-                    html += '<td>' + formatMoney(p.unit_cost) + '</td>';
-                    html += '<td>' + formatMoney(p.current_qty * p.unit_cost) + '</td>';
-                    html += '</tr>';
-                }
-                document.getElementById('stockTableBody').innerHTML = html;
-                document.getElementById('totalProducts').innerText = data.data.length;
-                document.getElementById('totalValue').innerHTML = formatMoney(totalValue);
-                document.getElementById('stockLoading').style.display = 'none';
-                document.getElementById('stockTable').style.display = 'table';
-            }
-        }
-
-        async function loadPendingApprovals() {
-            const data = await fetchAPI('/approvals/pending');
-            if (data && data.success) {
-                document.getElementById('pendingApprovals').innerText = data.data.length;
-                let html = '';
-                if (data.data.length === 0) {
-                    html = '</table><td colspan="6">No pending credit approvals</td>';
+                if (allocatedProducts.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; color:#28a745;">All goods sold for today. Thank you!</p>';
+                    confirmBtn.style.display = 'none';
+                    allocationSummary.style.display = 'none';
+                    enableSelling(false);
                 } else {
-                    for (let i = 0; i < data.data.length; i++) {
-                        const a = data.data[i];
-                        const approvalId = a.id;
-                        html += '<tr>';
-                        html += '<td>' + a.order_number + '</td>';
-                        html += '<td>' + a.customer_name + '</td>';
-                        html += '<td>' + formatMoney(a.total_amount) + '</td>';
-                        html += '<td><input type="number" id="amount_' + approvalId + '" value="' + a.total_amount + '" step="1000" style="width:120px">这些';
-                        html += '<td>' + (a.requested_by || 'Unknown') + '</td>';
-                        html += '<td>';
-                        html += '<button class="approve-btn" onclick="approveCredit(' + approvalId + ')">Approve</button>';
-                        html += '<button class="reject-btn" onclick="rejectCredit(' + approvalId + ')">Reject</button>';
-                        html += '</td>';
-                        html += '</tr>';
+                    let totalValue = 0;
+                    let html = '';
+                    let selectHtml = '<option value="">Select Product</option>';
+                    
+                    for (var i = 0; i < allocatedProducts.length; i++) {
+                        var p = allocatedProducts[i];
+                        totalValue += p.remaining_qty * p.selling_price;
+                        html += '<div class="product-item"><h4>' + p.product_name + '</h4><div class="stock">Available: ' + p.remaining_qty + ' units</div><div class="price">' + formatMoney(p.selling_price) + ' per unit</div><div class="total-value">Total Value: ' + formatMoney(p.remaining_qty * p.selling_price) + '</div></div>';
+                        selectHtml += '<option value="' + p.id + '" data-price="' + p.selling_price + '">' + p.product_name + ' - ' + formatMoney(p.selling_price) + ' (' + p.remaining_qty + ' left)</option>';
+                    }
+                    
+                    container.innerHTML = html;
+                    document.getElementById('productSelect').innerHTML = selectHtml;
+                    document.getElementById('totalAllocatedValue').innerHTML = formatMoney(totalValue);
+                    allocationSummary.style.display = 'block';
+
+                    if (isConfirmed) {
+                        document.getElementById('confirmationStatus').innerHTML = 'Confirmed';
+                        document.getElementById('confirmationStatus').className = 'status-confirmed';
+                        confirmBtn.style.display = 'none';
+                        enableSelling(true);
+                    } else {
+                        document.getElementById('confirmationStatus').innerHTML = 'Not Confirmed - Must confirm goods before selling';
+                        document.getElementById('confirmationStatus').className = 'status-pending';
+                        confirmBtn.style.display = 'block';
+                        enableSelling(false);
+                        document.getElementById('cashSales').innerHTML = '₦0';
+                        document.getElementById('transferSales').innerHTML = '₦0';
+                        document.getElementById('totalSales').innerHTML = '₦0';
+                        document.getElementById('itemsSold').innerHTML = '0';
+                        document.getElementById('creditTotal').innerHTML = '-₦0';
                     }
                 }
-                document.getElementById('approvalsTableBody').innerHTML = html;
-                document.getElementById('approvalsLoading').style.display = 'none';
-                document.getElementById('approvalsTable').style.display = 'table';
+                loadingDiv.style.display = 'none';
+                container.style.display = 'grid';
             }
         }
 
-        async function approveCredit(approvalId) {
-            const amountInput = document.getElementById('amount_' + approvalId);
-            const approvedAmount = amountInput ? amountInput.value : null;
+        function enableSelling(enabled) {
+            document.getElementById('sellBtn').disabled = !enabled;
+            document.getElementById('saleDisabledWarning').style.display = enabled ? 'none' : 'block';
+            document.getElementById('customerName').disabled = !enabled;
+            document.getElementById('productSelect').disabled = !enabled;
+            document.getElementById('quantity').disabled = !enabled;
+        }
+
+        async function confirmAllocation() {
+            let totalValue = 0;
+            for (var i = 0; i < allocatedProducts.length; i++) {
+                totalValue += allocatedProducts[i].remaining_qty * allocatedProducts[i].selling_price;
+            }
             
-            if (!confirm('Approve this credit for ' + formatMoney(approvedAmount) + '?')) return;
-            
-            const result = await fetchAPI('/approvals/approve', {
-                method: 'POST',
-                body: JSON.stringify({ approval_id: approvalId, approved_amount: parseFloat(approvedAmount) })
+            if (confirm('Confirm you have received ALL physical goods valued at ' + formatMoney(totalValue) + '?\n\nOnce confirmed, you will be able to start selling.')) {
+                const today = new Date().toISOString().split('T')[0];
+                localStorage.setItem('confirmed_' + currentUser.team_id + '_' + today, 'true');
+                isConfirmed = true;
+                document.getElementById('confirmationStatus').innerHTML = 'Confirmed';
+                document.getElementById('confirmationStatus').className = 'status-confirmed';
+                document.getElementById('confirmReceiptBtn').style.display = 'none';
+                enableSelling(true);
+                showMessage('Allocation confirmed! You can now start selling.');
+                loadSalesHistory();
+            }
+        }
+
+        document.querySelectorAll('input[name="paymentMethod"]').forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                document.getElementById('creditDueDateGroup').style.display = this.value === 'credit' ? 'block' : 'none';
             });
+        });
+
+        document.getElementById('saleForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!isConfirmed) { showMessage('Confirm goods receipt first', true); return; }
+            
+            const customerName = document.getElementById('customerName').value;
+            if (!customerName) { showMessage('Customer name is required', true); return; }
+            
+            const productSelect = document.getElementById('productSelect');
+            const productId = parseInt(productSelect.value);
+            const quantity = parseInt(document.getElementById('quantity').value);
+            const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+            const product = allocatedProducts.find(function(p) { return p.id === productId; });
+            
+            if (!productId || !product) { showMessage('Please select a product', true); return; }
+            if (quantity < 1 || isNaN(quantity)) { showMessage('Please enter a valid quantity', true); return; }
+            if (quantity > product.remaining_qty) { showMessage('Only ' + product.remaining_qty + ' units available', true); return; }
+            
+            const totalAmount = quantity * product.selling_price;
+            const today = new Date().toISOString().split('T')[0];
+            
+            const body = {
+                team_id: currentUser.team_id,
+                customer_name: customerName,
+                customer_phone: document.getElementById('customerPhone').value || '',
+                items: [{ product_id: productId, quantity: quantity, unit_price: product.selling_price }],
+                payment_method: paymentMethod,
+                sales_date: today
+            };
+            
+            if (paymentMethod === 'credit') {
+                const dueDate = document.getElementById('creditDueDate').value;
+                if (!dueDate) { showMessage('Please select expected payment date for credit sale', true); return; }
+                body.credit_due_date = dueDate;
+            }
+            
+            showMessage('Processing sale...');
+            
+            const result = await fetchAPI('/sales', { method: 'POST', body: JSON.stringify(body) });
             
             if (result && result.success) {
-                showMessage('Credit approved successfully!');
-                loadPendingApprovals();
-                loadProducts();
-                loadTodayAllocations();
+                let successMsg = '';
+                if (paymentMethod === 'credit') {
+                    successMsg = 'Credit sale of ' + formatMoney(totalAmount) + ' recorded. Pending manager approval.';
+                } else if (paymentMethod === 'bank_transfer') {
+                    successMsg = 'Transfer sale of ' + formatMoney(totalAmount) + ' recorded.';
+                } else {
+                    successMsg = 'Cash sale of ' + formatMoney(totalAmount) + ' recorded.';
+                }
+                showMessage(successMsg);
+                
+                document.getElementById('customerName').value = '';
+                document.getElementById('customerPhone').value = '';
+                document.getElementById('quantity').value = '';
+                document.getElementById('productSelect').value = '';
+                document.getElementById('creditDueDate').value = '';
+                
+                await loadAllocatedStock();
+                await loadSalesHistory();
+                await loadCreditRequests();
             } else {
-                showMessage('Failed to approve credit: ' + (result?.message || 'Unknown error'), true);
+                showMessage('Failed to record sale: ' + (result?.message || 'Unknown error'), true);
+            }
+        });
+
+        async function loadSalesHistory() {
+            const data = await fetchAPI('/sales/team/' + currentUser.team_id + '/history');
+            if (data && data.success) {
+                let cashTotal = 0;
+                let transferTotal = 0;
+                let totalCredit = 0;
+                let totalItems = 0;
+                let html = '';
+                
+                for (var s = 0; s < data.data.length; s++) {
+                    var sale = data.data[s];
+                    var itemsRes = await fetch(API_URL + '/sales/order/' + sale.id + '/items', { headers: { 'Authorization': 'Bearer ' + authToken } });
+                    var itemsData = await itemsRes.json();
+                    var isCredit = sale.payment_method === 'credit';
+                    var isApproved = sale.approval_status === 'approved';
+                    var isRejected = sale.approval_status === 'rejected';
+                    var isCash = sale.payment_method === 'cash';
+                    var isTransfer = sale.payment_method === 'bank_transfer';
+                    
+                    if (itemsData.success && itemsData.data) {
+                        for (var i = 0; i < itemsData.data.length; i++) {
+                            var item = itemsData.data[i];
+                            if (isCredit && isApproved) {
+                                totalCredit += item.total_price;
+                                html += '<tr class="credit-row">';
+                                html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
+                                html += '<td>' + sale.customer_name + '</td>';
+                                html += '<td>' + item.product_name + '</td>';
+                                html += '<td>' + item.quantity + '</td>';
+                                html += '<td class="credit-amount">' + formatCreditMoney(item.total_price) + '</td>';
+                                html += '<td>Credit</td>';
+                                html += '<td class="status-approved">Approved</td>';
+                                html += '</tr>';
+                            } else if (isCredit && isRejected) {
+                                html += '<tr>';
+                                html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
+                                html += '<td>' + sale.customer_name + '</td>';
+                                html += '<td>' + item.product_name + '</td>';
+                                html += '<td>' + item.quantity + '</td>';
+                                html += '<td>' + formatMoney(item.total_price) + '</td>';
+                                html += '<td>Credit</td>';
+                                html += '<td class="status-rejected">Declined</td>';
+                                html += '</tr>';
+                            } else if (isCredit && !isApproved && !isRejected) {
+                                html += '<tr>';
+                                html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
+                                html += '<td>' + sale.customer_name + '</td>';
+                                html += '<td>' + item.product_name + '</td>';
+                                html += '<td>' + item.quantity + '</td>';
+                                html += '<td>' + formatMoney(item.total_price) + '</td>';
+                                html += '<td>Credit</td>';
+                                html += '<td class="status-pending-text">Pending Approval</td>';
+                                html += '</tr>';
+                            } else if (isCash) {
+                                cashTotal += item.total_price;
+                                totalItems += item.quantity;
+                                html += '<tr>';
+                                html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
+                                html += '<td>' + sale.customer_name + '</td>';
+                                html += '<td>' + item.product_name + '</td>';
+                                html += '<td>' + item.quantity + '</td>';
+                                html += '<td>' + formatMoney(item.total_price) + '</td>';
+                                html += '<td>Cash</td>';
+                                html += '<td class="status-approved">Completed</td>';
+                                html += '</tr>';
+                            } else if (isTransfer) {
+                                transferTotal += item.total_price;
+                                totalItems += item.quantity;
+                                html += '<tr>';
+                                html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
+                                html += '<td>' + sale.customer_name + '</td>';
+                                html += '<td>' + item.product_name + '</td>';
+                                html += '<td>' + item.quantity + '</td>';
+                                html += '<td>' + formatMoney(item.total_price) + '</td>';
+                                html += '<td>Bank Transfer</td>';
+                                html += '<td class="status-approved">Completed</td>';
+                                html += '</tr>';
+                            }
+                        }
+                    }
+                }
+                
+                document.getElementById('cashSales').innerHTML = formatMoney(cashTotal);
+                document.getElementById('transferSales').innerHTML = formatMoney(transferTotal);
+                document.getElementById('totalSales').innerHTML = formatMoney(cashTotal + transferTotal);
+                document.getElementById('itemsSold').innerHTML = totalItems;
+                document.getElementById('creditTotal').innerHTML = formatCreditMoney(totalCredit);
+                
+                document.getElementById('salesHistoryBody').innerHTML = html || '<tr><td colspan="7">No transactions yet</td></tr>';
+                document.getElementById('historyLoading').style.display = 'none';
+                document.getElementById('historyTable').style.display = 'table';
             }
         }
 
-        async function rejectCredit(approvalId) {
-            if (!confirm('Reject this credit request?')) return;
-            
-            const result = await fetchAPI('/approvals/reject', {
-                method: 'POST',
-                body: JSON.stringify({ approval_id: approvalId })
-            });
-            
-            if (result && result.success) {
-                showMessage('Credit rejected successfully!');
-                loadPendingApprovals();
-            } else {
-                showMessage('Failed to reject credit: ' + (result?.message || 'Unknown error'), true);
-            }
-        }
-
-        async function loadPendingReturns() {
-            const data = await fetchAPI('/sales/pending-submissions');
+        async function loadCreditRequests() {
+            const data = await fetchAPI('/approvals/my-requests');
             if (data && data.success) {
                 let html = '';
-                for (let i = 0; i < data.data.length; i++) {
-                    const item = data.data[i];
-                    const isCredit = item.type === 'credit';
-                    html += '<table>';
-                    html += '<td>' + item.team_name + '</td>';
-                    html += '<td>' + item.customer_name + '</td>';
-                    html += '<td>' + item.product_name + '</td>';
-                    html += '<td>' + item.quantity + '</td>';
-                    html += '<td>' + (isCredit ? '-' : '') + formatMoney(item.amount) + '</td>';
-                    html += '<td>' + (isCredit ? 'Credit' : (item.type === 'cash' ? 'Cash' : 'Bank Transfer')) + '</td>';
-                    html += '<td>';
-                    html += '<button class="approve-btn" onclick="confirmReturn(' + item.id + ', \'accept\')">Accept</button>';
-                    html += '<button class="reject-btn" onclick="confirmReturn(' + item.id + ', \'reject\')">Return to Team</button>';
-                    html += '</td>';
+                for (var i = 0; i < data.data.length; i++) {
+                    var req = data.data[i];
+                    var statusText = getStatusText(req.status);
+                    var statusClass = getStatusClass(req.status);
+                    html += '<tr>';
+                    html += '<td>' + req.order_number + '</td>';
+                    html += '<td>' + req.customer_name + '</td>';
+                    html += '<td class="' + (req.status === 'pending' ? 'credit-amount' : '') + '">' + (req.status === 'pending' ? formatCreditMoney(req.total_amount) : formatMoney(req.total_amount)) + '</td>';
+                    html += '<td class="' + statusClass + '">' + statusText + '</td>';
+                    html += '<td>' + (req.due_date ? new Date(req.due_date).toLocaleDateString() : '-') + '</td>';
                     html += '</tr>';
                 }
-                document.getElementById('returnsTableBody').innerHTML = html || '<tr><td colspan="7">No pending returns</td>';
-                document.getElementById('returnsLoading').style.display = 'none';
-                document.getElementById('returnsTable').style.display = 'table';
+                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests</td></tr>';
+                document.getElementById('creditLoading').style.display = 'none';
+                document.getElementById('creditTable').style.display = 'table';
             }
         }
 
-        async function confirmReturn(itemId, action) {
-            const result = await fetchAPI('/sales/confirm-return', {
-                method: 'POST',
-                body: JSON.stringify({ item_id: itemId, action: action })
-            });
-            if (result && result.success) {
-                showMessage(action === 'accept' ? 'Item accepted and moved to warehouse' : 'Item returned to team');
-                loadPendingReturns();
-                loadProducts();
-            }
-        }
-
-        async function loadDailyReport() {
-            const data = await fetchAPI('/reports/daily');
-            if (data && data.success) {
-                let html = '';
-                for (let i = 0; i < data.teams.length; i++) {
-                    const t = data.teams[i];
-                    const creditAmount = t.credit_sales || 0;
-                    html += '</table>';
-                    html += '<td>' + t.team_name + '</td>';
-                    html += '<td>' + (t.num_orders || 0) + '</td>';
-                    html += '<td>' + formatMoney(t.cash_sales || 0) + '</td>';
-                    html += '<td>' + formatMoney(t.transfer_sales || 0) + '</td>';
-                    html += '<td class="' + (creditAmount > 0 ? 'credit-amount' : '') + '">' + (creditAmount > 0 ? '-' : '') + formatMoney(Math.abs(creditAmount)) + '</td>';
-                    html += '<td>' + formatMoney(t.total_sales || 0) + '</td>';
-                    html += '</tr>';
-                }
-                document.getElementById('salesReportBody').innerHTML = html;
-                document.getElementById('reportLoading').style.display = 'none';
-                document.getElementById('salesReportTable').style.display = 'table';
-            }
-        }
-
-        async function closeDay() {
-            if (confirm('Close the day? This will return unsold stock to warehouse.')) {
-                const result = await fetchAPI('/daily/close', { method: 'POST' });
+        async function submitDaySales() {
+            if (confirm('Are you sure you have finished all sales for today? You cannot edit after submission.')) {
+                const result = await fetchAPI('/sales/submit-day', { 
+                    method: 'POST', 
+                    body: JSON.stringify({ team_id: currentUser.team_id, sales_date: new Date().toISOString().split('T')[0] }) 
+                });
                 if (result && result.success) {
-                    showMessage('Day closed successfully');
-                    loadDailyReport();
-                    loadTodayAllocations();
-                    loadProducts();
-                } else {
-                    showMessage('Failed to close day', true);
+                    showMessage('Sales submitted to manager.');
+                    document.getElementById('submitDayBtn').disabled = true;
+                    document.getElementById('sellBtn').disabled = true;
                 }
             }
         }
 
-        function showPanel(name) {
-            document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
-            document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
-            
-            const panels = ['allocate', 'stock', 'approvals', 'returns', 'reports'];
-            const index = panels.indexOf(name);
-            document.querySelectorAll('.tab')[index].classList.add('active');
-            document.getElementById(name + 'Panel').classList.add('active');
-            
-            if (name === 'allocate') { loadTodayAllocations(); loadTeams(); loadProductsForAllocation(); }
-            if (name === 'stock') loadProducts();
-            if (name === 'approvals') loadPendingApprovals();
-            if (name === 'returns') loadPendingReturns();
-            if (name === 'reports') loadDailyReport();
+        function logout() { 
+            localStorage.clear(); 
+            window.location.href = 'login.html'; 
         }
 
-        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+        // Auto-refresh credit requests every 10 seconds to show real-time status changes
+        if (refreshInterval) clearInterval(refreshInterval);
+        refreshInterval = setInterval(function() {
+            if (authToken && window.location.href.indexOf('sales-dashboard') > -1) {
+                loadCreditRequests();
+                loadSalesHistory();
+            }
+        }, 10000);
 
-        if (!authToken) { window.location.href = 'login.html'; } 
-        else { loadProducts(); loadTeams(); loadProductsForAllocation(); }
+        document.getElementById('teamName').innerText = currentUser.full_name ? currentUser.full_name.split(' ')[0] : 'Sales';
+        
+        if (!authToken) {
+            window.location.href = 'login.html';
+        } else {
+            loadAllocatedStock();
+            loadSalesHistory();
+            loadCreditRequests();
+        }
     </script>
 </body>
 </html>
