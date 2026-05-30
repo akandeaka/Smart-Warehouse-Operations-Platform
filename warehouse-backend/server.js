@@ -633,5 +633,20 @@ async function startServer() {
         console.log('Health: https://warehouse-backend-new-u9rq.onrender.com/health');
     });
 }
-
+// Check if sales already submitted for today
+app.get('/api/sales/check-submitted/:teamId/:date', authMiddleware, async (req, res) => {
+    try {
+        const { teamId, date } = req.params;
+        
+        const [result] = await pool.query(
+            'SELECT COUNT(*) as count FROM sales_orders WHERE team_id = ? AND sales_date = ? AND submitted_for_review = 1',
+            [teamId, date]
+        );
+        
+        const isSubmitted = result[0].count > 0;
+        res.json({ success: true, submitted: isSubmitted });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 startServer();
