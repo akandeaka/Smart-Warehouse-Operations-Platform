@@ -24,6 +24,7 @@
         .confirm-btn:hover { background: #218838; }
         .submit-btn { background: #ffc107; color: #333; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; width: calc(100% - 40px); margin: 0 20px 20px 20px; }
         .submit-btn:hover { background: #e0a800; }
+        .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: 500; }
         input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
@@ -156,6 +157,7 @@
         let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
         let allocatedProducts = [];
         let isConfirmed = false;
+        let hasSubmittedToday = false;
 
         // Force team_id for alpha_lead
         if (currentUser.username === 'alpha_lead' && !currentUser.team_id) {
@@ -227,12 +229,36 @@
                 const confirmationData = await fetchAPI('/allocations/confirmation-status/' + currentUser.team_id + '/' + today);
                 isConfirmed = confirmationData && confirmationData.success && confirmationData.confirmed === true;
                 
-                if (allocatedProducts.length === 0) {
-                    container.innerHTML = '<p style="text-align:center; color:#28a745;">All goods sold for today. Thank you!</p>';
+                // Check if already submitted today
+                const submittedData = await fetchAPI('/sales/check-submitted/' + currentUser.team_id + '/' + today);
+                hasSubmittedToday = submittedData && submittedData.success && submittedData.submitted === true;
+                
+                if (hasSubmittedToday) {
+                    // Already submitted today - show reset state
+                    container.innerHTML = '<p style="text-align:center; color:#28a745;">Sales submitted for today. Come back tomorrow.</p>';
                     confirmBtn.style.display = 'none';
                     allocationSummary.style.display = 'none';
                     enableSelling(false);
+                    document.getElementById('submitDayBtn').disabled = true;
+                    document.getElementById('sellBtn').disabled = true;
+                    document.getElementById('cashSales').innerHTML = '₦0';
+                    document.getElementById('transferSales').innerHTML = '₦0';
+                    document.getElementById('totalSales').innerHTML = '₦0';
+                    document.getElementById('itemsSold').innerHTML = '0';
+                    document.getElementById('creditTotal').innerHTML = '-₦0';
+                } else if (allocatedProducts.length === 0) {
+                    // No stock allocated today - show zero state
+                    container.innerHTML = '<p style="text-align:center; color:#ffc107;">No stock allocated today. Contact warehouse manager.</p>';
+                    confirmBtn.style.display = 'none';
+                    allocationSummary.style.display = 'none';
+                    enableSelling(false);
+                    document.getElementById('cashSales').innerHTML = '₦0';
+                    document.getElementById('transferSales').innerHTML = '₦0';
+                    document.getElementById('totalSales').innerHTML = '₦0';
+                    document.getElementById('itemsSold').innerHTML = '0';
+                    document.getElementById('creditTotal').innerHTML = '-₦0';
                 } else {
+                    // Stock allocated and not submitted - show normal view
                     let totalValue = 0;
                     let html = '';
                     let selectHtml = '<option value="">Select Product</option>';
@@ -296,7 +322,6 @@
             if (confirm('Confirm you have received ALL physical goods valued at ' + formatMoney(totalValue) + '?\n\nOnce confirmed, you will be able to start selling.')) {
                 const today = new Date().toISOString().split('T')[0];
                 
-                // Save confirmation to database
                 const result = await fetchAPI('/allocations/confirm', {
                     method: 'POST',
                     body: JSON.stringify({ team_id: currentUser.team_id, allocated_date: today })
@@ -439,7 +464,7 @@
                                         html += '<td>' + sale.customer_name + '</td>';
                                         html += '<td>' + item.product_name + '</td>';
                                         html += '<td>' + item.quantity + '</td>';
-                                        html += '<td>' + formatMoney(itemAmount) + '</tr>';
+                                        html += '<td>' + formatMoney(itemAmount) + '</td>';
                                         html += '<td>Credit' + '</td>';
                                         html += '<td class="status-pending-text">Pending' + '</td>';
                                         html += '</tr>';
@@ -463,8 +488,8 @@
                                         html += '<td>' + sale.customer_name + '</td>';
                                         html += '<td>' + item.product_name + '</td>';
                                         html += '<td>' + item.quantity + '</td>';
-                                        html += '<td>' + formatMoney(itemAmount) + '</tr>';
-                                        html += '<td>Bank Transfer' + '</td>';
+                                        html += '<td>' + formatMoney(itemAmount) + '</td>';
+                                        html += '<td>Bank Transfer' + '</tr>';
                                         html += '<td class="status-approved">Completed' + '</td>';
                                         html += '</tr>';
                                     }
@@ -498,13 +523,13 @@
                     var statusClass = req.status === 'approved' ? 'status-approved' : (req.status === 'rejected' ? 'status-rejected' : 'status-pending-text');
                     html += '<tr>';
                     html += '<td>' + req.order_number + '</td>';
-                    html += '<td>' + req.customer_name + '</tr>';
+                    html += '<td>' + req.customer_name + '</td>';
                     html += '<td class="' + (req.status === 'pending' ? 'credit-amount' : '') + '">' + (req.status === 'pending' ? formatCreditMoney(req.total_amount) : formatMoney(req.total_amount)) + '</td>';
                     html += '<td class="' + statusClass + '">' + statusText + '</td>';
                     html += '<td>' + (req.due_date ? new Date(req.due_date).toLocaleDateString() : '-') + '</td>';
                     html += '</tr>';
                 }
-                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests这些</td>';
+                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests这些</table>';
                 document.getElementById('creditLoading').style.display = 'none';
                 document.getElementById('creditTable').style.display = 'table';
             }
@@ -528,36 +553,44 @@
                 });
                 
                 if (result && result.success) {
-                    showMessage('Sales submitted to manager. Your dashboard has been reset for the next working day.');
+                    showMessage('✅ Sales submitted to manager. Your dashboard has been reset for the next working day.');
                     
+                    // Reset all stat cards to zero
                     document.getElementById('cashSales').innerHTML = '₦0';
                     document.getElementById('transferSales').innerHTML = '₦0';
                     document.getElementById('totalSales').innerHTML = '₦0';
                     document.getElementById('itemsSold').innerHTML = '0';
                     document.getElementById('creditTotal').innerHTML = '-₦0';
                     
+                    // Clear transaction history display
+                    document.getElementById('salesHistoryBody').innerHTML = '<tr><td colspan="7">Sales submitted. Come back tomorrow for new allocation.</td></tr>';
+                    
+                    // Clear allocated stock display
                     const allocatedStockDiv = document.getElementById('allocatedStock');
                     if (allocatedStockDiv) {
-                        allocatedStockDiv.innerHTML = '<p style="text-align:center; color:#28a745;">All goods sold for today. Thank you!</p>';
+                        allocatedStockDiv.innerHTML = '<p style="text-align:center; color:#28a745;">Sales submitted for today. Come back tomorrow.</p>';
                     }
                     
+                    // Hide confirmation button and allocation summary
                     const confirmBtn = document.getElementById('confirmReceiptBtn');
                     if (confirmBtn) confirmBtn.style.display = 'none';
                     
                     const allocationSummary = document.getElementById('allocationSummary');
                     if (allocationSummary) allocationSummary.style.display = 'none';
                     
+                    // Clear product select dropdown
                     const productSelect = document.getElementById('productSelect');
                     if (productSelect) {
                         productSelect.innerHTML = '<option value="">Select Product</option>';
                     }
                     
+                    // Disable sell button and submit button
                     document.getElementById('submitDayBtn').disabled = true;
                     document.getElementById('sellBtn').disabled = true;
                     
-                    setTimeout(function() {
-                        location.reload();
-                    }, 2000);
+                    // Set submitted flag to prevent any further activity
+                    hasSubmittedToday = true;
+                    
                 } else {
                     showMessage('Failed to submit sales: ' + (result?.message || 'Unknown error'), true);
                 }
