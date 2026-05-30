@@ -46,11 +46,14 @@
         .credit-row { background-color: #fff0f0; border-left: 3px solid #dc3545; }
         .credit-amount { color: #dc3545; font-weight: bold; }
         .credit-amount::before { content: "- "; }
+        .status-approved { color: #28a745; font-weight: bold; }
+        .status-rejected { color: #dc3545; font-weight: bold; }
+        .status-pending-text { color: #ffc107; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>💰 <span id="teamName">Sales Team</span> Dashboard</h1>
+        <h1>💰 Sales Team Dashboard</h1>
         <div class="logout-btn" onclick="logout()">Logout</div>
     </div>
 
@@ -86,16 +89,16 @@
         <div id="allocationSummary" class="allocation-summary" style="display: none;">
             <h4>📋 Allocation Summary</h4>
             <div>Total Goods Value: <span id="totalAllocatedValue" class="total-goods-value">₦0</span></div>
-            <div>Status: <span id="confirmationStatus" class="status-pending">⚠️ Not Confirmed</span></div>
+            <div>Status: <span id="confirmationStatus" class="status-pending">Not Confirmed</span></div>
         </div>
         <div id="stockLoading" class="loading">Loading your allocated stock...</div>
         <div id="allocatedStock" class="product-grid" style="display: none;"></div>
-        <button id="confirmReceiptBtn" class="confirm-btn" onclick="confirmAllocation()" style="display: none;">✅ Confirm Receipt of All Goods</button>
+        <button id="confirmReceiptBtn" class="confirm-btn" onclick="confirmAllocation()" style="display: none;">Confirm Receipt of All Goods</button>
     </div>
 
     <div class="card">
         <h3>➕ Record New Sale</h3>
-        <div id="saleDisabledWarning" class="warning-msg" style="display: none;">⚠️ You must confirm receipt of goods before selling.</div>
+        <div id="saleDisabledWarning" class="warning-msg" style="display: none;">You must confirm receipt of goods before selling.</div>
         <form id="saleForm">
             <div class="form-group">
                 <label>Customer Name *</label>
@@ -131,7 +134,7 @@
         <div id="creditLoading" class="loading">Loading credit requests...</div>
         <table id="creditTable" style="display: none;">
             <thead>
-                <tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Status</th><th>Due Date</th></tr>
+                <tr><th>Order Number</th><th>Customer Name</th><th>Amount</th><th>Status</th><th>Due Date</th></td>
             </thead>
             <tbody id="creditTableBody"></tbody>
         </table>
@@ -142,21 +145,20 @@
         <div id="historyLoading" class="loading">Loading history...</div>
         <table id="historyTable" style="display: none;">
             <thead>
-                <tr><th>Time</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Status</th></tr>
+                <tr><th>Time</th><th>Customer</th><th>Product</th><th>Quantity</th><th>Amount</th><th>Type</th><th>Status</th></tr>
             </thead>
             <tbody id="salesHistoryBody"></tbody>
         </table>
     </div>
 
-    <button id="submitDayBtn" class="submit-btn" onclick="submitDaySales()">📤 Submit Final Sales for the Day</button>
+    <button id="submitDayBtn" class="submit-btn" onclick="submitDaySales()">Submit Final Sales for the Day</button>
 
     <script>
-        // USE THE NEW BACKEND URL
         const API_URL = 'https://warehouse-backend-new-u9rq.onrender.com/api';
         let authToken = localStorage.getItem('token');
         let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
-        // FIX: Force team_id for alpha_lead if missing (THIS IS THE KEY FIX)
+        // Force team_id for alpha_lead if missing
         if (currentUser.username === 'alpha_lead' && !currentUser.team_id) {
             currentUser.team_id = 1;
             localStorage.setItem('user', JSON.stringify(currentUser));
@@ -164,41 +166,46 @@
 
         let allocatedProducts = [];
         let isConfirmed = false;
+        let refreshInterval = null;
 
         function formatMoney(amount) {
-            if (amount === undefined || amount === null || isNaN(amount)) {
-                return '₦0';
-            }
-            const numAmount = Number(amount);
-            if (numAmount === 0) {
-                return '₦0';
-            }
-            return '₦' + Math.round(numAmount).toLocaleString('en-NG');
+            let num = parseFloat(amount);
+            if (isNaN(num)) return '₦0';
+            if (num === 0) return '₦0';
+            return '₦' + Math.round(num).toLocaleString('en-NG');
         }
 
         function formatCreditMoney(amount) {
-            if (amount === undefined || amount === null || isNaN(amount)) {
-                return '-₦0';
-            }
-            const numAmount = Number(amount);
-            if (numAmount === 0) {
-                return '-₦0';
-            }
-            return '-₦' + Math.round(numAmount).toLocaleString('en-NG');
+            let num = parseFloat(amount);
+            if (isNaN(num)) return '-₦0';
+            if (num === 0) return '-₦0';
+            return '-₦' + Math.round(num).toLocaleString('en-NG');
+        }
+
+        function getStatusText(status) {
+            if (status === 'approved') return 'Approved';
+            if (status === 'rejected') return 'Declined';
+            return 'Pending';
+        }
+
+        function getStatusClass(status) {
+            if (status === 'approved') return 'status-approved';
+            if (status === 'rejected') return 'status-rejected';
+            return 'status-pending-text';
         }
 
         function showMessage(msg, isError = false, isWarning = false) {
             let msgDiv = isError ? document.getElementById('errorMsg') : (isWarning ? document.getElementById('warningMsg') : document.getElementById('successMsg'));
             msgDiv.innerHTML = msg;
             msgDiv.style.display = 'block';
-            setTimeout(() => { msgDiv.style.display = 'none'; }, 4000);
+            setTimeout(function() { msgDiv.style.display = 'none'; }, 4000);
         }
 
         async function fetchAPI(endpoint, options = {}) {
             try {
-                const response = await fetch(`${API_URL}${endpoint}`, {
+                const response = await fetch(API_URL + endpoint, {
                     ...options,
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}`, ...options.headers }
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken, ...options.headers }
                 });
                 if (response.status === 401) { localStorage.clear(); window.location.href = 'login.html'; return null; }
                 return await response.json();
@@ -215,40 +222,50 @@
             loadingDiv.style.display = 'block';
             container.style.display = 'none';
             
-            // Use forced team_id or fallback to 1
             const teamId = currentUser.team_id || 1;
-            const data = await fetchAPI(`/sales/team/${teamId}/allocations`);
+            const data = await fetchAPI('/sales/team/' + teamId + '/allocations');
             
             if (data && data.success) {
-                allocatedProducts = data.data.filter(p => p.remaining_qty > 0);
+                allocatedProducts = data.data.filter(function(p) { return p.remaining_qty > 0; });
                 const today = new Date().toISOString().split('T')[0];
-                const savedConfirmation = localStorage.getItem(`confirmed_${teamId}_${today}`);
+                const savedConfirmation = localStorage.getItem('confirmed_' + teamId + '_' + today);
                 isConfirmed = savedConfirmation === 'true';
 
                 if (allocatedProducts.length === 0) {
-                    container.innerHTML = '<p style="text-align:center; color:#28a745;">✅ All goods sold for today. Thank you!</p>';
+                    container.innerHTML = '<p style="text-align:center; color:#28a745;">All goods sold for today. Thank you!</p>';
                     confirmBtn.style.display = 'none';
                     allocationSummary.style.display = 'none';
                     enableSelling(false);
                 } else {
-                    let totalValue = 0, html = '', selectHtml = '<option value="">Select Product</option>';
-                    allocatedProducts.forEach(p => {
-                        totalValue += p.remaining_qty * p.selling_price;
-                        html += `<div class="product-item"><h4>${p.product_name}</h4><div class="stock">Available: ${p.remaining_qty} units</div><div class="price">${formatMoney(p.selling_price)} per unit</div><div class="total-value">Total Value: ${formatMoney(p.remaining_qty * p.selling_price)}</div></div>`;
-                        selectHtml += `<option value="${p.id}" data-price="${p.selling_price}">${p.product_name} - ${formatMoney(p.selling_price)} (${p.remaining_qty} left)</option>`;
-                    });
+                    let totalValue = 0;
+                    let html = '';
+                    let selectHtml = '<option value="">Select Product</option>';
+                    
+                    for (var i = 0; i < allocatedProducts.length; i++) {
+                        var p = allocatedProducts[i];
+                        var productTotal = p.remaining_qty * parseFloat(p.selling_price);
+                        totalValue += productTotal;
+                        html += '<div class="product-item">';
+                        html += '<h4>' + p.product_name + '</h4>';
+                        html += '<div class="stock">Available: ' + p.remaining_qty + ' units</div>';
+                        html += '<div class="price">' + formatMoney(p.selling_price) + ' per unit</div>';
+                        html += '<div class="total-value">Total Value: ' + formatMoney(productTotal) + '</div>';
+                        html += '</div>';
+                        selectHtml += '<option value="' + p.id + '" data-price="' + p.selling_price + '">' + p.product_name + ' - ' + formatMoney(p.selling_price) + ' (' + p.remaining_qty + ' left)</option>';
+                    }
+                    
                     container.innerHTML = html;
                     document.getElementById('productSelect').innerHTML = selectHtml;
                     document.getElementById('totalAllocatedValue').innerHTML = formatMoney(totalValue);
                     allocationSummary.style.display = 'block';
 
                     if (isConfirmed) {
-                        document.getElementById('confirmationStatus').innerHTML = '✅ Confirmed';
+                        document.getElementById('confirmationStatus').innerHTML = 'Confirmed';
                         document.getElementById('confirmationStatus').className = 'status-confirmed';
                         confirmBtn.style.display = 'none';
                         enableSelling(true);
                     } else {
-                        document.getElementById('confirmationStatus').innerHTML = '⚠️ Not Confirmed - Must confirm goods before selling';
+                        document.getElementById('confirmationStatus').innerHTML = 'Not Confirmed - Must confirm goods before selling';
                         document.getElementById('confirmationStatus').className = 'status-pending';
                         confirmBtn.style.display = 'block';
                         enableSelling(false);
@@ -261,6 +278,8 @@
                 }
                 loadingDiv.style.display = 'none';
                 container.style.display = 'grid';
+            } else {
+                loadingDiv.innerHTML = 'Failed to load allocated stock';
             }
         }
 
@@ -274,30 +293,30 @@
 
         async function confirmAllocation() {
             let totalValue = 0;
-            allocatedProducts.forEach(p => {
-                totalValue += p.remaining_qty * p.selling_price;
-            });
+            for (var i = 0; i < allocatedProducts.length; i++) {
+                totalValue += allocatedProducts[i].remaining_qty * parseFloat(allocatedProducts[i].selling_price);
+            }
             
-            if (confirm(`Confirm you have received ALL physical goods valued at ${formatMoney(totalValue)}?\n\nOnce confirmed, you will be able to start selling.`)) {
+            if (confirm('Confirm you have received ALL physical goods valued at ' + formatMoney(totalValue) + '?\n\nOnce confirmed, you will be able to start selling.')) {
                 const today = new Date().toISOString().split('T')[0];
-                localStorage.setItem(`confirmed_${currentUser.team_id}_${today}`, 'true');
+                localStorage.setItem('confirmed_' + currentUser.team_id + '_' + today, 'true');
                 isConfirmed = true;
-                document.getElementById('confirmationStatus').innerHTML = '✅ Confirmed';
+                document.getElementById('confirmationStatus').innerHTML = 'Confirmed';
                 document.getElementById('confirmationStatus').className = 'status-confirmed';
                 document.getElementById('confirmReceiptBtn').style.display = 'none';
                 enableSelling(true);
-                showMessage('✅ Allocation confirmed! You can now start selling.');
+                showMessage('Allocation confirmed! You can now start selling.');
                 loadSalesHistory();
             }
         }
 
-        document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
+        document.querySelectorAll('input[name="paymentMethod"]').forEach(function(radio) {
             radio.addEventListener('change', function() {
                 document.getElementById('creditDueDateGroup').style.display = this.value === 'credit' ? 'block' : 'none';
             });
         });
 
-        document.getElementById('saleForm').addEventListener('submit', async (e) => {
+        document.getElementById('saleForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             if (!isConfirmed) { showMessage('Confirm goods receipt first', true); return; }
             
@@ -308,20 +327,20 @@
             const productId = parseInt(productSelect.value);
             const quantity = parseInt(document.getElementById('quantity').value);
             const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
-            const product = allocatedProducts.find(p => p.id === productId);
+            const product = allocatedProducts.find(function(p) { return p.id === productId; });
             
             if (!productId || !product) { showMessage('Please select a product', true); return; }
             if (quantity < 1 || isNaN(quantity)) { showMessage('Please enter a valid quantity', true); return; }
-            if (quantity > product.remaining_qty) { showMessage(`Only ${product.remaining_qty} units available`, true); return; }
+            if (quantity > product.remaining_qty) { showMessage('Only ' + product.remaining_qty + ' units available', true); return; }
             
-            const totalAmount = quantity * product.selling_price;
+            const totalAmount = quantity * parseFloat(product.selling_price);
             const today = new Date().toISOString().split('T')[0];
             
             const body = {
                 team_id: currentUser.team_id || 1,
                 customer_name: customerName,
                 customer_phone: document.getElementById('customerPhone').value || '',
-                items: [{ product_id: productId, quantity: quantity, unit_price: product.selling_price }],
+                items: [{ product_id: productId, quantity: quantity, unit_price: parseFloat(product.selling_price) }],
                 payment_method: paymentMethod,
                 sales_date: today
             };
@@ -332,18 +351,18 @@
                 body.credit_due_date = dueDate;
             }
             
-            showMessage('Processing sale...', false, false);
+            showMessage('Processing sale...');
             
             const result = await fetchAPI('/sales', { method: 'POST', body: JSON.stringify(body) });
             
             if (result && result.success) {
                 let successMsg = '';
                 if (paymentMethod === 'credit') {
-                    successMsg = `✅ Credit sale of ${formatMoney(totalAmount)} recorded. Pending manager approval.`;
+                    successMsg = 'Credit sale of ' + formatMoney(totalAmount) + ' recorded. Pending manager approval.';
                 } else if (paymentMethod === 'bank_transfer') {
-                    successMsg = `✅ Transfer sale of ${formatMoney(totalAmount)} recorded.`;
+                    successMsg = 'Transfer sale of ' + formatMoney(totalAmount) + ' recorded.';
                 } else {
-                    successMsg = `✅ Cash sale of ${formatMoney(totalAmount)} recorded.`;
+                    successMsg = 'Cash sale of ' + formatMoney(totalAmount) + ' recorded.';
                 }
                 showMessage(successMsg);
                 
@@ -355,9 +374,7 @@
                 
                 await loadAllocatedStock();
                 await loadSalesHistory();
-                if (paymentMethod === 'credit') {
-                    await loadCreditRequests();
-                }
+                await loadCreditRequests();
             } else {
                 showMessage('Failed to record sale: ' + (result?.message || 'Unknown error'), true);
             }
@@ -366,7 +383,7 @@
         async function loadSalesHistory() {
             try {
                 const teamId = currentUser.team_id || 1;
-                const data = await fetchAPI(`/sales/team/${teamId}/history`);
+                const data = await fetchAPI('/sales/team/' + teamId + '/history');
                 
                 if (data && data.success) {
                     let cashTotal = 0;
@@ -375,80 +392,76 @@
                     let totalItems = 0;
                     let html = '';
                     
-                    for (let i = 0; i < data.data.length; i++) {
-                        const sale = data.data[i];
-                        
-                        const itemsResponse = await fetch(`${API_URL}/sales/order/${sale.id}/items`, {
-                            headers: { 'Authorization': `Bearer ${authToken}` }
-                        });
-                        const itemsData = await itemsResponse.json();
-                        
-                        const paymentMethod = String(sale.payment_method || '').toLowerCase();
-                        const isCash = (paymentMethod === 'cash');
-                        const isTransfer = (paymentMethod === 'bank_transfer');
-                        const isCredit = (paymentMethod === 'credit');
-                        const isApproved = (sale.approval_status === 'approved');
-                        
-                        if (isCash) {
-                            const amount = Number(sale.total_amount) || 0;
-                            cashTotal += amount;
-                            totalItems += 1;
-                        } else if (isTransfer) {
-                            const amount = Number(sale.total_amount) || 0;
-                            transferTotal += amount;
-                            totalItems += 1;
-                        } else if (isCredit && isApproved) {
-                            const amount = Number(sale.total_amount) || 0;
-                            totalCredit += amount;
-                        }
+                    for (var s = 0; s < data.data.length; s++) {
+                        var sale = data.data[s];
+                        var itemsRes = await fetch(API_URL + '/sales/order/' + sale.id + '/items', { headers: { 'Authorization': 'Bearer ' + authToken } });
+                        var itemsData = await itemsRes.json();
+                        var isCredit = sale.payment_method === 'credit';
+                        var isApproved = sale.approval_status === 'approved';
+                        var isRejected = sale.approval_status === 'rejected';
+                        var isCash = sale.payment_method === 'cash';
+                        var isTransfer = sale.payment_method === 'bank_transfer';
                         
                         if (itemsData.success && itemsData.data) {
-                            for (let j = 0; j < itemsData.data.length; j++) {
-                                const item = itemsData.data[j];
-                                const itemAmount = Number(item.total_price) || 0;
+                            for (var i = 0; i < itemsData.data.length; i++) {
+                                var item = itemsData.data[i];
+                                var itemAmount = parseFloat(item.total_price) || 0;
                                 
-                                if (isCash) {
-                                    html += '</table>';
+                                if (isCredit && isApproved) {
+                                    totalCredit += itemAmount;
+                                    html += '<tr class="credit-row">';
                                     html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
                                     html += '<td>' + sale.customer_name + '</td>';
                                     html += '<td>' + item.product_name + '</td>';
                                     html += '<td>' + item.quantity + '</td>';
-                                    html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                    html += '<td>💵 Cash这些';
-                                    html += '<td>✅ Recorded这些';
+                                    html += '<td class="credit-amount">' + formatCreditMoney(itemAmount) + '</td>';
+                                    html += '<td>Credit' + '</td>';
+                                    html += '<td class="status-approved">Approved' + '</td>';
                                     html += '</tr>';
-                                } else if (isTransfer) {
+                                } else if (isCredit && isRejected) {
                                     html += '<tr>';
                                     html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
                                     html += '<td>' + sale.customer_name + '</td>';
                                     html += '<td>' + item.product_name + '</td>';
                                     html += '<td>' + item.quantity + '</td>';
                                     html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                    html += '<td>🏦 Transfer这些';
-                                    html += '<td>✅ Recorded这些';
+                                    html += '<td>Credit' + '</td>';
+                                    html += '<td class="status-rejected">Declined' + '</td>';
                                     html += '</tr>';
-                                } else if (isCredit) {
-                                    if (isApproved) {
-                                        html += '<tr class="credit-row">';
-                                        html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
-                                        html += '<td>' + sale.customer_name + '</td>';
-                                        html += '<td>' + item.product_name + '</td>';
-                                        html += '<td>' + item.quantity + '</td>';
-                                        html += '<td class="credit-amount">' + formatCreditMoney(itemAmount) + '</td>';
-                                        html += '<td>📝 Credit这些';
-                                        html += '<td>✅ Approved这些';
-                                        html += '</tr>';
-                                    } else {
-                                        html += '<tr>';
-                                        html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
-                                        html += '<td>' + sale.customer_name + '</td>';
-                                        html += '<td>' + item.product_name + '</td>';
-                                        html += '<td>' + item.quantity + '</td>';
-                                        html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                        html += '<td>📝 Credit这些';
-                                        html += '<td>⏳ Pending这些';
-                                        html += '</tr>';
-                                    }
+                                } else if (isCredit && !isApproved && !isRejected) {
+                                    html += '<tr>';
+                                    html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
+                                    html += '<td>' + sale.customer_name + '</td>';
+                                    html += '<td>' + item.product_name + '</td>';
+                                    html += '<td>' + item.quantity + '</td>';
+                                    html += '<td>' + formatMoney(itemAmount) + '</td>';
+                                    html += '<td>Credit' + '</td>';
+                                    html += '<td class="status-pending-text">Pending Approval' + '</td>';
+                                    html += '</tr>';
+                                } else if (isCash) {
+                                    cashTotal += itemAmount;
+                                    totalItems += item.quantity;
+                                    html += '</tr>';
+                                    html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
+                                    html += '<td>' + sale.customer_name + '</td>';
+                                    html += '<td>' + item.product_name + '</td>';
+                                    html += '<td>' + item.quantity + '</td>';
+                                    html += '<td>' + formatMoney(itemAmount) + '</td>';
+                                    html += '<td>Cash' + '</td>';
+                                    html += '<td class="status-approved">Completed' + '</td>';
+                                    html += '</tr>';
+                                } else if (isTransfer) {
+                                    transferTotal += itemAmount;
+                                    totalItems += item.quantity;
+                                    html += '<tr>';
+                                    html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
+                                    html += '<td>' + sale.customer_name + '</td>';
+                                    html += '<td>' + item.product_name + '</td>';
+                                    html += '<td>' + item.quantity + '</td>';
+                                    html += '<td>' + formatMoney(itemAmount) + '</td>';
+                                    html += '<td>Bank Transfer' + '</td>';
+                                    html += '<td class="status-approved">Completed' + '</td>';
+                                    html += '</tr>';
                                 }
                             }
                         }
@@ -473,12 +486,15 @@
             const data = await fetchAPI('/approvals/my-requests');
             if (data && data.success) {
                 let html = '';
-                for (const req of data.data) {
+                for (var i = 0; i < data.data.length; i++) {
+                    var req = data.data[i];
+                    var statusText = getStatusText(req.status);
+                    var statusClass = getStatusClass(req.status);
                     html += '<tr>';
                     html += '<td>' + req.order_number + '</td>';
                     html += '<td>' + req.customer_name + '</td>';
-                    html += '<td class="credit-amount">' + formatCreditMoney(req.total_amount) + '</td>';
-                    html += '<td>' + (req.status === 'pending' ? '🟡 Pending' : (req.status === 'approved' ? '🟢 Approved' : '🔴 Rejected')) + '</td>';
+                    html += '<td class="' + (req.status === 'pending' ? 'credit-amount' : '') + '">' + (req.status === 'pending' ? formatCreditMoney(req.total_amount) : formatMoney(req.total_amount)) + '</td>';
+                    html += '<td class="' + statusClass + '">' + statusText + '</td>';
                     html += '<td>' + (req.due_date ? new Date(req.due_date).toLocaleDateString() : '-') + '</td>';
                     html += '</tr>';
                 }
@@ -498,7 +514,7 @@
                     }) 
                 });
                 if (result && result.success) {
-                    showMessage('✅ Sales submitted to manager.');
+                    showMessage('Sales submitted to manager.');
                     document.getElementById('submitDayBtn').disabled = true;
                     document.getElementById('sellBtn').disabled = true;
                 }
@@ -510,7 +526,15 @@
             window.location.href = 'login.html'; 
         }
 
-        document.getElementById('teamName').innerText = currentUser.full_name?.split(' ')[0] || 'Sales';
+        if (refreshInterval) clearInterval(refreshInterval);
+        refreshInterval = setInterval(function() {
+            if (authToken && window.location.href.indexOf('sales-dashboard') > -1) {
+                loadCreditRequests();
+                loadSalesHistory();
+            }
+        }, 10000);
+
+        document.getElementById('teamName').innerText = currentUser.full_name ? currentUser.full_name.split(' ')[0] : 'Sales';
         
         if (!authToken) {
             window.location.href = 'login.html';
