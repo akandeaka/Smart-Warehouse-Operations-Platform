@@ -134,7 +134,7 @@
         <div id="creditLoading" class="loading">Loading credit requests...</div>
         <table id="creditTable" style="display: none;">
             <thead>
-                <tr><th>Order Number</th><th>Customer Name</th><th>Amount</th><th>Status</th><th>Due Date</th></td>
+                <tr><th>Order Number</th><th>Customer Name</th><th>Amount</th><th>Status</th><th>Due Date</th></tr>
             </thead>
             <tbody id="creditTableBody"></tbody>
         </table>
@@ -182,18 +182,6 @@
             return '-₦' + Math.round(num).toLocaleString('en-NG');
         }
 
-        function getStatusText(status) {
-            if (status === 'approved') return 'Approved';
-            if (status === 'rejected') return 'Declined';
-            return 'Pending';
-        }
-
-        function getStatusClass(status) {
-            if (status === 'approved') return 'status-approved';
-            if (status === 'rejected') return 'status-rejected';
-            return 'status-pending-text';
-        }
-
         function showMessage(msg, isError = false, isWarning = false) {
             let msgDiv = isError ? document.getElementById('errorMsg') : (isWarning ? document.getElementById('warningMsg') : document.getElementById('successMsg'));
             msgDiv.innerHTML = msg;
@@ -226,7 +214,7 @@
             const data = await fetchAPI('/sales/team/' + teamId + '/allocations');
             
             if (data && data.success) {
-                allocatedProducts = data.data.filter(function(p) { return p.remaining_qty > 0; });
+                allocatedProducts = data.data.filter(p => p.remaining_qty > 0);
                 const today = new Date().toISOString().split('T')[0];
                 const savedConfirmation = localStorage.getItem('confirmed_' + teamId + '_' + today);
                 isConfirmed = savedConfirmation === 'true';
@@ -243,7 +231,7 @@
                     
                     for (var i = 0; i < allocatedProducts.length; i++) {
                         var p = allocatedProducts[i];
-                        var productTotal = p.remaining_qty * parseFloat(p.selling_price);
+                        var productTotal = p.remaining_qty * p.selling_price;
                         totalValue += productTotal;
                         html += '<div class="product-item">';
                         html += '<h4>' + p.product_name + '</h4>';
@@ -294,7 +282,7 @@
         async function confirmAllocation() {
             let totalValue = 0;
             for (var i = 0; i < allocatedProducts.length; i++) {
-                totalValue += allocatedProducts[i].remaining_qty * parseFloat(allocatedProducts[i].selling_price);
+                totalValue += allocatedProducts[i].remaining_qty * allocatedProducts[i].selling_price;
             }
             
             if (confirm('Confirm you have received ALL physical goods valued at ' + formatMoney(totalValue) + '?\n\nOnce confirmed, you will be able to start selling.')) {
@@ -333,14 +321,14 @@
             if (quantity < 1 || isNaN(quantity)) { showMessage('Please enter a valid quantity', true); return; }
             if (quantity > product.remaining_qty) { showMessage('Only ' + product.remaining_qty + ' units available', true); return; }
             
-            const totalAmount = quantity * parseFloat(product.selling_price);
+            const totalAmount = quantity * product.selling_price;
             const today = new Date().toISOString().split('T')[0];
             
             const body = {
-                team_id: currentUser.team_id || 1,
+                team_id: currentUser.team_id,
                 customer_name: customerName,
                 customer_phone: document.getElementById('customerPhone').value || '',
-                items: [{ product_id: productId, quantity: quantity, unit_price: parseFloat(product.selling_price) }],
+                items: [{ product_id: productId, quantity: quantity, unit_price: product.selling_price }],
                 payment_method: paymentMethod,
                 sales_date: today
             };
@@ -374,7 +362,9 @@
                 
                 await loadAllocatedStock();
                 await loadSalesHistory();
-                await loadCreditRequests();
+                if (paymentMethod === 'credit') {
+                    await loadCreditRequests();
+                }
             } else {
                 showMessage('Failed to record sale: ' + (result?.message || 'Unknown error'), true);
             }
@@ -392,20 +382,19 @@
                     let totalItems = 0;
                     let html = '';
                     
-                    for (var s = 0; s < data.data.length; s++) {
-                        var sale = data.data[s];
-                        var itemsRes = await fetch(API_URL + '/sales/order/' + sale.id + '/items', { headers: { 'Authorization': 'Bearer ' + authToken } });
-                        var itemsData = await itemsRes.json();
-                        var isCredit = sale.payment_method === 'credit';
-                        var isApproved = sale.approval_status === 'approved';
-                        var isRejected = sale.approval_status === 'rejected';
-                        var isCash = sale.payment_method === 'cash';
-                        var isTransfer = sale.payment_method === 'bank_transfer';
+                    for (let i = 0; i < data.data.length; i++) {
+                        const sale = data.data[i];
+                        const itemsRes = await fetch(API_URL + '/sales/order/' + sale.id + '/items', { headers: { 'Authorization': 'Bearer ' + authToken } });
+                        const itemsData = await itemsRes.json();
+                        const isCredit = sale.payment_method === 'credit';
+                        const isApproved = sale.approval_status === 'approved';
+                        const isCash = sale.payment_method === 'cash';
+                        const isTransfer = sale.payment_method === 'bank_transfer';
                         
                         if (itemsData.success && itemsData.data) {
-                            for (var i = 0; i < itemsData.data.length; i++) {
-                                var item = itemsData.data[i];
-                                var itemAmount = parseFloat(item.total_price) || 0;
+                            for (let j = 0; j < itemsData.data.length; j++) {
+                                const item = itemsData.data[j];
+                                const itemAmount = parseFloat(item.total_price) || 0;
                                 
                                 if (isCredit && isApproved) {
                                     totalCredit += itemAmount;
@@ -418,7 +407,7 @@
                                     html += '<td>Credit' + '</td>';
                                     html += '<td class="status-approved">Approved' + '</td>';
                                     html += '</tr>';
-                                } else if (isCredit && isRejected) {
+                                } else if (isCredit && !isApproved) {
                                     html += '<tr>';
                                     html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
                                     html += '<td>' + sale.customer_name + '</td>';
@@ -426,28 +415,18 @@
                                     html += '<td>' + item.quantity + '</td>';
                                     html += '<td>' + formatMoney(itemAmount) + '</td>';
                                     html += '<td>Credit' + '</td>';
-                                    html += '<td class="status-rejected">Declined' + '</td>';
-                                    html += '</tr>';
-                                } else if (isCredit && !isApproved && !isRejected) {
-                                    html += '<tr>';
-                                    html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
-                                    html += '<td>' + sale.customer_name + '</td>';
-                                    html += '<td>' + item.product_name + '</td>';
-                                    html += '<td>' + item.quantity + '</td>';
-                                    html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                    html += '<td>Credit' + '</td>';
-                                    html += '<td class="status-pending-text">Pending Approval' + '</td>';
+                                    html += '<td class="status-pending-text">Pending' + '</td>';
                                     html += '</tr>';
                                 } else if (isCash) {
                                     cashTotal += itemAmount;
                                     totalItems += item.quantity;
-                                    html += '</tr>';
+                                    html += '<tr>';
                                     html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
                                     html += '<td>' + sale.customer_name + '</td>';
                                     html += '<td>' + item.product_name + '</td>';
                                     html += '<td>' + item.quantity + '</td>';
                                     html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                    html += '<td>Cash' + '</td>';
+                                    html += '<td>Cash' + '<tr>';
                                     html += '<td class="status-approved">Completed' + '</td>';
                                     html += '</tr>';
                                 } else if (isTransfer) {
@@ -486,10 +465,9 @@
             const data = await fetchAPI('/approvals/my-requests');
             if (data && data.success) {
                 let html = '';
-                for (var i = 0; i < data.data.length; i++) {
-                    var req = data.data[i];
-                    var statusText = getStatusText(req.status);
-                    var statusClass = getStatusClass(req.status);
+                for (const req of data.data) {
+                    const statusText = req.status === 'approved' ? 'Approved' : (req.status === 'rejected' ? 'Declined' : 'Pending');
+                    const statusClass = req.status === 'approved' ? 'status-approved' : (req.status === 'rejected' ? 'status-rejected' : 'status-pending-text');
                     html += '<tr>';
                     html += '<td>' + req.order_number + '</td>';
                     html += '<td>' + req.customer_name + '</td>';
@@ -509,7 +487,7 @@
                 const result = await fetchAPI('/sales/submit-day', { 
                     method: 'POST', 
                     body: JSON.stringify({ 
-                        team_id: currentUser.team_id || 1, 
+                        team_id: currentUser.team_id, 
                         sales_date: new Date().toISOString().split('T')[0] 
                     }) 
                 });
