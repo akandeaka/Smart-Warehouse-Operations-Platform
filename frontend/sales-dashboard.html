@@ -46,9 +46,6 @@
         .credit-row { background-color: #fff0f0; border-left: 3px solid #dc3545; }
         .credit-amount { color: #dc3545; font-weight: bold; }
         .credit-amount::before { content: "- "; }
-        .status-approved { color: #28a745; font-weight: bold; }
-        .status-rejected { color: #dc3545; font-weight: bold; }
-        .status-pending-text { color: #ffc107; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -158,7 +155,6 @@
         let authToken = localStorage.getItem('token');
         let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
 
-        // Force team_id for alpha_lead if missing
         if (currentUser.username === 'alpha_lead' && !currentUser.team_id) {
             currentUser.team_id = 1;
             localStorage.setItem('user', JSON.stringify(currentUser));
@@ -214,7 +210,7 @@
             const data = await fetchAPI('/sales/team/' + teamId + '/allocations');
             
             if (data && data.success) {
-                allocatedProducts = data.data.filter(p => p.remaining_qty > 0);
+                allocatedProducts = data.data.filter(function(p) { return p.remaining_qty > 0; });
                 const today = new Date().toISOString().split('T')[0];
                 const savedConfirmation = localStorage.getItem('confirmed_' + teamId + '_' + today);
                 isConfirmed = savedConfirmation === 'true';
@@ -231,7 +227,7 @@
                     
                     for (var i = 0; i < allocatedProducts.length; i++) {
                         var p = allocatedProducts[i];
-                        var productTotal = p.remaining_qty * p.selling_price;
+                        var productTotal = p.remaining_qty * parseFloat(p.selling_price);
                         totalValue += productTotal;
                         html += '<div class="product-item">';
                         html += '<h4>' + p.product_name + '</h4>';
@@ -282,7 +278,7 @@
         async function confirmAllocation() {
             let totalValue = 0;
             for (var i = 0; i < allocatedProducts.length; i++) {
-                totalValue += allocatedProducts[i].remaining_qty * allocatedProducts[i].selling_price;
+                totalValue += allocatedProducts[i].remaining_qty * parseFloat(allocatedProducts[i].selling_price);
             }
             
             if (confirm('Confirm you have received ALL physical goods valued at ' + formatMoney(totalValue) + '?\n\nOnce confirmed, you will be able to start selling.')) {
@@ -321,14 +317,14 @@
             if (quantity < 1 || isNaN(quantity)) { showMessage('Please enter a valid quantity', true); return; }
             if (quantity > product.remaining_qty) { showMessage('Only ' + product.remaining_qty + ' units available', true); return; }
             
-            const totalAmount = quantity * product.selling_price;
+            const totalAmount = quantity * parseFloat(product.selling_price);
             const today = new Date().toISOString().split('T')[0];
             
             const body = {
-                team_id: currentUser.team_id,
+                team_id: currentUser.team_id || 1,
                 customer_name: customerName,
                 customer_phone: document.getElementById('customerPhone').value || '',
-                items: [{ product_id: productId, quantity: quantity, unit_price: product.selling_price }],
+                items: [{ product_id: productId, quantity: quantity, unit_price: parseFloat(product.selling_price) }],
                 payment_method: paymentMethod,
                 sales_date: today
             };
@@ -362,9 +358,7 @@
                 
                 await loadAllocatedStock();
                 await loadSalesHistory();
-                if (paymentMethod === 'credit') {
-                    await loadCreditRequests();
-                }
+                await loadCreditRequests();
             } else {
                 showMessage('Failed to record sale: ' + (result?.message || 'Unknown error'), true);
             }
@@ -382,19 +376,20 @@
                     let totalItems = 0;
                     let html = '';
                     
-                    for (let i = 0; i < data.data.length; i++) {
-                        const sale = data.data[i];
-                        const itemsRes = await fetch(API_URL + '/sales/order/' + sale.id + '/items', { headers: { 'Authorization': 'Bearer ' + authToken } });
-                        const itemsData = await itemsRes.json();
-                        const isCredit = sale.payment_method === 'credit';
-                        const isApproved = sale.approval_status === 'approved';
-                        const isCash = sale.payment_method === 'cash';
-                        const isTransfer = sale.payment_method === 'bank_transfer';
+                    for (var s = 0; s < data.data.length; s++) {
+                        var sale = data.data[s];
+                        var itemsRes = await fetch(API_URL + '/sales/order/' + sale.id + '/items', { headers: { 'Authorization': 'Bearer ' + authToken } });
+                        var itemsData = await itemsRes.json();
+                        var isCredit = sale.payment_method === 'credit';
+                        var isApproved = sale.approval_status === 'approved';
+                        var isRejected = sale.approval_status === 'rejected';
+                        var isCash = sale.payment_method === 'cash';
+                        var isTransfer = sale.payment_method === 'bank_transfer';
                         
                         if (itemsData.success && itemsData.data) {
-                            for (let j = 0; j < itemsData.data.length; j++) {
-                                const item = itemsData.data[j];
-                                const itemAmount = parseFloat(item.total_price) || 0;
+                            for (var i = 0; i < itemsData.data.length; i++) {
+                                var item = itemsData.data[i];
+                                var itemAmount = parseFloat(item.total_price) || 0;
                                 
                                 if (isCredit && isApproved) {
                                     totalCredit += itemAmount;
@@ -407,7 +402,17 @@
                                     html += '<td>Credit' + '</td>';
                                     html += '<td class="status-approved">Approved' + '</td>';
                                     html += '</tr>';
-                                } else if (isCredit && !isApproved) {
+                                } else if (isCredit && isRejected) {
+                                    html += '<tr>';
+                                    html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
+                                    html += '<td>' + sale.customer_name + '</td>';
+                                    html += '<td>' + item.product_name + '</td>';
+                                    html += '<td>' + item.quantity + '</td>';
+                                    html += '<td>' + formatMoney(itemAmount) + '</td>';
+                                    html += '<td>Credit' + '</td>';
+                                    html += '<td class="status-rejected">Declined' + '</td>';
+                                    html += '</tr>';
+                                } else if (isCredit && !isApproved && !isRejected) {
                                     html += '<tr>';
                                     html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
                                     html += '<td>' + sale.customer_name + '</td>';
@@ -420,19 +425,19 @@
                                 } else if (isCash) {
                                     cashTotal += itemAmount;
                                     totalItems += item.quantity;
-                                    html += '<tr>';
+                                    html += '</td>';
                                     html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
                                     html += '<td>' + sale.customer_name + '</td>';
                                     html += '<td>' + item.product_name + '</td>';
                                     html += '<td>' + item.quantity + '</td>';
                                     html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                    html += '<td>Cash' + '<tr>';
+                                    html += '<td>Cash' + '</td>';
                                     html += '<td class="status-approved">Completed' + '</td>';
                                     html += '</tr>';
                                 } else if (isTransfer) {
                                     transferTotal += itemAmount;
                                     totalItems += item.quantity;
-                                    html += '<tr>';
+                                    html += '</td>';
                                     html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
                                     html += '<td>' + sale.customer_name + '</td>';
                                     html += '<td>' + item.product_name + '</td>';
@@ -452,7 +457,7 @@
                     document.getElementById('itemsSold').innerHTML = totalItems;
                     document.getElementById('creditTotal').innerHTML = formatCreditMoney(totalCredit);
                     
-                    document.getElementById('salesHistoryBody').innerHTML = html || '<tr><td colspan="7">No transactions yet这些</td>';
+                    document.getElementById('salesHistoryBody').innerHTML = html || '<tr><td colspan="7">No transactions yet</tr>';
                     document.getElementById('historyLoading').style.display = 'none';
                     document.getElementById('historyTable').style.display = 'table';
                 }
@@ -465,9 +470,10 @@
             const data = await fetchAPI('/approvals/my-requests');
             if (data && data.success) {
                 let html = '';
-                for (const req of data.data) {
-                    const statusText = req.status === 'approved' ? 'Approved' : (req.status === 'rejected' ? 'Declined' : 'Pending');
-                    const statusClass = req.status === 'approved' ? 'status-approved' : (req.status === 'rejected' ? 'status-rejected' : 'status-pending-text');
+                for (var i = 0; i < data.data.length; i++) {
+                    var req = data.data[i];
+                    var statusText = req.status === 'approved' ? 'Approved' : (req.status === 'rejected' ? 'Declined' : 'Pending');
+                    var statusClass = req.status === 'approved' ? 'status-approved' : (req.status === 'rejected' ? 'status-rejected' : 'status-pending-text');
                     html += '<tr>';
                     html += '<td>' + req.order_number + '</td>';
                     html += '<td>' + req.customer_name + '</td>';
@@ -476,7 +482,7 @@
                     html += '<td>' + (req.due_date ? new Date(req.due_date).toLocaleDateString() : '-') + '</td>';
                     html += '</tr>';
                 }
-                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests这些</td>';
+                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests</tr>';
                 document.getElementById('creditLoading').style.display = 'none';
                 document.getElementById('creditTable').style.display = 'table';
             }
@@ -487,7 +493,7 @@
                 const result = await fetchAPI('/sales/submit-day', { 
                     method: 'POST', 
                     body: JSON.stringify({ 
-                        team_id: currentUser.team_id, 
+                        team_id: currentUser.team_id || 1, 
                         sales_date: new Date().toISOString().split('T')[0] 
                     }) 
                 });
