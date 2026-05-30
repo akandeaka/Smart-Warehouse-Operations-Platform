@@ -131,7 +131,7 @@
         <div id="creditLoading" class="loading">Loading credit requests...</div>
         <table id="creditTable" style="display: none;">
             <thead>
-                <tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Status</th><th>Due Date</th></tr>
+                <tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Status</th><th>Due Date</th></table>
             </thead>
             <tbody id="creditTableBody"></tbody>
         </table>
@@ -251,6 +251,7 @@
                     document.getElementById('totalAllocatedValue').innerHTML = formatMoney(totalValue);
                     allocationSummary.style.display = 'block';
 
+                    // CRITICAL: Once confirmed for the day, never show confirm button again
                     if (isConfirmed) {
                         document.getElementById('confirmationStatus').innerHTML = '✅ Confirmed';
                         document.getElementById('confirmationStatus').className = 'status-confirmed';
@@ -430,7 +431,7 @@
                                     
                                     if (isCash) {
                                         html += '<tr>';
-                                        html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '<td>';
+                                        html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
                                         html += '<td>' + sale.customer_name + '</td>';
                                         html += '<td>' + item.product_name + '</td>';
                                         html += '<td>' + item.quantity + '</td>';
@@ -497,7 +498,7 @@
             if (data && data.success) {
                 let html = '';
                 for (const req of data.data) {
-                    html += '<tr>';
+                    html += '</tr>';
                     html += '<td>' + req.order_number + '</td>';
                     html += '<td>' + req.customer_name + '</td>';
                     html += '<td class="credit-amount">' + formatCreditMoney(req.total_amount) + '</td>';
