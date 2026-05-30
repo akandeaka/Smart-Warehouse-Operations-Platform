@@ -631,5 +631,58 @@ async function startServer() {
         console.log('Health: https://warehouse-backend-new-u9rq.onrender.com/health');
     });
 }
+// Confirm allocation (sales team confirms receipt of goods)
+app.post('/api/allocations/confirm', authMiddleware, async (req, res) => {
+    try {
+        const { team_id, allocated_date } = req.body;
+        
+        // Update all allocations for this team on this date to confirmed = 1
+        await pool.query(
+            'UPDATE sales_team_allocations SET confirmed = 1 WHERE team_id = ? AND allocated_date = ?',
+            [team_id, allocated_date]
+        );
+        
+        res.json({ success: true, message: 'Allocation confirmed successfully' });
+    } catch (error) {
+        console.error('Confirm allocation error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
+// Get confirmation status for a team on a date
+app.get('/api/allocations/confirmation-status/:teamId/:date', authMiddleware, async (req, res) => {
+    try {
+        const { teamId, date } = req.params;
+        
+        const [result] = await pool.query(
+            'SELECT confirmed FROM sales_team_allocations WHERE team_id = ? AND allocated_date = ? LIMIT 1',
+            [teamId, date]
+        );
+        
+        const isConfirmed = result.length > 0 && result[0].confirmed === 1;
+        res.json({ success: true, confirmed: isConfirmed });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) => {
+    try {
+        const { teamId } = req.params;
+        const today = new Date().toISOString().split('T')[0];
+        
+        const [allocations] = await pool.query(
+            `SELECT p.id, p.product_name, p.selling_price, 
+                    a.allocated_qty, a.sold_qty, a.confirmed,
+                    (a.allocated_qty - a.sold_qty - a.returned_qty) as remaining_qty
+             FROM sales_team_allocations a
+             JOIN products p ON a.product_id = p.id
+             WHERE a.team_id = ? AND a.allocated_date = ? AND a.status = 'active'`,
+            [teamId, today]
+        );
+        
+        res.json({ success: true, data: allocations });
+    } catch (error) {
+        res.json({ success: true, data: [] });
+    }
+});
 startServer();
