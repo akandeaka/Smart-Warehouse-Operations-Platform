@@ -75,7 +75,7 @@ app.get('/health', async (req, res) => {
 });
 
 app.get('/api/version', (req, res) => {
-    res.json({ version: 'FINAL_V2', columns: 'approved_and_rejected' });
+    res.json({ version: 'FINAL_V3', columns: 'approved_and_rejected', feature: 'database_confirmation' });
 });
 
 // ============================================================
@@ -223,6 +223,7 @@ app.get('/api/allocations/today', authMiddleware, async (req, res) => {
     }
 });
 
+// Get team's allocated stock for today (UPDATED with confirmed column)
 app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) => {
     try {
         const { teamId } = req.params;
@@ -230,7 +231,7 @@ app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) 
         
         const [allocations] = await pool.query(
             `SELECT p.id, p.product_name, p.selling_price, 
-                    a.allocated_qty, a.sold_qty, 
+                    a.allocated_qty, a.sold_qty, a.returned_qty, a.confirmed,
                     (a.allocated_qty - a.sold_qty - a.returned_qty) as remaining_qty
              FROM sales_team_allocations a
              JOIN products p ON a.product_id = p.id
@@ -241,6 +242,40 @@ app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) 
         res.json({ success: true, data: allocations });
     } catch (error) {
         res.json({ success: true, data: [] });
+    }
+});
+
+// Confirm allocation (sales team confirms receipt of goods)
+app.post('/api/allocations/confirm', authMiddleware, async (req, res) => {
+    try {
+        const { team_id, allocated_date } = req.body;
+        
+        await pool.query(
+            'UPDATE sales_team_allocations SET confirmed = 1 WHERE team_id = ? AND allocated_date = ?',
+            [team_id, allocated_date]
+        );
+        
+        res.json({ success: true, message: 'Allocation confirmed successfully' });
+    } catch (error) {
+        console.error('Confirm allocation error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Get confirmation status for a team on a date
+app.get('/api/allocations/confirmation-status/:teamId/:date', authMiddleware, async (req, res) => {
+    try {
+        const { teamId, date } = req.params;
+        
+        const [result] = await pool.query(
+            'SELECT confirmed FROM sales_team_allocations WHERE team_id = ? AND allocated_date = ? LIMIT 1',
+            [teamId, date]
+        );
+        
+        const isConfirmed = result.length > 0 && result[0].confirmed === 1;
+        res.json({ success: true, confirmed: isConfirmed });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
     }
 });
 
@@ -363,10 +398,8 @@ app.get('/api/sales/order/:orderId/items', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-// CREDIT APPROVALS - USING approved/rejected COLUMNS (TINYINT)
+// CREDIT APPROVALS
 // ============================================================
-
-// Get pending credit approvals (approved=0 AND rejected=0)
 app.get('/api/approvals/pending', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
         const [approvals] = await pool.query(
@@ -383,7 +416,6 @@ app.get('/api/approvals/pending', authMiddleware, requireRole(['warehouse_manage
     }
 });
 
-// Get my credit requests (for sales rep)
 app.get('/api/approvals/my-requests', authMiddleware, async (req, res) => {
     try {
         const [requests] = await pool.query(
@@ -401,7 +433,6 @@ app.get('/api/approvals/my-requests', authMiddleware, async (req, res) => {
     }
 });
 
-// Approve credit - SIMPLIFIED VERSION (stock updates commented out for testing)
 app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     let connection;
     try {
@@ -418,7 +449,6 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
             await connection.query('UPDATE sales_orders SET total_amount = ? WHERE id = ?', [approved_amount, order_id]);
         }
         
-        // ONLY update credit_approvals - remove the other updates temporarily
         await connection.query(
             'UPDATE credit_approvals SET approved = 1, approved_by = ?, approved_at = NOW() WHERE id = ?',
             [req.user.id, approval_id]
@@ -428,32 +458,6 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
             'UPDATE sales_orders SET approval_status = "approved", payment_status = "pending" WHERE id = ?',
             [order_id]
         );
-        
-        // COMMENTED OUT to isolate the error
-        /*
-        const [items] = await connection.query(
-            `SELECT oi.product_id, oi.quantity, oi.cost_of_goods, o.team_id 
-             FROM sales_order_items oi 
-             JOIN sales_orders o ON oi.order_id = o.id 
-             WHERE o.id = ?`,
-            [order_id]
-        );
-        
-        for (const item of items) {
-            await connection.query(
-                'UPDATE sales_team_allocations SET sold_qty = sold_qty + ? WHERE team_id = ? AND product_id = ? AND allocated_date = CURDATE()',
-                [item.quantity, item.team_id, item.product_id]
-            );
-            
-            await connection.query(
-                `INSERT INTO stock_transactions 
-                 (transaction_type, product_id, quantity_change, unit_cost_at_time, 
-                  reference_type, reference_id, team_id, created_by) 
-                 VALUES ('sale_out', ?, ?, ?, 'sales_order', ?, ?, ?)`,
-                [item.product_id, -item.quantity, item.cost_of_goods, order_id, item.team_id, req.user.id]
-            );
-        }
-        */
         
         await connection.commit();
         res.json({ success: true, message: 'Credit approved successfully' });
@@ -466,7 +470,6 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
     }
 });
 
-// Reject credit - USING rejected COLUMN (TINYINT) - NO ENUM ISSUES
 app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
         const { approval_id } = req.body;
@@ -475,7 +478,6 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
         if (approval.length === 0) throw new Error('Approval not found');
         const order_id = approval[0].order_id;
         
-        // USING rejected COLUMN (TINYINT) - This will NEVER give ENUM error
         await pool.query(
             'UPDATE credit_approvals SET rejected = 1, approved_by = ?, approved_at = NOW() WHERE id = ?',
             [req.user.id, approval_id]
@@ -631,58 +633,5 @@ async function startServer() {
         console.log('Health: https://warehouse-backend-new-u9rq.onrender.com/health');
     });
 }
-// Confirm allocation (sales team confirms receipt of goods)
-app.post('/api/allocations/confirm', authMiddleware, async (req, res) => {
-    try {
-        const { team_id, allocated_date } = req.body;
-        
-        // Update all allocations for this team on this date to confirmed = 1
-        await pool.query(
-            'UPDATE sales_team_allocations SET confirmed = 1 WHERE team_id = ? AND allocated_date = ?',
-            [team_id, allocated_date]
-        );
-        
-        res.json({ success: true, message: 'Allocation confirmed successfully' });
-    } catch (error) {
-        console.error('Confirm allocation error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
 
-// Get confirmation status for a team on a date
-app.get('/api/allocations/confirmation-status/:teamId/:date', authMiddleware, async (req, res) => {
-    try {
-        const { teamId, date } = req.params;
-        
-        const [result] = await pool.query(
-            'SELECT confirmed FROM sales_team_allocations WHERE team_id = ? AND allocated_date = ? LIMIT 1',
-            [teamId, date]
-        );
-        
-        const isConfirmed = result.length > 0 && result[0].confirmed === 1;
-        res.json({ success: true, confirmed: isConfirmed });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) => {
-    try {
-        const { teamId } = req.params;
-        const today = new Date().toISOString().split('T')[0];
-        
-        const [allocations] = await pool.query(
-            `SELECT p.id, p.product_name, p.selling_price, 
-                    a.allocated_qty, a.sold_qty, a.confirmed,
-                    (a.allocated_qty - a.sold_qty - a.returned_qty) as remaining_qty
-             FROM sales_team_allocations a
-             JOIN products p ON a.product_id = p.id
-             WHERE a.team_id = ? AND a.allocated_date = ? AND a.status = 'active'`,
-            [teamId, today]
-        );
-        
-        res.json({ success: true, data: allocations });
-    } catch (error) {
-        res.json({ success: true, data: [] });
-    }
-});
 startServer();
