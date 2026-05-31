@@ -668,3 +668,58 @@ async function startServer() {
 }
 
 startServer();
+// Get team's allocated stock for today - FIXED to exclude submitted sales
+app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) => {
+    try {
+        const { teamId } = req.params;
+        const today = new Date().toISOString().split('T')[0];
+        
+        const [allocations] = await pool.query(
+            `SELECT p.id, p.product_name, p.selling_price, 
+                    a.allocated_qty, a.sold_qty, a.returned_qty, a.confirmed,
+                    (a.allocated_qty - a.sold_qty - a.returned_qty) as remaining_qty
+             FROM sales_team_allocations a
+             JOIN products p ON a.product_id = p.id
+             WHERE a.team_id = ? 
+             AND a.allocated_date = ?
+             AND a.status = 'active'
+             AND (a.allocated_qty - a.sold_qty - a.returned_qty) > 0`,
+            [teamId, today]
+        );
+        
+        res.json({ success: true, data: allocations });
+    } catch (error) {
+        console.error('Get team allocations error:', error);
+        res.json({ success: true, data: [] });
+    }
+});
+// SUBMIT DAY SALES - should make sales no longer visible
+app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
+    try {
+        const { team_id, sales_date } = req.body;
+        
+        // This marks the sales as submitted so they won't appear in active allocations
+        await pool.query(
+            'UPDATE sales_team_allocations SET status = "submitted" WHERE team_id = ? AND allocated_date = ? AND status = "active"',
+            [team_id, sales_date]
+        );
+        
+        res.json({ success: true, message: 'Sales submitted for the day' });
+    } catch (error) { 
+        res.status(500).json({ success: false, message: error.message }); 
+    }
+});
+awa// ALWAYS insert new allocation, don't update existing
+app.post('/api/allocations', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    // ... validation code ...
+    
+    // REMOVE the existing check - always insert new allocation
+    await connection.query(
+        `INSERT INTO sales_team_allocations (team_id, product_id, allocated_qty, allocated_date, allocated_by, status, confirmed)
+         VALUES (?, ?, ?, ?, ?, 'active', 0)`,
+        [team_id, product_id, quantity, allocationDate, req.user.id]
+    );
+    
+    // ... rest of code ...
+});it pool.query('SELECT * FROM table WHERE status = ?', [teamId, 'active'])  // CORRECT
+
