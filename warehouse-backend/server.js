@@ -1,4 +1,4 @@
-// server.js - Complete Backend with Allocation Endpoints (FIXED)
+// server.js - Complete Backend with Allocation Endpoints (FULLY FIXED)
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
@@ -75,7 +75,7 @@ app.get('/health', async (req, res) => {
 });
 
 app.get('/api/version', (req, res) => {
-    res.json({ version: 'FINAL_V4', feature: 'database_confirmation', fixed: 'allocation_error' });
+    res.json({ version: 'FINAL_V5', feature: 'multiple_allocations_per_day', fixed: 'all_sql_parameters' });
 });
 
 // ============================================================
@@ -145,7 +145,7 @@ app.get('/api/products', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-// ALLOCATIONS - FIXED
+// ALLOCATIONS - FIXED (ALWAYS INSERT NEW, NEVER UPDATE)
 // ============================================================
 app.post('/api/allocations', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     let connection;
@@ -170,28 +170,17 @@ app.post('/api/allocations', authMiddleware, requireRole(['warehouse_manager']),
                 throw new Error(`Only ${product[0].current_qty} units available in warehouse`);
             }
             
+            // Update product quantity in warehouse
             await connection.query(
                 'UPDATE products SET current_qty = current_qty - ? WHERE id = ?',
                 [quantity, product_id]
             );
             
-            // FIXED: Properly quoted string 'active'
-            const [existing] = await connection.query(
-                'SELECT id, allocated_qty FROM sales_team_allocations WHERE team_id = ? AND product_id = ? AND allocated_date = ? AND status = ?',
-                [team_id, product_id, allocationDate, 'active']
+            // ALWAYS INSERT NEW ALLOCATION - never update existing
+            await connection.query(
+                'INSERT INTO sales_team_allocations (team_id, product_id, allocated_qty, allocated_date, allocated_by, status, confirmed) VALUES (?, ?, ?, ?, ?, ?, 0)',
+                [team_id, product_id, quantity, allocationDate, req.user.id, 'active']
             );
-            
-            if (existing.length > 0) {
-                await connection.query(
-                    'UPDATE sales_team_allocations SET allocated_qty = allocated_qty + ?, confirmed = 0 WHERE id = ?',
-                    [quantity, existing[0].id]
-                );
-            } else {
-                await connection.query(
-                    'INSERT INTO sales_team_allocations (team_id, product_id, allocated_qty, allocated_date, allocated_by, status, confirmed) VALUES (?, ?, ?, ?, ?, ?, 0)',
-                    [team_id, product_id, quantity, allocationDate, req.user.id, 'active']
-                );
-            }
             
             await connection.query(
                 'INSERT INTO stock_transactions (transaction_type, product_id, quantity_change, unit_cost_at_time, reference_type, team_id, created_by, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
@@ -230,7 +219,7 @@ app.get('/api/allocations/today', authMiddleware, async (req, res) => {
     }
 });
 
-// Get team's allocated stock for today - FIXED
+// Get team's allocated stock for today - FIXED (using parameter for 'active')
 app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) => {
     try {
         const { teamId } = req.params;
@@ -242,7 +231,8 @@ app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) 
                     (a.allocated_qty - a.sold_qty - a.returned_qty) as remaining_qty
              FROM sales_team_allocations a
              JOIN products p ON a.product_id = p.id
-             WHERE a.team_id = ? AND a.allocated_date = ? AND a.status = ?`,
+             WHERE a.team_id = ? AND a.allocated_date = ? AND a.status = ?
+               AND (a.allocated_qty - a.sold_qty - a.returned_qty) > 0`,
             [teamId, date, 'active']
         );
         
@@ -259,7 +249,7 @@ app.post('/api/allocations/confirm', authMiddleware, async (req, res) => {
         const { team_id, allocated_date } = req.body;
         
         await pool.query(
-            'UPDATE sales_team_allocations SET confirmed = 1 WHERE team_id = ? AND allocated_date = ?',
+            'UPDATE sales_team_allocations SET confirmed = 1 WHERE team_id = ? AND allocated_date = ? AND confirmed = 0',
             [team_id, allocated_date]
         );
         
@@ -530,35 +520,75 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
 });
 
 // ============================================================
-// SUBMIT DAY SALES & PENDING RETURNS
+// SUBMIT DAY SALES - UPDATED to mark allocations as submitted
 // ============================================================
 app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
+    let connection;
     try {
         const { team_id, sales_date } = req.body;
-        await pool.query('UPDATE sales_orders SET submitted_for_review = 1 WHERE team_id = ? AND sales_date = ? AND submitted_for_review = 0', [team_id, sales_date]);
-        res.json({ success: true, message: 'Sales submitted' });
+        
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+        
+        // Mark sales orders as submitted for review
+        await connection.query(
+            'UPDATE sales_orders SET submitted_for_review = 1 WHERE team_id = ? AND sales_date = ? AND submitted_for_review = 0',
+            [team_id, sales_date]
+        );
+        
+        // Mark allocations as submitted so they don't appear in active sales
+        await connection.query(
+            'UPDATE sales_team_allocations SET status = ? WHERE team_id = ? AND allocated_date = ? AND status = ?',
+            ['submitted', team_id, sales_date, 'active']
+        );
+        
+        await connection.commit();
+        res.json({ success: true, message: 'Sales submitted for the day' });
     } catch (error) { 
+        if (connection) await connection.rollback();
+        console.error('Submit day error:', error);
         res.status(500).json({ success: false, message: error.message }); 
+    } finally {
+        if (connection) connection.release();
     }
 });
 
 app.get('/api/sales/pending-submissions', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
-        const [items] = await pool.query(`SELECT so.id, st.team_name, so.customer_name, p.product_name, soi.quantity, (soi.quantity * soi.unit_price) as amount, so.payment_method as type FROM sales_orders so JOIN sales_teams st ON so.team_id = st.id JOIN sales_order_items soi ON so.id = soi.order_id JOIN products p ON soi.product_id = p.id WHERE so.submitted_for_review = 1 AND so.manager_confirmed = 0`);
+        const [items] = await pool.query(
+            `SELECT so.id, st.team_name, so.customer_name, p.product_name, soi.quantity, (soi.quantity * soi.unit_price) as amount, so.payment_method as type 
+             FROM sales_orders so 
+             JOIN sales_teams st ON so.team_id = st.id 
+             JOIN sales_order_items soi ON so.id = soi.order_id 
+             JOIN products p ON soi.product_id = p.id 
+             WHERE so.submitted_for_review = 1 AND so.manager_confirmed = 0`
+        );
         res.json({ success: true, data: items });
     } catch (error) { 
+        console.error('Get pending submissions error:', error);
         res.status(500).json({ success: false, message: error.message }); 
     }
 });
 
 app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    let connection;
     try {
         const { item_id, action } = req.body;
-        if (action === 'accept') await pool.query('UPDATE sales_orders SET manager_confirmed = 1 WHERE id = ?', [item_id]);
-        else if (action === 'reject') await pool.query('UPDATE sales_orders SET submitted_for_review = 0 WHERE id = ?', [item_id]);
-        res.json({ success: true });
+        
+        connection = await pool.getConnection();
+        
+        if (action === 'accept') {
+            await connection.query('UPDATE sales_orders SET manager_confirmed = 1 WHERE id = ?', [item_id]);
+        } else if (action === 'reject') {
+            await connection.query('UPDATE sales_orders SET submitted_for_review = 0 WHERE id = ?', [item_id]);
+        }
+        
+        res.json({ success: true, message: `Return ${action}ed successfully` });
     } catch (error) { 
+        console.error('Confirm return error:', error);
         res.status(500).json({ success: false, message: error.message }); 
+    } finally {
+        if (connection) connection.release();
     }
 });
 
@@ -584,12 +614,13 @@ app.get('/api/reports/daily', authMiddleware, async (req, res) => {
         
         res.json({ success: true, date: today, teams: report });
     } catch (error) {
+        console.error('Daily report error:', error);
         res.json({ success: true, date: new Date().toISOString().split('T')[0], teams: [] });
     }
 });
 
 // ============================================================
-// DAILY CLOSURE - FIXED
+// DAILY CLOSURE
 // ============================================================
 app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     let connection;
@@ -642,6 +673,7 @@ app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']),
         res.json({ success: true, message: 'Day closed successfully' });
     } catch (error) {
         if (connection) await connection.rollback();
+        console.error('Daily closure error:', error);
         res.status(500).json({ success: false, message: error.message });
     } finally {
         if (connection) connection.release();
@@ -668,58 +700,3 @@ async function startServer() {
 }
 
 startServer();
-// Get team's allocated stock for today - FIXED to exclude submitted sales
-app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) => {
-    try {
-        const { teamId } = req.params;
-        const today = new Date().toISOString().split('T')[0];
-        
-        const [allocations] = await pool.query(
-            `SELECT p.id, p.product_name, p.selling_price, 
-                    a.allocated_qty, a.sold_qty, a.returned_qty, a.confirmed,
-                    (a.allocated_qty - a.sold_qty - a.returned_qty) as remaining_qty
-             FROM sales_team_allocations a
-             JOIN products p ON a.product_id = p.id
-             WHERE a.team_id = ? 
-             AND a.allocated_date = ?
-             AND a.status = 'active'
-             AND (a.allocated_qty - a.sold_qty - a.returned_qty) > 0`,
-            [teamId, today]
-        );
-        
-        res.json({ success: true, data: allocations });
-    } catch (error) {
-        console.error('Get team allocations error:', error);
-        res.json({ success: true, data: [] });
-    }
-});
-// SUBMIT DAY SALES - should make sales no longer visible
-app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
-    try {
-        const { team_id, sales_date } = req.body;
-        
-        // This marks the sales as submitted so they won't appear in active allocations
-        await pool.query(
-            'UPDATE sales_team_allocations SET status = "submitted" WHERE team_id = ? AND allocated_date = ? AND status = "active"',
-            [team_id, sales_date]
-        );
-        
-        res.json({ success: true, message: 'Sales submitted for the day' });
-    } catch (error) { 
-        res.status(500).json({ success: false, message: error.message }); 
-    }
-});
-awa// ALWAYS insert new allocation, don't update existing
-app.post('/api/allocations', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    // ... validation code ...
-    
-    // REMOVE the existing check - always insert new allocation
-    await connection.query(
-        `INSERT INTO sales_team_allocations (team_id, product_id, allocated_qty, allocated_date, allocated_by, status, confirmed)
-         VALUES (?, ?, ?, ?, ?, 'active', 0)`,
-        [team_id, product_id, quantity, allocationDate, req.user.id]
-    );
-    
-    // ... rest of code ...
-});it pool.query('SELECT * FROM table WHERE status = ?', [teamId, 'active'])  // CORRECT
-
