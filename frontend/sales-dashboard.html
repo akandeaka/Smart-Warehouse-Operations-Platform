@@ -105,7 +105,7 @@
         </div>
         <div id="stockLoading" class="loading">Loading your allocated stock...</div>
         <div id="allocatedStock" class="product-grid" style="display: none;"></div>
-        <button id="confirmReceiptBtn" class="confirm-btn-large" onclick="confirmAllocation()" style="display: none;">✅ CLICK HERE TO CONFIRM RECEIPT OF ALL GOODS ✅</button>
+        <button id="confirmReceiptBtn" class="confirm-btn-large" onclick="confirmAllocation()" style="display: none;">✅ CLICK HERE TO CONFIRM RECEIPT OF GOODS ✅</button>
     </div>
 
     <div class="card">
@@ -149,7 +149,7 @@
                 <tr><th>Order Number</th><th>Customer Name</th><th>Amount</th><th>Status</th><th>Due Date</th></tr>
             </thead>
             <tbody id="creditTableBody"></tbody>
-        </table>
+        寸
     </div>
 
     <div class="card">
@@ -160,7 +160,7 @@
                 <tr><th>Time</th><th>Customer</th><th>Product</th><th>Quantity</th><th>Amount</th><th>Type</th><th>Status</th></tr>
             </thead>
             <tbody id="salesHistoryBody"></tbody>
-        </table>
+        寸
     </div>
 
     <button id="submitDayBtn" class="submit-btn" onclick="submitDaySales()">Submit Final Sales for the Day</button>
@@ -170,7 +170,7 @@
         let authToken = localStorage.getItem('token');
         let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
         let allocatedProducts = [];
-        let isConfirmed = false;
+        let isConfirmed = false;  // THIS MUST ONLY COME FROM BACKEND
         let refreshInterval = null;
 
         // Force team_id for alpha_lead
@@ -233,24 +233,31 @@
             container.style.display = 'none';
             confirmBtn.style.display = 'none';
             
+            // Get allocations
             const data = await fetchAPI('/sales/team/' + currentUser.team_id + '/allocations');
             
             if (data && data.success) {
                 allocatedProducts = data.data.filter(function(p) { return p.remaining_qty > 0; });
                 const today = new Date().toISOString().split('T')[0];
                 
-                // Check if already confirmed from database
+                // IMPORTANT: Get confirmation status ONLY from backend - no local assumptions
                 const confirmationData = await fetchAPI('/allocations/confirmation-status/' + currentUser.team_id + '/' + today);
-                isConfirmed = confirmationData && confirmationData.success && confirmationData.confirmed === true;
+                
+                // CRITICAL FIX: isConfirmed comes ONLY from backend response
+                if (confirmationData && confirmationData.success) {
+                    isConfirmed = confirmationData.confirmed === true;
+                } else {
+                    isConfirmed = false;
+                }
+                
+                console.log('Confirmation status from backend:', isConfirmed); // Debug log
                 
                 if (allocatedProducts.length === 0) {
-                    // No stock allocated today
                     container.innerHTML = '<p style="text-align:center; color:#ffc107; padding:40px;">📭 No stock allocated yet. Waiting for warehouse manager to allocate goods.<br><br>Click Refresh button to check for new allocations.</p>';
                     confirmBtn.style.display = 'none';
                     allocationSummary.style.display = 'none';
                     enableSelling(false);
                 } else {
-                    // Stock allocated - show normal view
                     let totalValue = 0;
                     let totalUnits = 0;
                     let html = '';
@@ -275,20 +282,16 @@
                     document.getElementById('totalAllocatedValue').innerHTML = formatMoney(totalValue);
                     allocationSummary.style.display = 'block';
 
-                    if (isConfirmed) {
+                    // CRITICAL: Show correct status based ONLY on backend isConfirmed
+                    if (isConfirmed === true) {
                         document.getElementById('confirmationStatus').innerHTML = '✅ CONFIRMED - You can now sell';
                         document.getElementById('confirmationStatus').className = 'status-confirmed';
                         confirmBtn.style.display = 'none';
                         enableSelling(true);
-                        showMessage('✅ Allocation confirmed! You can now start selling.', false);
                     } else {
-                        document.getElementById('confirmationStatus').innerHTML = '⚠️ NOT CONFIRMED - You must confirm goods before selling';
+                        document.getElementById('confirmationStatus').innerHTML = '⚠️ NOT CONFIRMED - You must click the button below to confirm goods before selling';
                         document.getElementById('confirmationStatus').className = 'status-pending';
-                        // SHOW THE CONFIRMATION BUTTON prominently
                         confirmBtn.style.display = 'block';
-                        confirmBtn.style.backgroundColor = '#28a745';
-                        confirmBtn.style.fontSize = '20px';
-                        confirmBtn.style.padding = '20px';
                         confirmBtn.innerHTML = '✅ CLICK HERE TO CONFIRM RECEIPT OF ' + totalUnits + ' UNITS VALUED AT ' + formatMoney(totalValue) + ' ✅';
                         enableSelling(false);
                         showMessage('⚠️ New stock allocation received! Please click the green confirmation button above to confirm receipt before selling.', false, true);
@@ -308,7 +311,6 @@
             document.getElementById('productSelect').disabled = !enabled;
             document.getElementById('quantity').disabled = !enabled;
             
-            // Also disable payment method radios when not confirmed
             const radios = document.querySelectorAll('input[name="paymentMethod"]');
             for (var i = 0; i < radios.length; i++) {
                 radios[i].disabled = !enabled;
@@ -333,7 +335,12 @@
                 });
                 
                 if (result && result.success) {
-                    isConfirmed = true;
+                    // CRITICAL: After confirmation, fetch fresh status from backend
+                    const freshConfirmation = await fetchAPI('/allocations/confirmation-status/' + currentUser.team_id + '/' + today);
+                    if (freshConfirmation && freshConfirmation.success) {
+                        isConfirmed = freshConfirmation.confirmed === true;
+                    }
+                    
                     document.getElementById('confirmationStatus').innerHTML = '✅ CONFIRMED - You can now sell';
                     document.getElementById('confirmationStatus').className = 'status-confirmed';
                     const confirmBtn = document.getElementById('confirmReceiptBtn');
@@ -341,8 +348,8 @@
                     enableSelling(true);
                     showMessage('✅ Allocation confirmed successfully! You can now start selling.', false);
                     
-                    // Refresh to update the UI
                     await loadAllocatedStock();
+                    await loadSalesHistory();
                 } else {
                     showMessage('Failed to confirm allocation: ' + (result?.message || 'Unknown error'), true);
                 }
@@ -596,7 +603,6 @@
             window.location.href = 'login.html'; 
         }
 
-        // Auto-refresh every 30 seconds to check for new allocations
         function startAutoRefresh() {
             if (refreshInterval) clearInterval(refreshInterval);
             refreshInterval = setInterval(function() {
