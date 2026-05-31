@@ -33,6 +33,8 @@
         button.sell-btn { background: #28a745; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
         button.sell-btn:disabled { background: #ccc; cursor: not-allowed; }
         .logout-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; }
+        .refresh-btn { background: #17a2b8; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; margin-left: 10px; }
+        .refresh-btn:hover { background: #138496; }
         .success-msg { background: #d4edda; color: #155724; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
         .error-msg { background: #f8d7da; color: #721c24; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
         .warning-msg { background: #fff3cd; color: #856404; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
@@ -48,9 +50,13 @@
         .credit-row { background-color: #fff0f0; border-left: 3px solid #dc3545; }
         .credit-amount { color: #dc3545; font-weight: bold; }
         .credit-amount::before { content: "- "; }
-        .submission-badge { background: #ffc107; color: #333; padding: 5px 10px; border-radius: 20px; font-size: 12px; margin-left: 10px; }
-        .refresh-btn { background: #17a2b8; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; margin-left: 10px; }
-        .refresh-btn:hover { background: #138496; }
+        .confirm-btn-large { background: #28a745; color: white; border: none; padding: 20px; border-radius: 10px; cursor: pointer; font-size: 20px; font-weight: bold; width: 100%; margin-top: 15px; animation: pulse 1.5s infinite; }
+        .confirm-btn-large:hover { background: #218838; }
+        @keyframes pulse {
+            0% { transform: scale(1); background-color: #28a745; }
+            50% { transform: scale(1.02); background-color: #34ce57; }
+            100% { transform: scale(1); background-color: #28a745; }
+        }
     </style>
 </head>
 <body>
@@ -99,12 +105,12 @@
         </div>
         <div id="stockLoading" class="loading">Loading your allocated stock...</div>
         <div id="allocatedStock" class="product-grid" style="display: none;"></div>
-        <button id="confirmReceiptBtn" class="confirm-btn" onclick="confirmAllocation()" style="display: none;">Confirm Receipt of All Goods</button>
+        <button id="confirmReceiptBtn" class="confirm-btn-large" onclick="confirmAllocation()" style="display: none;">✅ CLICK HERE TO CONFIRM RECEIPT OF ALL GOODS ✅</button>
     </div>
 
     <div class="card">
         <h3>➕ Record New Sale</h3>
-        <div id="saleDisabledWarning" class="warning-msg" style="display: none;">You must confirm receipt of goods before selling.</div>
+        <div id="saleDisabledWarning" class="warning-msg" style="display: none;">⚠️ You must confirm receipt of goods before selling. Click the green button above.</div>
         <form id="saleForm">
             <div class="form-group">
                 <label>Customer Name *</label>
@@ -143,7 +149,7 @@
                 <tr><th>Order Number</th><th>Customer Name</th><th>Amount</th><th>Status</th><th>Due Date</th></tr>
             </thead>
             <tbody id="creditTableBody"></tbody>
-         </table>
+        </table>
     </div>
 
     <div class="card">
@@ -154,7 +160,7 @@
                 <tr><th>Time</th><th>Customer</th><th>Product</th><th>Quantity</th><th>Amount</th><th>Type</th><th>Status</th></tr>
             </thead>
             <tbody id="salesHistoryBody"></tbody>
-         </table>
+        </table>
     </div>
 
     <button id="submitDayBtn" class="submit-btn" onclick="submitDaySales()">Submit Final Sales for the Day</button>
@@ -220,12 +226,12 @@
         async function loadAllocatedStock() {
             const loadingDiv = document.getElementById('stockLoading');
             const container = document.getElementById('allocatedStock');
-            const select = document.getElementById('productSelect');
             const confirmBtn = document.getElementById('confirmReceiptBtn');
             const allocationSummary = document.getElementById('allocationSummary');
             
             loadingDiv.style.display = 'block';
             container.style.display = 'none';
+            confirmBtn.style.display = 'none';
             
             const data = await fetchAPI('/sales/team/' + currentUser.team_id + '/allocations');
             
@@ -237,21 +243,16 @@
                 const confirmationData = await fetchAPI('/allocations/confirmation-status/' + currentUser.team_id + '/' + today);
                 isConfirmed = confirmationData && confirmationData.success && confirmationData.confirmed === true;
                 
-                // ========== REMOVED BLOCKING CODE ==========
-                // No longer checking hasSubmittedToday to block allocations
-                // Sales team can ALWAYS see and accept allocations
-                // ==========================================
-                
                 if (allocatedProducts.length === 0) {
-                    // No stock allocated today - show waiting state but allow new allocations to appear
-                    container.innerHTML = '<p style="text-align:center; color:#ffc107;">No stock allocated yet. Waiting for warehouse manager to allocate goods. Click refresh to check.</p>';
+                    // No stock allocated today
+                    container.innerHTML = '<p style="text-align:center; color:#ffc107; padding:40px;">📭 No stock allocated yet. Waiting for warehouse manager to allocate goods.<br><br>Click Refresh button to check for new allocations.</p>';
                     confirmBtn.style.display = 'none';
                     allocationSummary.style.display = 'none';
                     enableSelling(false);
-                    // Don't reset stats - keep existing sales visible
                 } else {
                     // Stock allocated - show normal view
                     let totalValue = 0;
+                    let totalUnits = 0;
                     let html = '';
                     let selectHtml = '<option value="">Select Product</option>';
                     
@@ -259,13 +260,14 @@
                         var p = allocatedProducts[i];
                         var productTotal = p.remaining_qty * parseFloat(p.selling_price);
                         totalValue += productTotal;
+                        totalUnits += p.remaining_qty;
                         html += '<div class="product-item">';
                         html += '<h4>' + p.product_name + '</h4>';
-                        html += '<div class="stock">Available: ' + p.remaining_qty + ' units</div>';
-                        html += '<div class="price">' + formatMoney(p.selling_price) + ' per unit</div>';
-                        html += '<div class="total-value">Total Value: ' + formatMoney(productTotal) + '</div>';
+                        html += '<div class="stock">📦 Available: <strong>' + p.remaining_qty + '</strong> units</div>';
+                        html += '<div class="price">💰 ' + formatMoney(p.selling_price) + ' per unit</div>';
+                        html += '<div class="total-value">💵 Total Value: ' + formatMoney(productTotal) + '</div>';
                         html += '</div>';
-                        selectHtml += '<option value="' + p.id + '" data-price="' + p.selling_price + '">' + p.product_name + ' - ' + formatMoney(p.selling_price) + ' (' + p.remaining_qty + ' left)</option>';
+                        selectHtml += '<option value="' + p.id + '" data-price="' + p.selling_price + '">' + p.product_name + ' - ' + formatMoney(p.selling_price) + ' (' + p.remaining_qty + ' units left)</option>';
                     }
                     
                     container.innerHTML = html;
@@ -274,15 +276,22 @@
                     allocationSummary.style.display = 'block';
 
                     if (isConfirmed) {
-                        document.getElementById('confirmationStatus').innerHTML = 'Confirmed';
+                        document.getElementById('confirmationStatus').innerHTML = '✅ CONFIRMED - You can now sell';
                         document.getElementById('confirmationStatus').className = 'status-confirmed';
                         confirmBtn.style.display = 'none';
                         enableSelling(true);
+                        showMessage('✅ Allocation confirmed! You can now start selling.', false);
                     } else {
-                        document.getElementById('confirmationStatus').innerHTML = 'Not Confirmed - Must confirm goods before selling';
+                        document.getElementById('confirmationStatus').innerHTML = '⚠️ NOT CONFIRMED - You must confirm goods before selling';
                         document.getElementById('confirmationStatus').className = 'status-pending';
+                        // SHOW THE CONFIRMATION BUTTON prominently
                         confirmBtn.style.display = 'block';
+                        confirmBtn.style.backgroundColor = '#28a745';
+                        confirmBtn.style.fontSize = '20px';
+                        confirmBtn.style.padding = '20px';
+                        confirmBtn.innerHTML = '✅ CLICK HERE TO CONFIRM RECEIPT OF ' + totalUnits + ' UNITS VALUED AT ' + formatMoney(totalValue) + ' ✅';
                         enableSelling(false);
+                        showMessage('⚠️ New stock allocation received! Please click the green confirmation button above to confirm receipt before selling.', false, true);
                     }
                 }
                 loadingDiv.style.display = 'none';
@@ -298,15 +307,24 @@
             document.getElementById('customerName').disabled = !enabled;
             document.getElementById('productSelect').disabled = !enabled;
             document.getElementById('quantity').disabled = !enabled;
+            
+            // Also disable payment method radios when not confirmed
+            const radios = document.querySelectorAll('input[name="paymentMethod"]');
+            for (var i = 0; i < radios.length; i++) {
+                radios[i].disabled = !enabled;
+            }
         }
 
         async function confirmAllocation() {
             let totalValue = 0;
+            let totalUnits = 0;
             for (var i = 0; i < allocatedProducts.length; i++) {
                 totalValue += allocatedProducts[i].remaining_qty * parseFloat(allocatedProducts[i].selling_price);
+                totalUnits += allocatedProducts[i].remaining_qty;
             }
             
-            if (confirm('Confirm you have received ALL physical goods valued at ' + formatMoney(totalValue) + '?\n\nOnce confirmed, you will be able to start selling.')) {
+            if (confirm('📦 CONFIRM GOODS RECEIPT\n\nYou are confirming receipt of:\n📊 Total Units: ' + totalUnits + '\n💰 Total Value: ' + formatMoney(totalValue) + '\n\n⚠️ Make sure you have physically received ALL these goods before confirming.\n\n✅ Click OK to confirm receipt and start selling.')) {
+                
                 const today = new Date().toISOString().split('T')[0];
                 
                 const result = await fetchAPI('/allocations/confirm', {
@@ -316,12 +334,15 @@
                 
                 if (result && result.success) {
                     isConfirmed = true;
-                    document.getElementById('confirmationStatus').innerHTML = 'Confirmed';
+                    document.getElementById('confirmationStatus').innerHTML = '✅ CONFIRMED - You can now sell';
                     document.getElementById('confirmationStatus').className = 'status-confirmed';
-                    document.getElementById('confirmReceiptBtn').style.display = 'none';
+                    const confirmBtn = document.getElementById('confirmReceiptBtn');
+                    confirmBtn.style.display = 'none';
                     enableSelling(true);
-                    showMessage('Allocation confirmed! You can now start selling.');
-                    loadSalesHistory();
+                    showMessage('✅ Allocation confirmed successfully! You can now start selling.', false);
+                    
+                    // Refresh to update the UI
+                    await loadAllocatedStock();
                 } else {
                     showMessage('Failed to confirm allocation: ' + (result?.message || 'Unknown error'), true);
                 }
@@ -336,7 +357,7 @@
 
         document.getElementById('saleForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            if (!isConfirmed) { showMessage('Confirm goods receipt first', true); return; }
+            if (!isConfirmed) { showMessage('⚠️ Please confirm receipt of goods first by clicking the green button above.', true); return; }
             
             const customerName = document.getElementById('customerName').value;
             if (!customerName) { showMessage('Customer name is required', true); return; }
@@ -382,7 +403,7 @@
                 } else {
                     successMsg = 'Cash sale of ' + formatMoney(totalAmount) + ' recorded.';
                 }
-                showMessage(successMsg);
+                showMessage(successMsg, false);
                 
                 document.getElementById('customerName').value = '';
                 document.getElementById('customerPhone').value = '';
@@ -442,8 +463,8 @@
                                         html += '<td>' + item.product_name + '</td>';
                                         html += '<td>' + item.quantity + '</td>';
                                         html += '<td class="credit-amount">' + formatCreditMoney(itemAmount) + '</td>';
-                                        html += '<td>Credit</td>';
-                                        html += '<td class="status-approved">Approved</td>';
+                                        html += '<td>Credit' + '</td>';
+                                        html += '<td class="status-approved">Approved' + '</td>';
                                         html += '</tr>';
                                     } else if (isCredit && !isApproved) {
                                         html += '<tr>';
@@ -452,8 +473,8 @@
                                         html += '<td>' + item.product_name + '</td>';
                                         html += '<td>' + item.quantity + '</td>';
                                         html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                        html += '<td>Credit</td>';
-                                        html += '<td class="status-pending-text">Pending</td>';
+                                        html += '<td>Credit' + '</td>';
+                                        html += '<td class="status-pending-text">Pending' + '</td>';
                                         html += '</tr>';
                                     } else if (isCash) {
                                         cashTotal += itemAmount;
@@ -464,8 +485,8 @@
                                         html += '<td>' + item.product_name + '</td>';
                                         html += '<td>' + item.quantity + '</td>';
                                         html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                        html += '<td>Cash</td>';
-                                        html += '<td class="status-approved">Completed</td>';
+                                        html += '<td>Cash' + '</td>';
+                                        html += '<td class="status-approved">Completed' + '</td>';
                                         html += '</tr>';
                                     } else if (isTransfer) {
                                         transferTotal += itemAmount;
@@ -476,8 +497,8 @@
                                         html += '<td>' + item.product_name + '</td>';
                                         html += '<td>' + item.quantity + '</td>';
                                         html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                        html += '<td>Bank Transfer</td>';
-                                        html += '<td class="status-approved">Completed</td>';
+                                        html += '<td>Bank Transfer' + '</td>';
+                                        html += '<td class="status-approved">Completed' + '</td>';
                                         html += '</tr>';
                                     }
                                 }
@@ -523,12 +544,9 @@
         }
 
         async function submitDaySales() {
-            // First check if there are remaining goods
             const today = new Date().toISOString().split('T')[0];
-            const remainingCheck = await fetchAPI('/sales/check-submitted/' + currentUser.team_id + '/' + today);
             
-            // Show confirmation dialog
-            if (confirm('Are you sure you want to submit today\'s sales for manager review?\n\nYou can still accept new allocations and continue selling after submission.')) {
+            if (confirm('📤 SUBMIT SALES FOR REVIEW\n\nAre you sure you want to submit today\'s sales for manager review?\n\n✅ You can STILL accept new allocations and continue selling after submission.\n\nClick OK to submit.')) {
                 
                 const result = await fetchAPI('/sales/submit-day', { 
                     method: 'POST', 
@@ -539,15 +557,9 @@
                 });
                 
                 if (result && result.success) {
-                    showMessage('✅ Sales submitted to manager. You can still accept new allocations and continue selling!', false, false, true);
-                    
-                    // Refresh the page to show updated state
-                    setTimeout(function() {
-                        refreshData();
-                    }, 2000);
-                    
+                    showMessage('✅ Sales submitted to manager! You can still accept new allocations and continue selling.', false, false, true);
+                    refreshData();
                 } else if (result && result.requires_action) {
-                    // Show popup for remaining goods
                     const userChoice = confirm(result.message + '\n\nClick OK to MOVE remaining goods to warehouse\nClick Cancel to KEEP goods for continued selling');
                     
                     const finalResult = await fetchAPI('/sales/submit-day', { 
@@ -561,9 +573,7 @@
                     
                     if (finalResult && finalResult.success) {
                         showMessage(finalResult.message, false, false, true);
-                        setTimeout(function() {
-                            refreshData();
-                        }, 2000);
+                        refreshData();
                     } else {
                         showMessage('Failed to submit: ' + (finalResult?.message || 'Unknown error'), true);
                     }
@@ -574,11 +584,11 @@
         }
 
         async function refreshData() {
-            showMessage('Refreshing data...', false, false, true);
+            showMessage('🔄 Refreshing data...', false, false, true);
             await loadAllocatedStock();
             await loadSalesHistory();
             await loadCreditRequests();
-            showMessage('Data refreshed!', false, false, true);
+            showMessage('✅ Data refreshed!', false, false, true);
         }
 
         function logout() { 
