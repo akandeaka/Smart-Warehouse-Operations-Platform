@@ -1,4 +1,4 @@
-// server.js - COMPLETE WORKING VERSION WITH ALL FEATURES
+// server.js - COMPLETE WORKING VERSION WITH ALL FIXES
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
@@ -75,7 +75,7 @@ app.get('/health', async (req, res) => {
 });
 
 app.get('/api/version', (req, res) => {
-    res.json({ version: 'FINAL_V7', features: 'multiple_allocations_multiple_submissions_dashboard_card' });
+    res.json({ version: 'FINAL_V8', features: 'always_show_allocations_multiple_submissions_dashboard_card' });
 });
 
 // ============================================================
@@ -218,7 +218,9 @@ app.get('/api/allocations/today', authMiddleware, async (req, res) => {
     }
 });
 
-// Get team's allocated stock for today - Shows ONLY today's active allocations
+// ============================================================
+// Get team's allocated stock for today - ALWAYS SHOWS regardless of submission
+// ============================================================
 app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) => {
     try {
         const { teamId } = req.params;
@@ -242,7 +244,9 @@ app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) 
     }
 });
 
+// ============================================================
 // Get team's current active allocations with summary
+// ============================================================
 app.get('/api/sales/team/:teamId/current-allocations', authMiddleware, async (req, res) => {
     try {
         const { teamId } = req.params;
@@ -291,7 +295,9 @@ app.get('/api/sales/team/:teamId/current-allocations', authMiddleware, async (re
     }
 });
 
+// ============================================================
 // Confirm allocation
+// ============================================================
 app.post('/api/allocations/confirm', authMiddleware, async (req, res) => {
     try {
         const { team_id, allocated_date } = req.body;
@@ -308,7 +314,9 @@ app.post('/api/allocations/confirm', authMiddleware, async (req, res) => {
     }
 });
 
+// ============================================================
 // Get confirmation status
+// ============================================================
 app.get('/api/allocations/confirmation-status/:teamId/:date', authMiddleware, async (req, res) => {
     try {
         const { teamId, date } = req.params;
@@ -321,6 +329,76 @@ app.get('/api/allocations/confirmation-status/:teamId/:date', authMiddleware, as
         const isConfirmed = result.length > 0 && result[0].confirmed === 1;
         res.json({ success: true, confirmed: isConfirmed });
     } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================================
+// Check if sales already submitted - INFORMS BUT DOES NOT BLOCK
+// ============================================================
+app.get('/api/sales/check-submitted/:teamId/:date', authMiddleware, async (req, res) => {
+    try {
+        const { teamId, date } = req.params;
+        
+        const [result] = await pool.query(
+            'SELECT COUNT(*) as count FROM sales_orders WHERE team_id = ? AND sales_date = ? AND submitted_for_review = 1',
+            [teamId, date]
+        );
+        
+        const [remainingGoods] = await pool.query(
+            `SELECT COALESCE(SUM(allocated_qty - sold_qty - returned_qty), 0) as remaining
+             FROM sales_team_allocations 
+             WHERE team_id = ? AND allocated_date = ? AND status = 'active'`,
+            [teamId, date]
+        );
+        
+        res.json({ 
+            success: true, 
+            submitted: result[0]?.count > 0,
+            can_accept_new_allocations: true,
+            remaining_goods: remainingGoods[0]?.remaining || 0,
+            message: result[0]?.count > 0 ? 'Sales submitted. You can still accept new allocations and sell remaining goods.' : 'Ready to submit sales.'
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================================
+// Get submission status with details
+// ============================================================
+app.get('/api/sales/submission-status/:teamId/:date', authMiddleware, async (req, res) => {
+    try {
+        const { teamId, date } = req.params;
+        
+        const [submitted] = await pool.query(
+            `SELECT COUNT(*) as count, 
+                    COALESCE(SUM(total_amount), 0) as total_submitted_value,
+                    (SELECT COUNT(*) FROM sales_order_items soi 
+                     JOIN sales_orders so ON soi.order_id = so.id 
+                     WHERE so.team_id = ? AND so.sales_date = ?) as total_units
+             FROM sales_orders 
+             WHERE team_id = ? AND sales_date = ? AND submitted_for_review = 1`,
+            [teamId, date, teamId, date]
+        );
+        
+        const [activeGoods] = await pool.query(
+            `SELECT COALESCE(SUM(allocated_qty - sold_qty - returned_qty), 0) as remaining_units
+             FROM sales_team_allocations 
+             WHERE team_id = ? AND allocated_date = ? AND status = 'active'
+               AND (allocated_qty - sold_qty - returned_qty) > 0`,
+            [teamId, date]
+        );
+        
+        res.json({ 
+            success: true, 
+            has_submitted_today: submitted[0]?.count > 0,
+            submitted_value: submitted[0]?.total_submitted_value || 0,
+            submitted_units: submitted[0]?.total_units || 0,
+            remaining_units: activeGoods[0]?.remaining_units || 0
+        });
+    } catch (error) {
+        console.error('Submission status error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });
@@ -441,60 +519,6 @@ app.get('/api/sales/order/:orderId/items', authMiddleware, async (req, res) => {
         res.json({ success: true, data: items });
     } catch (error) {
         res.json({ success: true, data: [] });
-    }
-});
-
-// Check if sales already submitted
-app.get('/api/sales/check-submitted/:teamId/:date', authMiddleware, async (req, res) => {
-    try {
-        const { teamId, date } = req.params;
-        
-        const [result] = await pool.query(
-            'SELECT COUNT(*) as count FROM sales_orders WHERE team_id = ? AND sales_date = ? AND submitted_for_review = 1',
-            [teamId, date]
-        );
-        
-        const isSubmitted = result[0]?.count > 0;
-        res.json({ success: true, submitted: isSubmitted });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// Get submission status with details
-app.get('/api/sales/submission-status/:teamId/:date', authMiddleware, async (req, res) => {
-    try {
-        const { teamId, date } = req.params;
-        
-        const [submitted] = await pool.query(
-            `SELECT COUNT(*) as count, 
-                    COALESCE(SUM(total_amount), 0) as total_submitted_value,
-                    (SELECT COUNT(*) FROM sales_order_items soi 
-                     JOIN sales_orders so ON soi.order_id = so.id 
-                     WHERE so.team_id = ? AND so.sales_date = ?) as total_units
-             FROM sales_orders 
-             WHERE team_id = ? AND sales_date = ? AND submitted_for_review = 1`,
-            [teamId, date, teamId, date]
-        );
-        
-        const [activeGoods] = await pool.query(
-            `SELECT COALESCE(SUM(allocated_qty - sold_qty - returned_qty), 0) as remaining_units
-             FROM sales_team_allocations 
-             WHERE team_id = ? AND allocated_date = ? AND status = 'active'
-               AND (allocated_qty - sold_qty - returned_qty) > 0`,
-            [teamId, date]
-        );
-        
-        res.json({ 
-            success: true, 
-            has_submitted_today: submitted[0]?.count > 0,
-            submitted_value: submitted[0]?.total_submitted_value || 0,
-            submitted_units: submitted[0]?.total_units || 0,
-            remaining_units: activeGoods[0]?.remaining_units || 0
-        });
-    } catch (error) {
-        console.error('Submission status error:', error);
-        res.status(500).json({ success: false, message: error.message });
     }
 });
 
