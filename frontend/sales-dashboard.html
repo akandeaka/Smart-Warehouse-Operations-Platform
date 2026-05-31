@@ -36,6 +36,7 @@
         .success-msg { background: #d4edda; color: #155724; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
         .error-msg { background: #f8d7da; color: #721c24; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
         .warning-msg { background: #fff3cd; color: #856404; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
+        .info-msg { background: #cce5ff; color: #004085; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
         table { width: 100%; margin-top: 15px; border-collapse: collapse; }
         th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
         th { background: #f8f9fa; }
@@ -47,17 +48,24 @@
         .credit-row { background-color: #fff0f0; border-left: 3px solid #dc3545; }
         .credit-amount { color: #dc3545; font-weight: bold; }
         .credit-amount::before { content: "- "; }
+        .submission-badge { background: #ffc107; color: #333; padding: 5px 10px; border-radius: 20px; font-size: 12px; margin-left: 10px; }
+        .refresh-btn { background: #17a2b8; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; margin-left: 10px; }
+        .refresh-btn:hover { background: #138496; }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>💰 <span id="teamName">Sales Team</span> Dashboard</h1>
-        <div class="logout-btn" onclick="logout()">Logout</div>
+        <div>
+            <button class="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
     </div>
 
     <div id="successMsg" class="success-msg"></div>
     <div id="errorMsg" class="error-msg"></div>
     <div id="warningMsg" class="warning-msg"></div>
+    <div id="infoMsg" class="info-msg"></div>
 
     <div class="stats-container">
         <div class="stat-card">
@@ -135,7 +143,7 @@
                 <tr><th>Order Number</th><th>Customer Name</th><th>Amount</th><th>Status</th><th>Due Date</th></tr>
             </thead>
             <tbody id="creditTableBody"></tbody>
-        </table>
+         </table>
     </div>
 
     <div class="card">
@@ -146,7 +154,7 @@
                 <tr><th>Time</th><th>Customer</th><th>Product</th><th>Quantity</th><th>Amount</th><th>Type</th><th>Status</th></tr>
             </thead>
             <tbody id="salesHistoryBody"></tbody>
-        </table>
+         </table>
     </div>
 
     <button id="submitDayBtn" class="submit-btn" onclick="submitDaySales()">Submit Final Sales for the Day</button>
@@ -157,7 +165,7 @@
         let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
         let allocatedProducts = [];
         let isConfirmed = false;
-        let hasSubmittedToday = false;
+        let refreshInterval = null;
 
         // Force team_id for alpha_lead
         if (currentUser.username === 'alpha_lead' && !currentUser.team_id) {
@@ -179,8 +187,8 @@
             return '-₦' + Math.round(num).toLocaleString('en-NG');
         }
 
-        function showMessage(msg, isError = false, isWarning = false) {
-            let msgDiv = isError ? document.getElementById('errorMsg') : (isWarning ? document.getElementById('warningMsg') : document.getElementById('successMsg'));
+        function showMessage(msg, isError = false, isWarning = false, isInfo = false) {
+            let msgDiv = isError ? document.getElementById('errorMsg') : (isWarning ? document.getElementById('warningMsg') : (isInfo ? document.getElementById('infoMsg') : document.getElementById('successMsg')));
             msgDiv.innerHTML = msg;
             msgDiv.style.display = 'block';
             setTimeout(function() { msgDiv.style.display = 'none'; }, 4000);
@@ -229,36 +237,20 @@
                 const confirmationData = await fetchAPI('/allocations/confirmation-status/' + currentUser.team_id + '/' + today);
                 isConfirmed = confirmationData && confirmationData.success && confirmationData.confirmed === true;
                 
-                // Check if already submitted today
-                const submittedData = await fetchAPI('/sales/check-submitted/' + currentUser.team_id + '/' + today);
-                hasSubmittedToday = submittedData && submittedData.success && submittedData.submitted === true;
+                // ========== REMOVED BLOCKING CODE ==========
+                // No longer checking hasSubmittedToday to block allocations
+                // Sales team can ALWAYS see and accept allocations
+                // ==========================================
                 
-                if (hasSubmittedToday) {
-                    // Already submitted today - show reset state
-                    container.innerHTML = '<p style="text-align:center; color:#28a745;">Sales submitted for today. Come back tomorrow.</p>';
+                if (allocatedProducts.length === 0) {
+                    // No stock allocated today - show waiting state but allow new allocations to appear
+                    container.innerHTML = '<p style="text-align:center; color:#ffc107;">No stock allocated yet. Waiting for warehouse manager to allocate goods. Click refresh to check.</p>';
                     confirmBtn.style.display = 'none';
                     allocationSummary.style.display = 'none';
                     enableSelling(false);
-                    document.getElementById('submitDayBtn').disabled = true;
-                    document.getElementById('sellBtn').disabled = true;
-                    document.getElementById('cashSales').innerHTML = '₦0';
-                    document.getElementById('transferSales').innerHTML = '₦0';
-                    document.getElementById('totalSales').innerHTML = '₦0';
-                    document.getElementById('itemsSold').innerHTML = '0';
-                    document.getElementById('creditTotal').innerHTML = '-₦0';
-                } else if (allocatedProducts.length === 0) {
-                    // No stock allocated today - show zero state
-                    container.innerHTML = '<p style="text-align:center; color:#ffc107;">No stock allocated today. Contact warehouse manager.</p>';
-                    confirmBtn.style.display = 'none';
-                    allocationSummary.style.display = 'none';
-                    enableSelling(false);
-                    document.getElementById('cashSales').innerHTML = '₦0';
-                    document.getElementById('transferSales').innerHTML = '₦0';
-                    document.getElementById('totalSales').innerHTML = '₦0';
-                    document.getElementById('itemsSold').innerHTML = '0';
-                    document.getElementById('creditTotal').innerHTML = '-₦0';
+                    // Don't reset stats - keep existing sales visible
                 } else {
-                    // Stock allocated and not submitted - show normal view
+                    // Stock allocated - show normal view
                     let totalValue = 0;
                     let html = '';
                     let selectHtml = '<option value="">Select Product</option>';
@@ -291,11 +283,6 @@
                         document.getElementById('confirmationStatus').className = 'status-pending';
                         confirmBtn.style.display = 'block';
                         enableSelling(false);
-                        document.getElementById('cashSales').innerHTML = '₦0';
-                        document.getElementById('transferSales').innerHTML = '₦0';
-                        document.getElementById('totalSales').innerHTML = '₦0';
-                        document.getElementById('itemsSold').innerHTML = '0';
-                        document.getElementById('creditTotal').innerHTML = '-₦0';
                     }
                 }
                 loadingDiv.style.display = 'none';
@@ -455,8 +442,8 @@
                                         html += '<td>' + item.product_name + '</td>';
                                         html += '<td>' + item.quantity + '</td>';
                                         html += '<td class="credit-amount">' + formatCreditMoney(itemAmount) + '</td>';
-                                        html += '<td>Credit' + '</td>';
-                                        html += '<td class="status-approved">Approved' + '</td>';
+                                        html += '<td>Credit</td>';
+                                        html += '<td class="status-approved">Approved</td>';
                                         html += '</tr>';
                                     } else if (isCredit && !isApproved) {
                                         html += '<tr>';
@@ -465,8 +452,8 @@
                                         html += '<td>' + item.product_name + '</td>';
                                         html += '<td>' + item.quantity + '</td>';
                                         html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                        html += '<td>Credit' + '</td>';
-                                        html += '<td class="status-pending-text">Pending' + '</td>';
+                                        html += '<td>Credit</td>';
+                                        html += '<td class="status-pending-text">Pending</td>';
                                         html += '</tr>';
                                     } else if (isCash) {
                                         cashTotal += itemAmount;
@@ -477,8 +464,8 @@
                                         html += '<td>' + item.product_name + '</td>';
                                         html += '<td>' + item.quantity + '</td>';
                                         html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                        html += '<td>Cash' + '</td>';
-                                        html += '<td class="status-approved">Completed' + '</td>';
+                                        html += '<td>Cash</td>';
+                                        html += '<td class="status-approved">Completed</td>';
                                         html += '</tr>';
                                     } else if (isTransfer) {
                                         transferTotal += itemAmount;
@@ -489,8 +476,8 @@
                                         html += '<td>' + item.product_name + '</td>';
                                         html += '<td>' + item.quantity + '</td>';
                                         html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                        html += '<td>Bank Transfer' + '</tr>';
-                                        html += '<td class="status-approved">Completed' + '</td>';
+                                        html += '<td>Bank Transfer</td>';
+                                        html += '<td class="status-approved">Completed</td>';
                                         html += '</tr>';
                                     }
                                 }
@@ -504,7 +491,7 @@
                     document.getElementById('itemsSold').innerHTML = totalItems;
                     document.getElementById('creditTotal').innerHTML = formatCreditMoney(totalCredit);
                     
-                    document.getElementById('salesHistoryBody').innerHTML = html || '<tr><td colspan="7">No transactions yet这些</td>';
+                    document.getElementById('salesHistoryBody').innerHTML = html || '<tr><td colspan="7">No transactions yet</td></tr>';
                     document.getElementById('historyLoading').style.display = 'none';
                     document.getElementById('historyTable').style.display = 'table';
                 }
@@ -519,87 +506,92 @@
                 let html = '';
                 for (var i = 0; i < data.data.length; i++) {
                     var req = data.data[i];
-                    var statusText = req.status === 'approved' ? 'Approved' : (req.status === 'rejected' ? 'Declined' : 'Pending');
-                    var statusClass = req.status === 'approved' ? 'status-approved' : (req.status === 'rejected' ? 'status-rejected' : 'status-pending-text');
+                    var statusText = req.approved === 1 ? 'Approved' : (req.rejected === 1 ? 'Declined' : 'Pending');
+                    var statusClass = req.approved === 1 ? 'status-approved' : (req.rejected === 1 ? 'status-rejected' : 'status-pending-text');
                     html += '<tr>';
                     html += '<td>' + req.order_number + '</td>';
                     html += '<td>' + req.customer_name + '</td>';
-                    html += '<td class="' + (req.status === 'pending' ? 'credit-amount' : '') + '">' + (req.status === 'pending' ? formatCreditMoney(req.total_amount) : formatMoney(req.total_amount)) + '</td>';
+                    html += '<td class="' + (req.approved === 1 ? '' : 'credit-amount') + '">' + (req.approved === 1 ? formatMoney(req.total_amount) : formatCreditMoney(req.total_amount)) + '</td>';
                     html += '<td class="' + statusClass + '">' + statusText + '</td>';
                     html += '<td>' + (req.due_date ? new Date(req.due_date).toLocaleDateString() : '-') + '</td>';
                     html += '</tr>';
                 }
-                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests这些</table>';
+                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests</td></tr>';
                 document.getElementById('creditLoading').style.display = 'none';
                 document.getElementById('creditTable').style.display = 'table';
             }
         }
 
         async function submitDaySales() {
-            if (confirm('Are you sure you have finished all sales for today? You cannot edit after submission.')) {
-                const cashTotal = document.getElementById('cashSales').innerText.replace('₦', '').replace(/,/g, '');
-                const transferTotal = document.getElementById('transferSales').innerText.replace('₦', '').replace(/,/g, '');
-                const creditTotal = document.getElementById('creditTotal').innerText.replace('-₦', '').replace(/,/g, '');
+            // First check if there are remaining goods
+            const today = new Date().toISOString().split('T')[0];
+            const remainingCheck = await fetchAPI('/sales/check-submitted/' + currentUser.team_id + '/' + today);
+            
+            // Show confirmation dialog
+            if (confirm('Are you sure you want to submit today\'s sales for manager review?\n\nYou can still accept new allocations and continue selling after submission.')) {
                 
                 const result = await fetchAPI('/sales/submit-day', { 
                     method: 'POST', 
                     body: JSON.stringify({ 
                         team_id: currentUser.team_id, 
-                        sales_date: new Date().toISOString().split('T')[0],
-                        cash_sales: parseFloat(cashTotal) || 0,
-                        transfer_sales: parseFloat(transferTotal) || 0,
-                        credit_sales: parseFloat(creditTotal) || 0
+                        sales_date: today
                     }) 
                 });
                 
                 if (result && result.success) {
-                    showMessage('✅ Sales submitted to manager. Your dashboard has been reset for the next working day.');
+                    showMessage('✅ Sales submitted to manager. You can still accept new allocations and continue selling!', false, false, true);
                     
-                    // Reset all stat cards to zero
-                    document.getElementById('cashSales').innerHTML = '₦0';
-                    document.getElementById('transferSales').innerHTML = '₦0';
-                    document.getElementById('totalSales').innerHTML = '₦0';
-                    document.getElementById('itemsSold').innerHTML = '0';
-                    document.getElementById('creditTotal').innerHTML = '-₦0';
+                    // Refresh the page to show updated state
+                    setTimeout(function() {
+                        refreshData();
+                    }, 2000);
                     
-                    // Clear transaction history display
-                    document.getElementById('salesHistoryBody').innerHTML = '<tr><td colspan="7">Sales submitted. Come back tomorrow for new allocation.</td></tr>';
+                } else if (result && result.requires_action) {
+                    // Show popup for remaining goods
+                    const userChoice = confirm(result.message + '\n\nClick OK to MOVE remaining goods to warehouse\nClick Cancel to KEEP goods for continued selling');
                     
-                    // Clear allocated stock display
-                    const allocatedStockDiv = document.getElementById('allocatedStock');
-                    if (allocatedStockDiv) {
-                        allocatedStockDiv.innerHTML = '<p style="text-align:center; color:#28a745;">Sales submitted for today. Come back tomorrow.</p>';
+                    const finalResult = await fetchAPI('/sales/submit-day', { 
+                        method: 'POST', 
+                        body: JSON.stringify({ 
+                            team_id: currentUser.team_id, 
+                            sales_date: today,
+                            move_remaining_goods: userChoice
+                        }) 
+                    });
+                    
+                    if (finalResult && finalResult.success) {
+                        showMessage(finalResult.message, false, false, true);
+                        setTimeout(function() {
+                            refreshData();
+                        }, 2000);
+                    } else {
+                        showMessage('Failed to submit: ' + (finalResult?.message || 'Unknown error'), true);
                     }
-                    
-                    // Hide confirmation button and allocation summary
-                    const confirmBtn = document.getElementById('confirmReceiptBtn');
-                    if (confirmBtn) confirmBtn.style.display = 'none';
-                    
-                    const allocationSummary = document.getElementById('allocationSummary');
-                    if (allocationSummary) allocationSummary.style.display = 'none';
-                    
-                    // Clear product select dropdown
-                    const productSelect = document.getElementById('productSelect');
-                    if (productSelect) {
-                        productSelect.innerHTML = '<option value="">Select Product</option>';
-                    }
-                    
-                    // Disable sell button and submit button
-                    document.getElementById('submitDayBtn').disabled = true;
-                    document.getElementById('sellBtn').disabled = true;
-                    
-                    // Set submitted flag to prevent any further activity
-                    hasSubmittedToday = true;
-                    
                 } else {
                     showMessage('Failed to submit sales: ' + (result?.message || 'Unknown error'), true);
                 }
             }
         }
 
+        async function refreshData() {
+            showMessage('Refreshing data...', false, false, true);
+            await loadAllocatedStock();
+            await loadSalesHistory();
+            await loadCreditRequests();
+            showMessage('Data refreshed!', false, false, true);
+        }
+
         function logout() { 
             localStorage.clear(); 
             window.location.href = 'login.html'; 
+        }
+
+        // Auto-refresh every 30 seconds to check for new allocations
+        function startAutoRefresh() {
+            if (refreshInterval) clearInterval(refreshInterval);
+            refreshInterval = setInterval(function() {
+                loadAllocatedStock();
+            }, 30000);
         }
 
         document.getElementById('teamName').innerText = currentUser.full_name ? currentUser.full_name.split(' ')[0] : 'Sales';
@@ -610,6 +602,7 @@
             loadAllocatedStock();
             loadSalesHistory();
             loadCreditRequests();
+            startAutoRefresh();
         }
     </script>
 </body>
