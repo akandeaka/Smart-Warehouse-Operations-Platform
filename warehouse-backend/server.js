@@ -1,4 +1,4 @@
-// server.js - WORKING VERSION + ALL NEW FEATURES ADDED
+// server.js - COMPLETE WORKING VERSION WITH ALL FEATURES
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
@@ -75,7 +75,7 @@ app.get('/health', async (req, res) => {
 });
 
 app.get('/api/version', (req, res) => {
-    res.json({ version: 'FINAL_V6', features: 'multiple_allocations_daily_closure_manager_dashboard' });
+    res.json({ version: 'FINAL_V7', features: 'multiple_allocations_multiple_submissions_dashboard_card' });
 });
 
 // ============================================================
@@ -239,6 +239,55 @@ app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) 
     } catch (error) {
         console.error('Get allocations error:', error);
         res.json({ success: true, data: [] });
+    }
+});
+
+// Get team's current active allocations with summary
+app.get('/api/sales/team/:teamId/current-allocations', authMiddleware, async (req, res) => {
+    try {
+        const { teamId } = req.params;
+        const today = new Date().toISOString().split('T')[0];
+        
+        const [allocations] = await pool.query(
+            `SELECT a.id, p.id as product_id, p.product_name, p.selling_price,
+                    a.allocated_qty, a.sold_qty, a.returned_qty,
+                    (a.allocated_qty - a.sold_qty - a.returned_qty) as available_qty,
+                    a.confirmed
+             FROM sales_team_allocations a
+             JOIN products p ON a.product_id = p.id
+             WHERE a.team_id = ? AND a.allocated_date = ? AND a.status = 'active'
+               AND (a.allocated_qty - a.sold_qty - a.returned_qty) > 0`,
+            [teamId, today]
+        );
+        
+        let totalGoodsValue = 0;
+        let totalUnits = 0;
+        
+        for (const alloc of allocations) {
+            totalUnits += alloc.available_qty;
+            totalGoodsValue += alloc.available_qty * alloc.selling_price;
+        }
+        
+        const [confirmStatus] = await pool.query(
+            'SELECT confirmed FROM sales_team_allocations WHERE team_id = ? AND allocated_date = ? LIMIT 1',
+            [teamId, today]
+        );
+        
+        const isConfirmed = confirmStatus.length > 0 && confirmStatus[0].confirmed === 1;
+        
+        res.json({ 
+            success: true, 
+            data: allocations,
+            summary: {
+                total_units: totalUnits,
+                total_value: totalGoodsValue,
+                is_confirmed: isConfirmed,
+                has_allocations: allocations.length > 0
+            }
+        });
+    } catch (error) {
+        console.error('Get current allocations error:', error);
+        res.json({ success: true, data: [], summary: { total_units: 0, total_value: 0, is_confirmed: false, has_allocations: false } });
     }
 });
 
@@ -412,6 +461,139 @@ app.get('/api/sales/check-submitted/:teamId/:date', authMiddleware, async (req, 
     }
 });
 
+// Get submission status with details
+app.get('/api/sales/submission-status/:teamId/:date', authMiddleware, async (req, res) => {
+    try {
+        const { teamId, date } = req.params;
+        
+        const [submitted] = await pool.query(
+            `SELECT COUNT(*) as count, 
+                    COALESCE(SUM(total_amount), 0) as total_submitted_value,
+                    (SELECT COUNT(*) FROM sales_order_items soi 
+                     JOIN sales_orders so ON soi.order_id = so.id 
+                     WHERE so.team_id = ? AND so.sales_date = ?) as total_units
+             FROM sales_orders 
+             WHERE team_id = ? AND sales_date = ? AND submitted_for_review = 1`,
+            [teamId, date, teamId, date]
+        );
+        
+        const [activeGoods] = await pool.query(
+            `SELECT COALESCE(SUM(allocated_qty - sold_qty - returned_qty), 0) as remaining_units
+             FROM sales_team_allocations 
+             WHERE team_id = ? AND allocated_date = ? AND status = 'active'
+               AND (allocated_qty - sold_qty - returned_qty) > 0`,
+            [teamId, date]
+        );
+        
+        res.json({ 
+            success: true, 
+            has_submitted_today: submitted[0]?.count > 0,
+            submitted_value: submitted[0]?.total_submitted_value || 0,
+            submitted_units: submitted[0]?.total_units || 0,
+            remaining_units: activeGoods[0]?.remaining_units || 0
+        });
+    } catch (error) {
+        console.error('Submission status error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================================
+// SUBMIT DAY SALES - Can submit multiple times per day with popup for remaining goods
+// ============================================================
+app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
+    let connection;
+    try {
+        const { team_id, sales_date, move_remaining_goods } = req.body;
+        
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+        
+        // Get remaining goods before submission
+        const [remainingGoods] = await connection.query(
+            `SELECT a.id, a.product_id, p.product_name, 
+                    (a.allocated_qty - a.sold_qty - a.returned_qty) as remaining_qty
+             FROM sales_team_allocations a
+             JOIN products p ON a.product_id = p.id
+             WHERE a.team_id = ? AND a.allocated_date = ? AND a.status = 'active'
+               AND (a.allocated_qty - a.sold_qty - a.returned_qty) > 0`,
+            [team_id, sales_date]
+        );
+        
+        const hasRemaining = remainingGoods.length > 0;
+        let totalRemaining = 0;
+        for (const goods of remainingGoods) {
+            totalRemaining += goods.remaining_qty;
+        }
+        
+        // If there are remaining goods and user didn't specify what to do
+        if (hasRemaining && move_remaining_goods === undefined) {
+            await connection.rollback();
+            return res.json({ 
+                success: false, 
+                requires_action: true,
+                message: `You have ${totalRemaining} units of unsold goods. What would you like to do?`,
+                remaining_goods: remainingGoods,
+                total_remaining: totalRemaining
+            });
+        }
+        
+        // Mark sales orders as submitted for review
+        await connection.query(
+            'UPDATE sales_orders SET submitted_for_review = 1 WHERE team_id = ? AND sales_date = ? AND submitted_for_review = 0',
+            [team_id, sales_date]
+        );
+        
+        // Handle remaining goods based on user choice
+        let returnedCount = 0;
+        let keptCount = 0;
+        
+        if (move_remaining_goods === true) {
+            // MOVE remaining goods to manager (return to warehouse)
+            for (const goods of remainingGoods) {
+                if (goods.remaining_qty > 0) {
+                    await connection.query(
+                        `UPDATE sales_team_allocations 
+                         SET returned_qty = returned_qty + ? 
+                         WHERE id = ?`,
+                        [goods.remaining_qty, goods.id]
+                    );
+                    
+                    await connection.query(
+                        'UPDATE products SET current_qty = current_qty + ? WHERE id = ?',
+                        [goods.remaining_qty, goods.product_id]
+                    );
+                    
+                    returnedCount += goods.remaining_qty;
+                }
+            }
+            
+            await connection.commit();
+            res.json({ 
+                success: true, 
+                moved_to_manager: true,
+                message: `Sales submitted. ${returnedCount} units returned to warehouse.`,
+                returned_units: returnedCount
+            });
+        } else {
+            // KEEP remaining goods for continued selling
+            await connection.commit();
+            res.json({ 
+                success: true, 
+                kept_for_selling: true,
+                message: `Sales submitted. ${totalRemaining} units kept for continued selling. You can submit again later.`,
+                kept_units: totalRemaining
+            });
+        }
+    } catch (error) { 
+        if (connection) await connection.rollback();
+        console.error('Submit day error:', error);
+        res.status(500).json({ success: false, message: error.message }); 
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
 // ============================================================
 // CREDIT APPROVALS
 // ============================================================
@@ -519,36 +701,8 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
 });
 
 // ============================================================
-// SUBMIT DAY SALES - Only marks sales as submitted (goods remain for same day)
+// PENDING RETURNS / SUBMISSIONS
 // ============================================================
-app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
-    let connection;
-    try {
-        const { team_id, sales_date } = req.body;
-        
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
-        
-        // Mark sales orders as submitted for review
-        await connection.query(
-            'UPDATE sales_orders SET submitted_for_review = 1 WHERE team_id = ? AND sales_date = ? AND submitted_for_review = 0',
-            [team_id, sales_date]
-        );
-        
-        // NOTE: Do NOT change allocation status - goods remain active for same day selling
-        // Only mark that today's sales have been submitted for review
-        
-        await connection.commit();
-        res.json({ success: true, message: 'Sales submitted for manager review. Goods remain available for continued selling today.' });
-    } catch (error) { 
-        if (connection) await connection.rollback();
-        console.error('Submit day error:', error);
-        res.status(500).json({ success: false, message: error.message }); 
-    } finally {
-        if (connection) connection.release();
-    }
-});
-
 app.get('/api/sales/pending-submissions', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
         const [items] = await pool.query(
@@ -575,7 +729,6 @@ app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_ma
         await connection.beginTransaction();
         
         if (action === 'accept') {
-            // Get order items to return to warehouse
             const [orderItems] = await connection.query(
                 `SELECT oi.product_id, oi.quantity, p.unit_cost
                  FROM sales_order_items oi
@@ -635,45 +788,72 @@ app.get('/api/reports/daily', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-// NEW: MANAGER DASHBOARD SUMMARY CARDS
+// MANAGER DASHBOARD SUMMARY CARDS
 // ============================================================
 app.get('/api/manager/dashboard-summary', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
         const today = new Date().toISOString().split('T')[0];
+        const date = req.query.date || today;
         
-        // Total products count
         const [totalProducts] = await pool.query('SELECT COUNT(*) as count FROM products WHERE is_active = 1');
         
-        // Warehouse value
         const [warehouseValue] = await pool.query('SELECT COALESCE(SUM(current_qty * unit_cost), 0) as value FROM products WHERE is_active = 1');
         
-        // Today's total sales (VALUE in ₤)
         const [todaySales] = await pool.query(
-            `SELECT COALESCE(SUM(total_amount), 0) as total_value
-             FROM sales_orders 
-             WHERE sales_date = ? AND approval_status != 'rejected'`,
-            [today]
+            `SELECT COALESCE(SUM(o.total_amount), 0) as total_value,
+                    COUNT(DISTINCT o.id) as order_count
+             FROM sales_orders o
+             WHERE o.sales_date = ? AND o.approval_status != 'rejected'`,
+            [date]
         );
         
-        // Today's total units sold (NUMBER OF GOODS)
         const [todayUnits] = await pool.query(
             `SELECT COALESCE(SUM(soi.quantity), 0) as total_units
              FROM sales_orders o
              JOIN sales_order_items soi ON o.id = soi.order_id
              WHERE o.sales_date = ? AND o.approval_status != 'rejected'`,
-            [today]
+            [date]
         );
         
-        // Pending credit approvals
+        const [cashSales] = await pool.query(
+            `SELECT COALESCE(SUM(total_amount), 0) as cash_total
+             FROM sales_orders 
+             WHERE sales_date = ? AND payment_method = 'cash' AND approval_status != 'rejected'`,
+            [date]
+        );
+        
+        const [transferSales] = await pool.query(
+            `SELECT COALESCE(SUM(total_amount), 0) as transfer_total
+             FROM sales_orders 
+             WHERE sales_date = ? AND payment_method = 'bank_transfer' AND approval_status != 'rejected'`,
+            [date]
+        );
+        
+        const [creditSales] = await pool.query(
+            `SELECT COALESCE(SUM(total_amount), 0) as credit_total
+             FROM sales_orders 
+             WHERE sales_date = ? AND payment_method = 'credit' AND approval_status != 'rejected'`,
+            [date]
+        );
+        
         const [pendingApprovals] = await pool.query(
             'SELECT COUNT(*) as count FROM credit_approvals WHERE approved = 0 AND rejected = 0'
         );
         
-        // Pending returns/submissions
         const [pendingReturns] = await pool.query(
             `SELECT COUNT(DISTINCT so.id) as count 
              FROM sales_orders so 
              WHERE so.submitted_for_review = 1 AND so.manager_confirmed = 0`
+        );
+        
+        const [allocationSummary] = await pool.query(
+            `SELECT COALESCE(SUM(allocated_qty), 0) as total_allocated,
+                    COALESCE(SUM(sold_qty), 0) as total_sold,
+                    COALESCE(SUM(returned_qty), 0) as total_returned,
+                    COUNT(DISTINCT team_id) as teams_served
+             FROM sales_team_allocations 
+             WHERE allocated_date = ? AND status = 'active'`,
+            [date]
         );
         
         res.json({ 
@@ -682,9 +862,19 @@ app.get('/api/manager/dashboard-summary', authMiddleware, requireRole(['warehous
                 total_products: totalProducts[0]?.count || 0,
                 warehouse_value: warehouseValue[0]?.value || 0,
                 today_sales_value: todaySales[0]?.total_value || 0,
+                today_orders: todaySales[0]?.order_count || 0,
                 today_units_sold: todayUnits[0]?.total_units || 0,
+                cash_sales: cashSales[0]?.cash_total || 0,
+                transfer_sales: transferSales[0]?.transfer_total || 0,
+                credit_sales: creditSales[0]?.credit_total || 0,
                 pending_credit_approvals: pendingApprovals[0]?.count || 0,
-                pending_returns: pendingReturns[0]?.count || 0
+                pending_returns: pendingReturns[0]?.count || 0,
+                allocation_summary: {
+                    total_allocated: allocationSummary[0]?.total_allocated || 0,
+                    total_sold: allocationSummary[0]?.total_sold || 0,
+                    total_returned: allocationSummary[0]?.total_returned || 0,
+                    teams_served: allocationSummary[0]?.teams_served || 0
+                }
             }
         });
     } catch (error) {
@@ -694,13 +884,12 @@ app.get('/api/manager/dashboard-summary', authMiddleware, requireRole(['warehous
 });
 
 // ============================================================
-// NEW: DAILY BREAKDOWN (when card is clicked)
+// DAILY BREAKDOWN (when card is clicked)
 // ============================================================
 app.get('/api/manager/daily-breakdown/:date', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
         const { date } = req.params;
         
-        // Sales breakdown by team
         const [teamBreakdown] = await pool.query(
             `SELECT t.team_name,
                     COUNT(DISTINCT o.id) as num_orders,
@@ -714,7 +903,6 @@ app.get('/api/manager/daily-breakdown/:date', authMiddleware, requireRole(['ware
             [date]
         );
         
-        // Overall totals
         const [totals] = await pool.query(
             `SELECT 
                 COALESCE(SUM(o.total_amount), 0) as total_sales_value,
@@ -743,7 +931,7 @@ app.get('/api/manager/daily-breakdown/:date', authMiddleware, requireRole(['ware
 });
 
 // ============================================================
-// MODIFIED: DAILY CLOSURE - Returns ALL unsold goods to warehouse
+// DAILY CLOSURE - Returns ALL unsold goods to warehouse
 // ============================================================
 app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     let connection;
@@ -753,7 +941,6 @@ app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']),
         connection = await pool.getConnection();
         await connection.beginTransaction();
         
-        // Check if already closed
         const [existingClosure] = await connection.query(
             'SELECT id FROM daily_closures WHERE closure_date = ? AND is_locked = 1',
             [closeDate]
@@ -764,7 +951,6 @@ app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']),
             return res.status(400).json({ success: false, message: 'Day already closed' });
         }
         
-        // Get ALL unsold goods for this date from ALL teams
         const [unsoldGoods] = await connection.query(
             `SELECT id, team_id, product_id, (allocated_qty - sold_qty - returned_qty) as unsold_qty
              FROM sales_team_allocations
@@ -775,7 +961,6 @@ app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']),
         let totalReturned = 0;
         
         for (const item of unsoldGoods) {
-            // Mark as closed and record returned quantity
             await connection.query(
                 `UPDATE sales_team_allocations 
                  SET returned_qty = returned_qty + ?, status = 'closed'
@@ -783,13 +968,11 @@ app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']),
                 [item.unsold_qty, item.id]
             );
             
-            // Return stock to warehouse
             await connection.query(
                 `UPDATE products SET current_qty = current_qty + ? WHERE id = ?`,
                 [item.unsold_qty, item.product_id]
             );
             
-            // Record transaction
             await connection.query(
                 `INSERT INTO stock_transactions 
                  (transaction_type, product_id, quantity_change, unit_cost_at_time, reference_type, team_id, created_by, notes)
@@ -800,7 +983,6 @@ app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']),
             totalReturned += item.unsold_qty;
         }
         
-        // Get warehouse values
         const [beforeValue] = await connection.query('SELECT COALESCE(SUM(current_qty * unit_cost), 0) as value FROM products');
         const [salesTotal] = await connection.query(
             'SELECT COALESCE(SUM(total_amount), 0) as total FROM sales_orders WHERE sales_date = ? AND approval_status != "rejected"',
@@ -808,7 +990,6 @@ app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']),
         );
         const [afterValue] = await connection.query('SELECT COALESCE(SUM(current_qty * unit_cost), 0) as value FROM products');
         
-        // Record daily closure
         await connection.query(
             `INSERT INTO daily_closures 
              (closure_date, closed_by, warehouse_value_before_close, warehouse_value_after_close, total_sales_value, is_locked)
@@ -852,7 +1033,7 @@ async function startServer() {
     
     app.listen(PORT, '0.0.0.0', () => {
         console.log('Server running on port ' + PORT);
-        console.log('Health: https://warehouse-backend-new-u9rq.onrender.com/health');
+        console.log('Health: http://localhost:' + PORT + '/health');
     });
 }
 
