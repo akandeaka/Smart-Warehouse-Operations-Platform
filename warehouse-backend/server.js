@@ -563,3 +563,74 @@ async function startServer() {
 }
 
 startServer();
+
+// ============================================================
+// ADD THIS - Pending Returns for Daily Report
+// ============================================================
+app.get('/api/returns/pending', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Get all pending returns (submissions waiting for manager confirmation)
+        const [pendingReturns] = await pool.query(
+            `SELECT so.id, so.order_number, st.team_name, so.customer_name, 
+                    so.total_amount, so.payment_method, so.created_at,
+                    COUNT(soi.id) as item_count,
+                    SUM(soi.quantity) as total_quantity
+             FROM sales_orders so
+             JOIN sales_teams st ON so.team_id = st.id
+             JOIN sales_order_items soi ON so.id = soi.order_id
+             WHERE so.submitted_for_review = 1 AND so.manager_confirmed = 0
+             GROUP BY so.id
+             ORDER BY so.created_at DESC`,
+            []
+        );
+        
+        res.json({ success: true, data: pendingReturns });
+    } catch (error) {
+        console.error('Get pending returns error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================================
+// ADD THIS - Daily Report Summary
+// ============================================================
+app.get('/api/reports/daily-summary', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const date = req.query.date || new Date().toISOString().split('T')[0];
+        
+        // Get daily sales summary
+        const [salesSummary] = await pool.query(
+            `SELECT 
+                COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN total_amount ELSE 0 END), 0) as cash_sales,
+                COALESCE(SUM(CASE WHEN payment_method = 'bank_transfer' THEN total_amount ELSE 0 END), 0) as transfer_sales,
+                COALESCE(SUM(CASE WHEN payment_method = 'credit' THEN total_amount ELSE 0 END), 0) as credit_sales,
+                COUNT(*) as total_orders,
+                COALESCE(SUM(total_amount), 0) as total_sales
+             FROM sales_orders
+             WHERE sales_date = ? AND approval_status != 'rejected'`,
+            [date]
+        );
+        
+        // Get returns summary
+        const [returnsSummary] = await pool.query(
+            `SELECT 
+                COALESCE(SUM(returned_qty), 0) as total_returned_units,
+                COUNT(*) as return_count
+             FROM sales_team_allocations
+             WHERE allocated_date = ? AND returned_qty > 0`,
+            [date]
+        );
+        
+        res.json({ 
+            success: true, 
+            date: date,
+            sales: salesSummary[0],
+            returns: returnsSummary[0]
+        });
+    } catch (error) {
+        console.error('Daily summary error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
