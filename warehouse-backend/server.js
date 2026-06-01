@@ -509,4 +509,305 @@ app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_ma
                 
                 await connection.query(
                     `INSERT INTO stock_transactions 
-                     (transaction_type, product
+                     (transaction_type, product_id, quantity_change, unit_cost_at_time, reference_type, created_by, notes)
+                     VALUES ('return_from_sales', ?, ?, ?, 'return_acceptance', ?, ?)`,
+                    [item.product_id, item.quantity, item.unit_cost, req.user.id, `Manager accepted return of ${item.quantity} units`]
+                );
+            }
+            
+            await connection.query(
+                'UPDATE sales_orders SET manager_confirmed = 1, payment_status = "returned" WHERE id = ?',
+                [item_id]
+            );
+            
+            await connection.commit();
+            
+            res.json({ 
+                success: true, 
+                message: `Return accepted. ${totalReturnedUnits} units (worth ₦${totalReturnedValue.toLocaleString()}) returned to warehouse.`,
+                returned: { units: totalReturnedUnits, value: totalReturnedValue }
+            });
+            
+        } else if (action === 'reject') {
+            await connection.query(
+                'UPDATE sales_orders SET submitted_for_review = 0, manager_confirmed = 0 WHERE id = ?',
+                [item_id]
+            );
+            await connection.commit();
+            res.json({ success: true, message: 'Return rejected. Sales resubmission required.' });
+        } else {
+            throw new Error('Invalid action');
+        }
+    } catch (error) { 
+        if (connection) await connection.rollback();
+        console.error('Confirm return error:', error);
+        res.status(500).json({ success: false, message: error.message }); 
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// ============================================================
+// RETURNS SUMMARY PORTAL
+// ============================================================
+app.get('/api/returns/summary', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const date = req.query.date || today;
+        
+        const [returnsSummary] = await pool.query(
+            `SELECT 
+                COALESCE(SUM(returned_qty), 0) as total_units_returned,
+                COALESCE(SUM(returned_qty * p.unit_cost), 0) as total_value_returned,
+                COUNT(DISTINCT team_id) as teams_with_returns,
+                COUNT(*) as return_transactions
+             FROM sales_team_allocations a
+             JOIN products p ON a.product_id = p.id
+             WHERE a.allocated_date = ? AND a.returned_qty > 0`,
+            [date]
+        );
+        
+        const [pendingReturns] = await pool.query(
+            `SELECT COUNT(*) as count, 
+                    COALESCE(SUM(total_amount), 0) as pending_value
+             FROM sales_orders 
+             WHERE submitted_for_review = 1 AND manager_confirmed = 0`,
+            []
+        );
+        
+        res.json({ 
+            success: true, 
+            data: {
+                date: date,
+                today_returns: {
+                    units: returnsSummary[0]?.total_units_returned || 0,
+                    value: returnsSummary[0]?.total_value_returned || 0,
+                    teams: returnsSummary[0]?.teams_with_returns || 0,
+                    transactions: returnsSummary[0]?.return_transactions || 0
+                },
+                pending: {
+                    count: pendingReturns[0]?.count || 0,
+                    value: pendingReturns[0]?.pending_value || 0
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Returns summary error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================================
+// DAILY BALANCE REPORT
+// ============================================================
+app.get('/api/reports/daily-balance', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const date = req.query.date || new Date().toISOString().split('T')[0];
+        
+        const [allocations] = await pool.query(
+            `SELECT 
+                COALESCE(SUM(allocated_qty), 0) as total_units,
+                COALESCE(SUM(allocated_qty * p.unit_cost), 0) as total_value
+             FROM sales_team_allocations a
+             JOIN products p ON a.product_id = p.id
+             WHERE a.allocated_date = ?`,
+            [date]
+        );
+        
+        const [sales] = await pool.query(
+            `SELECT 
+                COALESCE(SUM(soi.quantity), 0) as total_units,
+                COALESCE(SUM(o.total_amount), 0) as total_value
+             FROM sales_orders o
+             JOIN sales_order_items soi ON o.id = soi.order_id
+             WHERE o.sales_date = ? AND o.approval_status != 'rejected'`,
+            [date]
+        );
+        
+        const [returns] = await pool.query(
+            `SELECT 
+                COALESCE(SUM(returned_qty), 0) as total_units,
+                COALESCE(SUM(returned_qty * p.unit_cost), 0) as total_value
+             FROM sales_team_allocations a
+             JOIN products p ON a.product_id = p.id
+             WHERE a.allocated_date = ? AND a.returned_qty > 0`,
+            [date]
+        );
+        
+        const [remaining] = await pool.query(
+            `SELECT 
+                COALESCE(SUM(allocated_qty - sold_qty - returned_qty), 0) as total_units,
+                COALESCE(SUM((allocated_qty - sold_qty - returned_qty) * p.unit_cost), 0) as total_value
+             FROM sales_team_allocations a
+             JOIN products p ON a.product_id = p.id
+             WHERE a.allocated_date = ? AND a.status = 'active'`,
+            [date]
+        );
+        
+        const isBalanced = Math.abs(
+            (allocations[0]?.total_units || 0) - 
+            ((sales[0]?.total_units || 0) + (returns[0]?.total_units || 0) + (remaining[0]?.total_units || 0))
+        ) < 1;
+        
+        res.json({ 
+            success: true, 
+            date: date,
+            balance: {
+                allocations: {
+                    units: allocations[0]?.total_units || 0,
+                    value: allocations[0]?.total_value || 0
+                },
+                sales: {
+                    units: sales[0]?.total_units || 0,
+                    value: sales[0]?.total_value || 0
+                },
+                returns: {
+                    units: returns[0]?.total_units || 0,
+                    value: returns[0]?.total_value || 0
+                },
+                remaining: {
+                    units: remaining[0]?.total_units || 0,
+                    value: remaining[0]?.total_value || 0
+                },
+                is_balanced: isBalanced,
+                verification: `${allocations[0]?.total_units || 0} = ${(sales[0]?.total_units || 0)} + ${(returns[0]?.total_units || 0)} + ${(remaining[0]?.total_units || 0)}`
+            }
+        });
+    } catch (error) {
+        console.error('Daily balance error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================================
+// MANAGER DASHBOARD SUMMARY (With Returns Portal)
+// ============================================================
+app.get('/api/manager/dashboard-summary', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        
+        const [totalProducts] = await pool.query('SELECT COUNT(*) as count FROM products WHERE is_active = 1');
+        const [warehouseValue] = await pool.query('SELECT COALESCE(SUM(current_qty * unit_cost), 0) as value FROM products WHERE is_active = 1');
+        const [todaySales] = await pool.query('SELECT COALESCE(SUM(total_amount), 0) as total_value FROM sales_orders WHERE sales_date = ?', [today]);
+        const [todayUnits] = await pool.query(`SELECT COALESCE(SUM(soi.quantity), 0) as total_units FROM sales_orders o JOIN sales_order_items soi ON o.id = soi.order_id WHERE o.sales_date = ?`, [today]);
+        
+        const [todayReturns] = await pool.query(
+            `SELECT COALESCE(SUM(returned_qty), 0) as total_units,
+                    COALESCE(SUM(returned_qty * p.unit_cost), 0) as total_value
+             FROM sales_team_allocations a
+             JOIN products p ON a.product_id = p.id
+             WHERE a.allocated_date = ? AND a.returned_qty > 0`,
+            [today]
+        );
+        
+        const [pendingApprovals] = await pool.query('SELECT COUNT(*) as count FROM credit_approvals WHERE approved = 0 AND rejected = 0');
+        
+        const [pendingReturns] = await pool.query(
+            `SELECT COUNT(DISTINCT so.id) as count, 
+                    COALESCE(SUM(so.total_amount), 0) as pending_value
+             FROM sales_orders so 
+             WHERE so.submitted_for_review = 1 AND so.manager_confirmed = 0`
+        );
+        
+        res.json({ 
+            success: true, 
+            data: {
+                total_products: totalProducts[0]?.count || 0,
+                warehouse_value: warehouseValue[0]?.value || 0,
+                today_sales_value: todaySales[0]?.total_value || 0,
+                today_units_sold: todayUnits[0]?.total_units || 0,
+                today_returns: {
+                    units: todayReturns[0]?.total_units || 0,
+                    value: todayReturns[0]?.total_value || 0
+                },
+                pending_credit_approvals: pendingApprovals[0]?.count || 0,
+                pending_returns: {
+                    count: pendingReturns[0]?.count || 0,
+                    value: pendingReturns[0]?.pending_value || 0
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Dashboard summary error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================================
+// REPORTS
+// ============================================================
+app.get('/api/reports/daily', authMiddleware, async (req, res) => {
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        
+        const [report] = await pool.query(
+            `SELECT t.team_name,
+                    COUNT(DISTINCT o.id) as num_orders,
+                    COALESCE(SUM(o.total_amount), 0) as total_sales,
+                    COALESCE(SUM(CASE WHEN o.payment_method = 'cash' THEN o.total_amount ELSE 0 END), 0) as cash_sales,
+                    COALESCE(SUM(CASE WHEN o.payment_method = 'bank_transfer' THEN o.total_amount ELSE 0 END), 0) as transfer_sales,
+                    COALESCE(SUM(CASE WHEN o.payment_method = 'credit' THEN o.total_amount ELSE 0 END), 0) as credit_sales
+             FROM sales_teams t
+             LEFT JOIN sales_orders o ON t.id = o.team_id AND o.sales_date = ?
+             GROUP BY t.id`,
+            [today]
+        );
+        
+        res.json({ success: true, date: today, teams: report });
+    } catch (error) {
+        console.error('Daily report error:', error);
+        res.json({ success: true, date: new Date().toISOString().split('T')[0], teams: [] });
+    }
+});
+
+// ============================================================
+// DAILY CLOSURE
+// ============================================================
+app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    let connection;
+    try {
+        const closeDate = new Date().toISOString().split('T')[0];
+        
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+        
+        const [unsoldGoods] = await connection.query(
+            `SELECT id, product_id, (allocated_qty - sold_qty - returned_qty) as unsold_qty
+             FROM sales_team_allocations
+             WHERE allocated_date = ? AND status = 'active' AND (allocated_qty - sold_qty - returned_qty) > 0`,
+            [closeDate]
+        );
+        
+        let totalReturned = 0;
+        for (const item of unsoldGoods) {
+            await connection.query('UPDATE sales_team_allocations SET returned_qty = returned_qty + ?, status = "closed" WHERE id = ?', [item.unsold_qty, item.id]);
+            await connection.query('UPDATE products SET current_qty = current_qty + ? WHERE id = ?', [item.unsold_qty, item.product_id]);
+            totalReturned += item.unsold_qty;
+        }
+        
+        await connection.query(
+            `INSERT INTO daily_closures (closure_date, closed_by, warehouse_value_before_close, warehouse_value_after_close, total_sales_value, is_locked)
+             VALUES (?, ?, (SELECT COALESCE(SUM(current_qty * unit_cost),0) FROM products), (SELECT COALESCE(SUM(current_qty * unit_cost),0) FROM products), (SELECT COALESCE(SUM(total_amount),0) FROM sales_orders WHERE sales_date = ?), 1)`,
+            [closeDate, req.user.id, closeDate]
+        );
+        
+        await connection.commit();
+        res.json({ success: true, message: `Day closed. ${totalReturned} units returned.` });
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Daily closure error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// ============================================================
+// START SERVER
+// ============================================================
+async function startServer() {
+    const dbConnected = await testConnection();
+    app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+}
+
+startServer();
