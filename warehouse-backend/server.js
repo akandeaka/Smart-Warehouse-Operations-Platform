@@ -1,4 +1,4 @@
-// server.js - BASED ON WORKING VERSION 18 + NEW ENDPOINTS ONLY
+// server.js - WORKING VERSION + RETURNS PORTAL + DAILY BALANCE
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
@@ -13,7 +13,7 @@ app.use(cors());
 app.use(express.json());
 
 // ============================================================
-// AUTHENTICATION MIDDLEWARE (UNCHANGED)
+// AUTHENTICATION MIDDLEWARE
 // ============================================================
 const authMiddleware = async (req, res, next) => {
     try {
@@ -47,7 +47,7 @@ const requireRole = (roles) => {
 };
 
 // ============================================================
-// HEALTH CHECK (UNCHANGED)
+// HEALTH CHECK
 // ============================================================
 app.get('/health', async (req, res) => {
     let dbStatus = 'not_connected';
@@ -75,11 +75,11 @@ app.get('/health', async (req, res) => {
 });
 
 app.get('/api/version', (req, res) => {
-    res.json({ version: 'V8_WORKING_PLUS_RETURNS', features: 'returns_portal_daily_balance' });
+    res.json({ version: 'V8_WORKING', features: 'multiple_allocations_per_day' });
 });
 
 // ============================================================
-// LOGIN (UNCHANGED)
+// LOGIN
 // ============================================================
 app.post('/api/auth/login', async (req, res) => {
     try {
@@ -119,7 +119,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // ============================================================
-// TEAMS (UNCHANGED)
+// TEAMS
 // ============================================================
 app.get('/api/teams', authMiddleware, async (req, res) => {
     try {
@@ -131,7 +131,7 @@ app.get('/api/teams', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-// PRODUCTS (UNCHANGED)
+// PRODUCTS
 // ============================================================
 app.get('/api/products', authMiddleware, async (req, res) => {
     try {
@@ -145,7 +145,7 @@ app.get('/api/products', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-// ALLOCATIONS (UNCHANGED - WORKING)
+// ALLOCATIONS
 // ============================================================
 app.post('/api/allocations', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     let connection;
@@ -273,7 +273,7 @@ app.get('/api/allocations/confirmation-status/:teamId/:date', authMiddleware, as
 });
 
 // ============================================================
-// SALES (UNCHANGED)
+// SALES
 // ============================================================
 app.post('/api/sales', authMiddleware, async (req, res) => {
     let connection;
@@ -408,7 +408,7 @@ app.get('/api/sales/check-submitted/:teamId/:date', authMiddleware, async (req, 
 });
 
 // ============================================================
-// CREDIT APPROVALS (UNCHANGED)
+// CREDIT APPROVALS
 // ============================================================
 app.get('/api/approvals/pending', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
@@ -514,7 +514,7 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
 });
 
 // ============================================================
-// SUBMIT DAY SALES (UNCHANGED)
+// SUBMIT DAY SALES
 // ============================================================
 app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
     let connection;
@@ -580,7 +580,7 @@ app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_ma
 });
 
 // ============================================================
-// REPORTS (UNCHANGED)
+// REPORTS
 // ============================================================
 app.get('/api/reports/daily', authMiddleware, async (req, res) => {
     try {
@@ -607,7 +607,7 @@ app.get('/api/reports/daily', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-// DAILY CLOSURE (UNCHANGED)
+// DAILY CLOSURE
 // ============================================================
 app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     let connection;
@@ -668,7 +668,7 @@ app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']),
 });
 
 // ============================================================
-// NEW: RETURNS SUMMARY PORTAL (ADDED - DOES NOT AFFECT EXISTING)
+// NEW: RETURNS SUMMARY PORTAL (Added - Does not affect existing)
 // ============================================================
 app.get('/api/returns/summary', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
@@ -700,7 +700,7 @@ app.get('/api/returns/summary', authMiddleware, requireRole(['warehouse_manager'
 });
 
 // ============================================================
-// NEW: DAILY BALANCE REPORT (ADDED - DOES NOT AFFECT EXISTING)
+// NEW: DAILY BALANCE REPORT (Added - Does not affect existing)
 // ============================================================
 app.get('/api/reports/daily-balance', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
@@ -758,7 +758,7 @@ app.get('/api/reports/daily-balance', authMiddleware, requireRole(['warehouse_ma
 });
 
 // ============================================================
-// START SERVER (UNCHANGED)
+// START SERVER
 // ============================================================
 async function startServer() {
     console.log('Testing database connection...');
