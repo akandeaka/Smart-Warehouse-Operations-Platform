@@ -140,7 +140,6 @@ app.post('/api/allocations', authMiddleware, requireRole(['warehouse_manager']),
         
         await connection.query('UPDATE products SET current_qty = current_qty - ? WHERE id = ?', [quantity, product_id]);
         
-        // ALWAYS create new allocation with confirmed = 0
         await connection.query(
             'INSERT INTO sales_team_allocations (team_id, product_id, allocated_qty, allocated_date, allocated_by, status, confirmed) VALUES (?, ?, ?, ?, ?, ?, 0)',
             [team_id, product_id, quantity, allocationDate, req.user.id, 'active']
@@ -162,15 +161,11 @@ app.post('/api/allocations', authMiddleware, requireRole(['warehouse_manager']),
     }
 });
 
-// ============================================================
-// FIXED: Get team's allocated stock - shows ONLY unconfirmed allocations for confirmation
-// ============================================================
 app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) => {
     try {
         const { teamId } = req.params;
         const date = req.query.date || new Date().toISOString().split('T')[0];
         
-        // Get ALL active allocations (both confirmed and unconfirmed)
         const [allocations] = await pool.query(
             `SELECT p.id, p.product_name, p.selling_price, 
                     a.allocated_qty, a.sold_qty, a.returned_qty, a.confirmed, a.id as allocation_id,
@@ -189,21 +184,16 @@ app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) 
     }
 });
 
-// ============================================================
-// FIXED: Get confirmation status - checks if ALL active allocations are confirmed
-// ============================================================
 app.get('/api/allocations/confirmation-status/:teamId/:date', authMiddleware, async (req, res) => {
     try {
         const { teamId, date } = req.params;
         
-        // Check if there are ANY unconfirmed allocations for today
         const [unconfirmed] = await pool.query(
             `SELECT COUNT(*) as count FROM sales_team_allocations 
              WHERE team_id = ? AND allocated_date = ? AND status = 'active' AND confirmed = 0`,
             [teamId, date]
         );
         
-        // Only return confirmed: true if NO unconfirmed allocations exist
         const isConfirmed = unconfirmed[0]?.count === 0;
         
         const [totalAllocations] = await pool.query(
@@ -224,9 +214,6 @@ app.get('/api/allocations/confirmation-status/:teamId/:date', authMiddleware, as
     }
 });
 
-// ============================================================
-// FIXED: Confirm allocation - confirms ONLY the latest unconfirmed allocation
-// ============================================================
 app.post('/api/allocations/confirm', authMiddleware, async (req, res) => {
     let connection;
     try {
@@ -235,7 +222,6 @@ app.post('/api/allocations/confirm', authMiddleware, async (req, res) => {
         connection = await pool.getConnection();
         await connection.beginTransaction();
         
-        // Get the latest unconfirmed allocation for this team/date
         const [latestAllocation] = await connection.query(
             `SELECT id FROM sales_team_allocations 
              WHERE team_id = ? AND allocated_date = ? AND status = 'active' AND confirmed = 0
@@ -248,7 +234,6 @@ app.post('/api/allocations/confirm', authMiddleware, async (req, res) => {
             return res.json({ success: false, message: 'No pending allocation to confirm' });
         }
         
-        // Confirm only the latest allocation
         await connection.query(
             'UPDATE sales_team_allocations SET confirmed = 1 WHERE id = ?',
             [latestAllocation[0].id]
@@ -555,23 +540,10 @@ app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']),
 });
 
 // ============================================================
-// START SERVER
-// ============================================================
-async function startServer() {
-    const dbConnected = await testConnection();
-    app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
-}
-
-startServer();
-
-// ============================================================
-// ADD THIS - Pending Returns for Daily Report
+// PENDING RETURNS FOR DAILY REPORT
 // ============================================================
 app.get('/api/returns/pending', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
-        const today = new Date().toISOString().split('T')[0];
-        
-        // Get all pending returns (submissions waiting for manager confirmation)
         const [pendingReturns] = await pool.query(
             `SELECT so.id, so.order_number, st.team_name, so.customer_name, 
                     so.total_amount, so.payment_method, so.created_at,
@@ -594,13 +566,12 @@ app.get('/api/returns/pending', authMiddleware, requireRole(['warehouse_manager'
 });
 
 // ============================================================
-// ADD THIS - Daily Report Summary
+// DAILY REPORT SUMMARY
 // ============================================================
 app.get('/api/reports/daily-summary', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
         const date = req.query.date || new Date().toISOString().split('T')[0];
         
-        // Get daily sales summary
         const [salesSummary] = await pool.query(
             `SELECT 
                 COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN total_amount ELSE 0 END), 0) as cash_sales,
@@ -613,7 +584,6 @@ app.get('/api/reports/daily-summary', authMiddleware, requireRole(['warehouse_ma
             [date]
         );
         
-        // Get returns summary
         const [returnsSummary] = await pool.query(
             `SELECT 
                 COALESCE(SUM(returned_qty), 0) as total_returned_units,
@@ -634,3 +604,13 @@ app.get('/api/reports/daily-summary', authMiddleware, requireRole(['warehouse_ma
         res.status(500).json({ success: false, message: error.message });
     }
 });
+
+// ============================================================
+// START SERVER (MUST BE LAST)
+// ============================================================
+async function startServer() {
+    const dbConnected = await testConnection();
+    app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));
+}
+
+startServer();
