@@ -7,38 +7,37 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
-        .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; padding: 20px; }
         .stat-card { background: white; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .stat-card .label { font-size: 12px; color: #666; margin-bottom: 5px; }
         .stat-card .value { font-size: 22px; font-weight: bold; color: #28a745; }
         .stat-card .credit-value { font-size: 22px; font-weight: bold; color: #dc3545; }
         .card { background: white; padding: 20px; margin: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .card h3 { margin-bottom: 15px; color: #333; border-left: 4px solid #28a745; padding-left: 12px; }
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px; }
         .product-item { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fafafa; }
         .product-item h4 { color: #333; margin-bottom: 10px; }
         .product-item .price { color: #28a745; font-weight: bold; font-size: 20px; }
         .product-item .stock { color: #666; font-size: 14px; margin: 5px 0; }
         .product-item .total-value { color: #667eea; font-weight: bold; margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; }
-        .confirm-btn { background: #28a745; color: white; border: none; padding: 15px 25px; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; width: 100%; margin-top: 15px; }
+        .confirm-btn { background: #28a745; color: white; border: none; padding: 20px; border-radius: 10px; cursor: pointer; font-size: 20px; font-weight: bold; width: 100%; margin-top: 15px; }
         .confirm-btn:hover { background: #218838; }
         .submit-btn { background: #ffc107; color: #333; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; width: calc(100% - 40px); margin: 0 20px 20px 20px; }
-        .submit-btn:hover { background: #e0a800; }
-        .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .sell-btn { background: #28a745; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
+        .sell-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .logout-btn, .refresh-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; margin-left: 10px; border: none; color: white; }
+        .download-btn { background: #17a2b8; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; margin: 10px; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: 500; }
         input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
         .payment-options { display: flex; gap: 15px; margin: 15px 0; flex-wrap: wrap; }
         .payment-options label { display: flex; align-items: center; gap: 5px; cursor: pointer; }
-        button.sell-btn { background: #28a745; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
-        button.sell-btn:disabled { background: #ccc; cursor: not-allowed; }
-        .logout-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; }
-        .refresh-btn { background: #17a2b8; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; margin-left: 10px; }
-        .refresh-btn:hover { background: #138496; }
-        .success-msg { background: #d4edda; color: #155724; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
-        .error-msg { background: #f8d7da; color: #721c24; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
-        .warning-msg { background: #fff3cd; color: #856404; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
-        .info-msg { background: #cce5ff; color: #004085; padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
+        .success-msg, .error-msg, .warning-msg, .info-msg { padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
+        .success-msg { background: #d4edda; color: #155724; }
+        .error-msg { background: #f8d7da; color: #721c24; }
+        .warning-msg { background: #fff3cd; color: #856404; }
+        .info-msg { background: #cce5ff; color: #004085; }
         table { width: 100%; margin-top: 15px; border-collapse: collapse; }
         th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
         th { background: #f8f9fa; }
@@ -47,22 +46,23 @@
         .total-goods-value { font-size: 24px; font-weight: bold; color: #28a745; }
         .status-confirmed { color: #28a745; font-weight: bold; }
         .status-pending { color: #dc3545; font-weight: bold; }
-        .credit-row { background-color: #fff0f0; border-left: 3px solid #dc3545; }
         .credit-amount { color: #dc3545; font-weight: bold; }
-        .credit-amount::before { content: "- "; }
-        .confirm-btn-large { background: #28a745; color: white; border: none; padding: 20px; border-radius: 10px; cursor: pointer; font-size: 20px; font-weight: bold; width: 100%; margin-top: 15px; animation: pulse 1.5s infinite; }
-        .confirm-btn-large:hover { background: #218838; }
-        @keyframes pulse {
-            0% { transform: scale(1); background-color: #28a745; }
-            50% { transform: scale(1.02); background-color: #34ce57; }
-            100% { transform: scale(1); background-color: #28a745; }
-        }
+        .tab-buttons { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #ddd; }
+        .tab-btn { background: none; border: none; padding: 10px 20px; cursor: pointer; font-size: 16px; color: #666; }
+        .tab-btn.active { color: #28a745; border-bottom: 2px solid #28a745; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .zero-state { text-align: center; padding: 40px; color: #28a745; font-size: 18px; }
+        .history-item { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 3px solid #28a745; }
+        .history-date { font-weight: bold; color: #28a745; margin-bottom: 10px; }
+        @keyframes pulse { 0% { transform: scale(1); background-color: #28a745; } 50% { transform: scale(1.02); background-color: #34ce57; } 100% { transform: scale(1); background-color: #28a745; } }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>💰 <span id="teamName">Sales Team</span> Dashboard</h1>
         <div>
+            <span id="dateDisplay" style="margin-right: 15px; font-size: 14px;"></span>
             <button class="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
             <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
@@ -73,29 +73,16 @@
     <div id="warningMsg" class="warning-msg"></div>
     <div id="infoMsg" class="info-msg"></div>
 
+    <!-- TODAY'S STATS - Resets to zero on new day -->
     <div class="stats-container">
-        <div class="stat-card">
-            <div class="label">Cash Sales</div>
-            <div class="value" id="cashSales">₦0</div>
-        </div>
-        <div class="stat-card">
-            <div class="label">Transfer Sales</div>
-            <div class="value" id="transferSales">₦0</div>
-        </div>
-        <div class="stat-card">
-            <div class="label">Total Sales (Cash + Transfer)</div>
-            <div class="value" id="totalSales">₦0</div>
-        </div>
-        <div class="stat-card">
-            <div class="label">Items Sold</div>
-            <div class="value" id="itemsSold">0</div>
-        </div>
-        <div class="stat-card">
-            <div class="label">Credit Sales</div>
-            <div class="credit-value" id="creditTotal">-₦0</div>
-        </div>
+        <div class="stat-card"><div class="label">Cash Sales</div><div class="value" id="cashSales">₦0</div></div>
+        <div class="stat-card"><div class="label">Transfer Sales</div><div class="value" id="transferSales">₦0</div></div>
+        <div class="stat-card"><div class="label">Total Sales (Cash + Transfer)</div><div class="value" id="totalSales">₦0</div></div>
+        <div class="stat-card"><div class="label">Items Sold</div><div class="value" id="itemsSold">0</div></div>
+        <div class="stat-card"><div class="label">Credit Sales</div><div class="credit-value" id="creditTotal">-₦0</div></div>
     </div>
 
+    <!-- TODAY'S ALLOCATED STOCK -->
     <div class="card">
         <h3>📦 My Allocated Stock (Today)</h3>
         <div id="allocationSummary" class="allocation-summary" style="display: none;">
@@ -103,64 +90,64 @@
             <div>Total Goods Value: <span id="totalAllocatedValue" class="total-goods-value">₦0</span></div>
             <div>Status: <span id="confirmationStatus" class="status-pending">Not Confirmed</span></div>
         </div>
-        <div id="stockLoading" class="loading">Loading your allocated stock...</div>
+        <div id="stockLoading" class="loading">Loading...</div>
         <div id="allocatedStock" class="product-grid" style="display: none;"></div>
-        <button id="confirmReceiptBtn" class="confirm-btn-large" onclick="confirmAllocation()" style="display: none;">✅ CLICK HERE TO CONFIRM RECEIPT OF GOODS ✅</button>
+        <button id="confirmReceiptBtn" class="confirm-btn" onclick="confirmAllocation()" style="display: none;">✅ CONFIRM RECEIPT OF GOODS ✅</button>
     </div>
 
+    <!-- SELLING FORM -->
     <div class="card">
         <h3>➕ Record New Sale</h3>
-        <div id="saleDisabledWarning" class="warning-msg" style="display: none;">⚠️ You must confirm receipt of goods before selling. Click the green button above.</div>
-        <form id="saleForm">
-            <div class="form-group">
-                <label>Customer Name *</label>
-                <input type="text" id="customerName" required>
-            </div>
-            <div class="form-group">
-                <label>Customer Phone</label>
-                <input type="tel" id="customerPhone">
-            </div>
-            <div class="form-group">
-                <label>Product *</label>
-                <select id="productSelect" required></select>
-            </div>
-            <div class="form-group">
-                <label>Quantity *</label>
-                <input type="number" id="quantity" min="1" required>
-            </div>
-            <div class="form-group" id="creditDueDateGroup" style="display: none;">
-                <label>Expected Payment Date</label>
-                <input type="date" id="creditDueDate">
-            </div>
+        <div id="saleDisabledWarning" class="warning-msg" style="display: none;">⚠️ You must confirm goods first!</div>
+        <form id="saleForm" onsubmit="recordSale(event)">
+            <div class="form-group"><label>Customer Name *</label><input type="text" id="customerName" required></div>
+            <div class="form-group"><label>Customer Phone</label><input type="tel" id="customerPhone"></div>
+            <div class="form-group"><label>Product *</label><select id="productSelect" required></select></div>
+            <div class="form-group"><label>Quantity *</label><input type="number" id="quantity" min="1" required></div>
+            <div class="form-group" id="creditDueDateGroup" style="display: none;"><label>Due Date</label><input type="date" id="creditDueDate"></div>
             <div class="payment-options">
                 <label><input type="radio" name="paymentMethod" value="cash" checked> 💵 Cash</label>
                 <label><input type="radio" name="paymentMethod" value="bank_transfer"> 🏦 Bank Transfer</label>
-                <label><input type="radio" name="paymentMethod" value="credit"> 📝 Credit (Needs Approval)</label>
+                <label><input type="radio" name="paymentMethod" value="credit"> 📝 Credit</label>
             </div>
             <button type="submit" class="sell-btn" id="sellBtn" disabled>Sell Now</button>
         </form>
     </div>
 
+    <!-- TABS FOR TRANSACTIONS -->
     <div class="card">
-        <h3>📋 My Credit Requests</h3>
-        <div id="creditLoading" class="loading">Loading credit requests...</div>
-        <table id="creditTable" style="display: none;">
-            <thead>
-                <tr><th>Order Number</th><th>Customer Name</th><th>Amount</th><th>Status</th><th>Due Date</th></tr>
-            </thead>
-            <tbody id="creditTableBody"></tbody>
-        寸
-    </div>
-
-    <div class="card">
-        <h3>📊 Today's Transaction History</h3>
-        <div id="historyLoading" class="loading">Loading history...</div>
-        <table id="historyTable" style="display: none;">
-            <thead>
-                <tr><th>Time</th><th>Customer</th><th>Product</th><th>Quantity</th><th>Amount</th><th>Type</th><th>Status</th></tr>
-            </thead>
-            <tbody id="salesHistoryBody"></tbody>
-        寸
+        <div class="tab-buttons">
+            <button class="tab-btn active" onclick="switchTab('today')">📋 Today's Transactions</button>
+            <button class="tab-btn" onclick="switchTab('history')">📜 Past Transactions (View Only)</button>
+            <button class="tab-btn" onclick="switchTab('credit')">💳 Credit Requests</button>
+        </div>
+        
+        <!-- TODAY'S TRANSACTIONS TAB -->
+        <div id="tab-today" class="tab-content active">
+            <div id="todayLoading" class="loading">Loading today's transactions...</div>
+            <table id="todayTable" style="display: none;">
+                <thead><tr><th>Time</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Status</th></tr></thead>
+                <tbody id="todayTransactionsBody"></tbody>
+            </table>
+            <div id="noTodayTransactions" class="zero-state" style="display: none;">📭 No transactions recorded today.</div>
+        </div>
+        
+        <!-- PAST TRANSACTIONS TAB (VIEW ONLY - NO EDIT) -->
+        <div id="tab-history" class="tab-content">
+            <button class="download-btn" onclick="downloadPastTransactions()">📥 Download Past Transactions (CSV)</button>
+            <div id="historyLoading" class="loading">Loading past transactions...</div>
+            <div id="pastTransactionsContainer"></div>
+            <div id="noPastTransactions" class="zero-state" style="display: none;">📭 No past transactions found.</div>
+        </div>
+        
+        <!-- CREDIT REQUESTS TAB -->
+        <div id="tab-credit" class="tab-content">
+            <div id="creditLoading" class="loading">Loading credit requests...</div>
+            <table id="creditTable" style="display: none;">
+                <thead><tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Status</th><th>Due Date</th></tr></thead>
+                <tbody id="creditTableBody"></tbody>
+            </table>
+        </div>
     </div>
 
     <button id="submitDayBtn" class="submit-btn" onclick="submitDaySales()">Submit Final Sales for the Day</button>
@@ -170,26 +157,28 @@
         let authToken = localStorage.getItem('token');
         let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
         let allocatedProducts = [];
-        let isConfirmed = false;  // THIS MUST ONLY COME FROM BACKEND
-        let refreshInterval = null;
+        let isConfirmed = false;
+        let todayTransactions = [];
+        let pastTransactions = [];
 
-        // Force team_id for alpha_lead
         if (currentUser.username === 'alpha_lead' && !currentUser.team_id) {
             currentUser.team_id = 1;
             localStorage.setItem('user', JSON.stringify(currentUser));
         }
 
+        // Display today's date
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('dateDisplay').innerHTML = `📅 ${new Date().toLocaleDateString('en-NG')}`;
+
         function formatMoney(amount) {
             let num = parseFloat(amount);
             if (isNaN(num)) return '₦0';
-            if (num === 0) return '₦0';
             return '₦' + Math.round(num).toLocaleString('en-NG');
         }
 
         function formatCreditMoney(amount) {
             let num = parseFloat(amount);
             if (isNaN(num)) return '-₦0';
-            if (num === 0) return '-₦0';
             return '-₦' + Math.round(num).toLocaleString('en-NG');
         }
 
@@ -197,7 +186,7 @@
             let msgDiv = isError ? document.getElementById('errorMsg') : (isWarning ? document.getElementById('warningMsg') : (isInfo ? document.getElementById('infoMsg') : document.getElementById('successMsg')));
             msgDiv.innerHTML = msg;
             msgDiv.style.display = 'block';
-            setTimeout(function() { msgDiv.style.display = 'none'; }, 4000);
+            setTimeout(() => msgDiv.style.display = 'none', 4000);
         }
 
         async function fetchAPI(endpoint, options = {}) {
@@ -208,19 +197,18 @@
                 });
                 if (response.status === 401) { localStorage.clear(); window.location.href = 'login.html'; return null; }
                 return await response.json();
-            } catch (error) { showMessage('Network error: ' + error.message, true); return null; }
+            } catch (error) { 
+                console.error('API Error:', error);
+                showMessage('Network error: ' + error.message, true); 
+                return null; 
+            }
         }
 
-        function groupSalesByDate(salesData) {
-            const grouped = {};
-            salesData.forEach(sale => {
-                const date = new Date(sale.created_at).toLocaleDateString();
-                if (!grouped[date]) {
-                    grouped[date] = [];
-                }
-                grouped[date].push(sale);
-            });
-            return grouped;
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            event.target.classList.add('active');
         }
 
         async function loadAllocatedStock() {
@@ -233,48 +221,39 @@
             container.style.display = 'none';
             confirmBtn.style.display = 'none';
             
-            // Get allocations
             const data = await fetchAPI('/sales/team/' + currentUser.team_id + '/allocations');
             
             if (data && data.success) {
-                allocatedProducts = data.data.filter(function(p) { return p.remaining_qty > 0; });
-                const today = new Date().toISOString().split('T')[0];
+                allocatedProducts = data.data.filter(p => p.remaining_qty > 0);
                 
-                // IMPORTANT: Get confirmation status ONLY from backend - no local assumptions
                 const confirmationData = await fetchAPI('/allocations/confirmation-status/' + currentUser.team_id + '/' + today);
-                
-                // CRITICAL FIX: isConfirmed comes ONLY from backend response
-                if (confirmationData && confirmationData.success) {
-                    isConfirmed = confirmationData.confirmed === true;
-                } else {
-                    isConfirmed = false;
-                }
-                
-                console.log('Confirmation status from backend:', isConfirmed); // Debug log
+                isConfirmed = confirmationData && confirmationData.success && confirmationData.confirmed === true;
                 
                 if (allocatedProducts.length === 0) {
-                    container.innerHTML = '<p style="text-align:center; color:#ffc107; padding:40px;">📭 No stock allocated yet. Waiting for warehouse manager to allocate goods.<br><br>Click Refresh button to check for new allocations.</p>';
+                    container.innerHTML = '<div class="zero-state">📭 No stock allocated yet. Waiting for warehouse manager to allocate goods.<br><br>Click Refresh button to check for new allocations.</div>';
                     confirmBtn.style.display = 'none';
                     allocationSummary.style.display = 'none';
                     enableSelling(false);
+                    
+                    // RESET STATS TO ZERO FOR NEW DAY
+                    resetStatsToZero();
                 } else {
                     let totalValue = 0;
                     let totalUnits = 0;
                     let html = '';
                     let selectHtml = '<option value="">Select Product</option>';
                     
-                    for (var i = 0; i < allocatedProducts.length; i++) {
-                        var p = allocatedProducts[i];
-                        var productTotal = p.remaining_qty * parseFloat(p.selling_price);
+                    for (let p of allocatedProducts) {
+                        let productTotal = p.remaining_qty * parseFloat(p.selling_price);
                         totalValue += productTotal;
                         totalUnits += p.remaining_qty;
-                        html += '<div class="product-item">';
-                        html += '<h4>' + p.product_name + '</h4>';
-                        html += '<div class="stock">📦 Available: <strong>' + p.remaining_qty + '</strong> units</div>';
-                        html += '<div class="price">💰 ' + formatMoney(p.selling_price) + ' per unit</div>';
-                        html += '<div class="total-value">💵 Total Value: ' + formatMoney(productTotal) + '</div>';
-                        html += '</div>';
-                        selectHtml += '<option value="' + p.id + '" data-price="' + p.selling_price + '">' + p.product_name + ' - ' + formatMoney(p.selling_price) + ' (' + p.remaining_qty + ' units left)</option>';
+                        html += `<div class="product-item">
+                            <h4>${p.product_name}</h4>
+                            <div class="stock">📦 Available: <strong>${p.remaining_qty}</strong> units</div>
+                            <div class="price">💰 ${formatMoney(p.selling_price)} per unit</div>
+                            <div class="total-value">💵 Total Value: ${formatMoney(productTotal)}</div>
+                        </div>`;
+                        selectHtml += `<option value="${p.id}">${p.product_name} - ${formatMoney(p.selling_price)} (${p.remaining_qty} left)</option>`;
                     }
                     
                     container.innerHTML = html;
@@ -282,105 +261,86 @@
                     document.getElementById('totalAllocatedValue').innerHTML = formatMoney(totalValue);
                     allocationSummary.style.display = 'block';
 
-                    // CRITICAL: Show correct status based ONLY on backend isConfirmed
                     if (isConfirmed === true) {
                         document.getElementById('confirmationStatus').innerHTML = '✅ CONFIRMED - You can now sell';
                         document.getElementById('confirmationStatus').className = 'status-confirmed';
                         confirmBtn.style.display = 'none';
                         enableSelling(true);
                     } else {
-                        document.getElementById('confirmationStatus').innerHTML = '⚠️ NOT CONFIRMED - You must click the button below to confirm goods before selling';
+                        document.getElementById('confirmationStatus').innerHTML = '⚠️ NOT CONFIRMED - Click button below to confirm goods';
                         document.getElementById('confirmationStatus').className = 'status-pending';
                         confirmBtn.style.display = 'block';
-                        confirmBtn.innerHTML = '✅ CLICK HERE TO CONFIRM RECEIPT OF ' + totalUnits + ' UNITS VALUED AT ' + formatMoney(totalValue) + ' ✅';
+                        confirmBtn.innerHTML = `✅ CONFIRM RECEIPT (${totalUnits} UNITS - ${formatMoney(totalValue)}) ✅`;
                         enableSelling(false);
-                        showMessage('⚠️ New stock allocation received! Please click the green confirmation button above to confirm receipt before selling.', false, true);
                     }
                 }
                 loadingDiv.style.display = 'none';
                 container.style.display = 'grid';
             } else {
-                loadingDiv.innerHTML = 'Failed to load allocated stock';
+                loadingDiv.innerHTML = 'Failed to load';
             }
+        }
+
+        function resetStatsToZero() {
+            document.getElementById('cashSales').innerHTML = '₦0';
+            document.getElementById('transferSales').innerHTML = '₦0';
+            document.getElementById('totalSales').innerHTML = '₦0';
+            document.getElementById('itemsSold').innerHTML = '0';
+            document.getElementById('creditTotal').innerHTML = '-₦0';
         }
 
         function enableSelling(enabled) {
-            document.getElementById('sellBtn').disabled = !enabled;
-            document.getElementById('saleDisabledWarning').style.display = enabled ? 'none' : 'block';
+            const sellBtn = document.getElementById('sellBtn');
+            const warningDiv = document.getElementById('saleDisabledWarning');
+            if (sellBtn) sellBtn.disabled = !enabled;
+            if (warningDiv) warningDiv.style.display = enabled ? 'none' : 'block';
             document.getElementById('customerName').disabled = !enabled;
             document.getElementById('productSelect').disabled = !enabled;
             document.getElementById('quantity').disabled = !enabled;
-            
-            const radios = document.querySelectorAll('input[name="paymentMethod"]');
-            for (var i = 0; i < radios.length; i++) {
-                radios[i].disabled = !enabled;
-            }
+            document.querySelectorAll('input[name="paymentMethod"]').forEach(r => r.disabled = !enabled);
         }
 
         async function confirmAllocation() {
-            let totalValue = 0;
-            let totalUnits = 0;
-            for (var i = 0; i < allocatedProducts.length; i++) {
-                totalValue += allocatedProducts[i].remaining_qty * parseFloat(allocatedProducts[i].selling_price);
-                totalUnits += allocatedProducts[i].remaining_qty;
+            let totalValue = 0, totalUnits = 0;
+            for (let p of allocatedProducts) {
+                totalValue += p.remaining_qty * parseFloat(p.selling_price);
+                totalUnits += p.remaining_qty;
             }
             
-            if (confirm('📦 CONFIRM GOODS RECEIPT\n\nYou are confirming receipt of:\n📊 Total Units: ' + totalUnits + '\n💰 Total Value: ' + formatMoney(totalValue) + '\n\n⚠️ Make sure you have physically received ALL these goods before confirming.\n\n✅ Click OK to confirm receipt and start selling.')) {
-                
-                const today = new Date().toISOString().split('T')[0];
-                
+            if (confirm(`CONFIRM GOODS RECEIPT\n\nUnits: ${totalUnits}\nValue: ${formatMoney(totalValue)}\n\nClick OK to confirm.`)) {
                 const result = await fetchAPI('/allocations/confirm', {
                     method: 'POST',
                     body: JSON.stringify({ team_id: currentUser.team_id, allocated_date: today })
                 });
                 
                 if (result && result.success) {
-                    // CRITICAL: After confirmation, fetch fresh status from backend
-                    const freshConfirmation = await fetchAPI('/allocations/confirmation-status/' + currentUser.team_id + '/' + today);
-                    if (freshConfirmation && freshConfirmation.success) {
-                        isConfirmed = freshConfirmation.confirmed === true;
-                    }
-                    
-                    document.getElementById('confirmationStatus').innerHTML = '✅ CONFIRMED - You can now sell';
-                    document.getElementById('confirmationStatus').className = 'status-confirmed';
-                    const confirmBtn = document.getElementById('confirmReceiptBtn');
-                    confirmBtn.style.display = 'none';
-                    enableSelling(true);
-                    showMessage('✅ Allocation confirmed successfully! You can now start selling.', false);
-                    
+                    isConfirmed = true;
+                    showMessage('✅ Goods confirmed! You can now sell.');
                     await loadAllocatedStock();
-                    await loadSalesHistory();
+                    await loadTodayTransactions();
                 } else {
-                    showMessage('Failed to confirm allocation: ' + (result?.message || 'Unknown error'), true);
+                    showMessage('Confirmation failed: ' + (result?.message || 'Unknown'), true);
                 }
             }
         }
 
-        document.querySelectorAll('input[name="paymentMethod"]').forEach(function(radio) {
-            radio.addEventListener('change', function() {
-                document.getElementById('creditDueDateGroup').style.display = this.value === 'credit' ? 'block' : 'none';
-            });
-        });
-
-        document.getElementById('saleForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            if (!isConfirmed) { showMessage('⚠️ Please confirm receipt of goods first by clicking the green button above.', true); return; }
+        async function recordSale(event) {
+            event.preventDefault();
+            if (!isConfirmed) { showMessage('⚠️ Please confirm goods first!', true); return; }
             
             const customerName = document.getElementById('customerName').value;
-            if (!customerName) { showMessage('Customer name is required', true); return; }
+            if (!customerName) { showMessage('Customer name required', true); return; }
             
-            const productSelect = document.getElementById('productSelect');
-            const productId = parseInt(productSelect.value);
+            const productId = parseInt(document.getElementById('productSelect').value);
             const quantity = parseInt(document.getElementById('quantity').value);
             const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
-            const product = allocatedProducts.find(function(p) { return p.id === productId; });
+            const product = allocatedProducts.find(p => p.id === productId);
             
-            if (!productId || !product) { showMessage('Please select a product', true); return; }
-            if (quantity < 1 || isNaN(quantity)) { showMessage('Please enter a valid quantity', true); return; }
-            if (quantity > product.remaining_qty) { showMessage('Only ' + product.remaining_qty + ' units available', true); return; }
+            if (!product) { showMessage('Select product', true); return; }
+            if (quantity < 1) { showMessage('Valid quantity required', true); return; }
+            if (quantity > product.remaining_qty) { showMessage(`Only ${product.remaining_qty} available`, true); return; }
             
             const totalAmount = quantity * parseFloat(product.selling_price);
-            const today = new Date().toISOString().split('T')[0];
             
             const body = {
                 team_id: currentUser.team_id,
@@ -393,7 +353,7 @@
             
             if (paymentMethod === 'credit') {
                 const dueDate = document.getElementById('creditDueDate').value;
-                if (!dueDate) { showMessage('Please select expected payment date for credit sale', true); return; }
+                if (!dueDate) { showMessage('Due date required for credit', true); return; }
                 body.credit_due_date = dueDate;
             }
             
@@ -402,147 +362,182 @@
             const result = await fetchAPI('/sales', { method: 'POST', body: JSON.stringify(body) });
             
             if (result && result.success) {
-                let successMsg = '';
-                if (paymentMethod === 'credit') {
-                    successMsg = 'Credit sale of ' + formatMoney(totalAmount) + ' recorded. Pending manager approval.';
-                } else if (paymentMethod === 'bank_transfer') {
-                    successMsg = 'Transfer sale of ' + formatMoney(totalAmount) + ' recorded.';
-                } else {
-                    successMsg = 'Cash sale of ' + formatMoney(totalAmount) + ' recorded.';
-                }
-                showMessage(successMsg, false);
-                
+                showMessage(`Sale recorded: ${formatMoney(totalAmount)}`);
                 document.getElementById('customerName').value = '';
                 document.getElementById('customerPhone').value = '';
                 document.getElementById('quantity').value = '';
-                document.getElementById('productSelect').value = '';
                 document.getElementById('creditDueDate').value = '';
-                
                 await loadAllocatedStock();
-                await loadSalesHistory();
+                await loadTodayTransactions();
                 await loadCreditRequests();
             } else {
-                showMessage('Failed to record sale: ' + (result?.message || 'Unknown error'), true);
+                showMessage('Sale failed: ' + (result?.message), true);
             }
-        });
+        }
 
-        async function loadSalesHistory() {
+        async function loadTodayTransactions() {
             try {
                 const data = await fetchAPI('/sales/team/' + currentUser.team_id + '/history');
-                
                 if (data && data.success) {
-                    let cashTotal = 0;
-                    let transferTotal = 0;
-                    let totalCredit = 0;
-                    let totalItems = 0;
-                    let html = '';
+                    let cashTotal = 0, transferTotal = 0, totalCredit = 0, totalItems = 0;
+                    let todayHtml = '';
+                    let pastHtml = '';
+                    let pastTransactionsList = [];
                     
-                    const grouped = groupSalesByDate(data.data);
-                    const dates = Object.keys(grouped).sort().reverse();
-                    
-                    for (var d = 0; d < dates.length; d++) {
-                        const currentDate = dates[d];
-                        const salesOnDate = grouped[currentDate];
+                    for (let sale of data.data) {
+                        const saleDate = new Date(sale.created_at).toISOString().split('T')[0];
+                        const itemsRes = await fetch(API_URL + '/sales/order/' + sale.id + '/items', { headers: { 'Authorization': 'Bearer ' + authToken } });
+                        const itemsData = await itemsRes.json();
                         
-                        html += '<tr style="background-color: #e0e0e0;">';
-                        html += '<td colspan="7"><strong>📅 ' + currentDate + '</strong></td>';
-                        html += '</tr>';
-                        
-                        for (var s = 0; s < salesOnDate.length; s++) {
-                            const sale = salesOnDate[s];
-                            const itemsRes = await fetch(API_URL + '/sales/order/' + sale.id + '/items', { headers: { 'Authorization': 'Bearer ' + authToken } });
-                            const itemsData = await itemsRes.json();
-                            const isCredit = sale.payment_method === 'credit';
-                            const isApproved = sale.approval_status === 'approved';
-                            const isCash = sale.payment_method === 'cash';
-                            const isTransfer = sale.payment_method === 'bank_transfer';
-                            
-                            if (itemsData.success && itemsData.data) {
-                                for (var i = 0; i < itemsData.data.length; i++) {
-                                    const item = itemsData.data[i];
-                                    const itemAmount = parseFloat(item.total_price) || 0;
+                        if (itemsData.success) {
+                            for (let item of itemsData.data) {
+                                let amount = parseFloat(item.total_price) || 0;
+                                let row = {
+                                    date: saleDate,
+                                    time: new Date(sale.created_at).toLocaleTimeString(),
+                                    customer: sale.customer_name,
+                                    product: item.product_name,
+                                    quantity: item.quantity,
+                                    amount: amount,
+                                    type: sale.payment_method,
+                                    status: sale.payment_method === 'credit' ? (sale.approval_status === 'approved' ? 'Approved' : 'Pending') : 'Completed'
+                                };
+                                
+                                if (saleDate === today) {
+                                    // TODAY'S TRANSACTIONS
+                                    if (sale.payment_method === 'cash') { cashTotal += amount; totalItems += item.quantity; }
+                                    else if (sale.payment_method === 'bank_transfer') { transferTotal += amount; totalItems += item.quantity; }
+                                    else if (sale.payment_method === 'credit' && sale.approval_status === 'approved') { totalCredit += amount; }
                                     
-                                    if (isCredit && isApproved) {
-                                        totalCredit += itemAmount;
-                                        html += '<tr class="credit-row">';
-                                        html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
-                                        html += '<td>' + sale.customer_name + '</td>';
-                                        html += '<td>' + item.product_name + '</td>';
-                                        html += '<td>' + item.quantity + '</td>';
-                                        html += '<td class="credit-amount">' + formatCreditMoney(itemAmount) + '</td>';
-                                        html += '<td>Credit' + '</td>';
-                                        html += '<td class="status-approved">Approved' + '</td>';
-                                        html += '</tr>';
-                                    } else if (isCredit && !isApproved) {
-                                        html += '<tr>';
-                                        html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
-                                        html += '<td>' + sale.customer_name + '</td>';
-                                        html += '<td>' + item.product_name + '</td>';
-                                        html += '<td>' + item.quantity + '</td>';
-                                        html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                        html += '<td>Credit' + '</td>';
-                                        html += '<td class="status-pending-text">Pending' + '</td>';
-                                        html += '</tr>';
-                                    } else if (isCash) {
-                                        cashTotal += itemAmount;
-                                        totalItems += item.quantity;
-                                        html += '<tr>';
-                                        html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
-                                        html += '<td>' + sale.customer_name + '</td>';
-                                        html += '<td>' + item.product_name + '</td>';
-                                        html += '<td>' + item.quantity + '</td>';
-                                        html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                        html += '<td>Cash' + '</td>';
-                                        html += '<td class="status-approved">Completed' + '</td>';
-                                        html += '</tr>';
-                                    } else if (isTransfer) {
-                                        transferTotal += itemAmount;
-                                        totalItems += item.quantity;
-                                        html += '<tr>';
-                                        html += '<td>' + new Date(sale.created_at).toLocaleTimeString() + '</td>';
-                                        html += '<td>' + sale.customer_name + '</td>';
-                                        html += '<td>' + item.product_name + '</td>';
-                                        html += '<td>' + item.quantity + '</td>';
-                                        html += '<td>' + formatMoney(itemAmount) + '</td>';
-                                        html += '<td>Bank Transfer' + '</td>';
-                                        html += '<td class="status-approved">Completed' + '</td>';
-                                        html += '</tr>';
-                                    }
+                                    todayHtml += `<tr>
+                                        <td>${row.time}</td>
+                                        <td>${row.customer}</td>
+                                        <td>${row.product}</td>
+                                        <td>${row.quantity}</td>
+                                        <td>${formatMoney(row.amount)}</td>
+                                        <td>${row.type}</td>
+                                        <td>${row.status}</td>
+                                    </tr>`;
+                                } else {
+                                    // PAST TRANSACTIONS (View Only)
+                                    pastTransactionsList.push(row);
                                 }
                             }
                         }
                     }
                     
+                    // Update today's stats
                     document.getElementById('cashSales').innerHTML = formatMoney(cashTotal);
                     document.getElementById('transferSales').innerHTML = formatMoney(transferTotal);
                     document.getElementById('totalSales').innerHTML = formatMoney(cashTotal + transferTotal);
                     document.getElementById('itemsSold').innerHTML = totalItems;
                     document.getElementById('creditTotal').innerHTML = formatCreditMoney(totalCredit);
                     
-                    document.getElementById('salesHistoryBody').innerHTML = html || '<tr><td colspan="7">No transactions yet</td></tr>';
-                    document.getElementById('historyLoading').style.display = 'none';
-                    document.getElementById('historyTable').style.display = 'table';
+                    // Display today's transactions
+                    const todayBody = document.getElementById('todayTransactionsBody');
+                    const todayTable = document.getElementById('todayTable');
+                    const noTodayDiv = document.getElementById('noTodayTransactions');
+                    
+                    if (todayHtml) {
+                        todayBody.innerHTML = todayHtml;
+                        todayTable.style.display = 'table';
+                        noTodayDiv.style.display = 'none';
+                    } else {
+                        todayTable.style.display = 'none';
+                        noTodayDiv.style.display = 'block';
+                    }
+                    document.getElementById('todayLoading').style.display = 'none';
+                    
+                    // Store and display past transactions
+                    pastTransactions = pastTransactionsList;
+                    displayPastTransactions(pastTransactionsList);
                 }
-            } catch (error) {
-                document.getElementById('historyLoading').innerHTML = 'Error loading history';
+            } catch(e) { console.error('Today transactions error:', e); }
+        }
+
+        function displayPastTransactions(transactions) {
+            const container = document.getElementById('pastTransactionsContainer');
+            const loadingDiv = document.getElementById('historyLoading');
+            const noPastDiv = document.getElementById('noPastTransactions');
+            
+            loadingDiv.style.display = 'none';
+            
+            if (!transactions || transactions.length === 0) {
+                container.innerHTML = '';
+                noPastDiv.style.display = 'block';
+                return;
             }
+            
+            noPastDiv.style.display = 'none';
+            
+            // Group by date
+            const grouped = {};
+            for (let t of transactions) {
+                if (!grouped[t.date]) grouped[t.date] = [];
+                grouped[t.date].push(t);
+            }
+            
+            let html = '';
+            for (let date in grouped) {
+                let dateTotal = grouped[date].reduce((sum, t) => sum + t.amount, 0);
+                html += `<div class="history-item">
+                    <div class="history-date">📅 ${new Date(date).toLocaleDateString('en-NG')} - Total: ${formatMoney(dateTotal)}</div>
+                    <table style="width:100%; margin-top:10px;">
+                        <thead><tr><th>Time</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Status</th></tr></thead>
+                        <tbody>`;
+                for (let t of grouped[date]) {
+                    html += `<tr>
+                        <td>${t.time}</td>
+                        <td>${t.customer}</td>
+                        <td>${t.product}</td>
+                        <td>${t.quantity}</td>
+                        <td>${formatMoney(t.amount)}</td>
+                        <td>${t.type}</td>
+                        <td>${t.status}</td>
+                    </tr>`;
+                }
+                html += `</tbody></table></div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        function downloadPastTransactions() {
+            if (!pastTransactions || pastTransactions.length === 0) {
+                showMessage('No past transactions to download', true);
+                return;
+            }
+            
+            // Create CSV
+            let csv = 'Date,Time,Customer,Product,Quantity,Amount,Type,Status\n';
+            for (let t of pastTransactions) {
+                csv += `"${t.date}","${t.time}","${t.customer}","${t.product}",${t.quantity},"${t.amount}","${t.type}","${t.status}"\n`;
+            }
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `past_transactions_${today}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            showMessage('Download started!');
         }
 
         async function loadCreditRequests() {
             const data = await fetchAPI('/approvals/my-requests');
             if (data && data.success) {
                 let html = '';
-                for (var i = 0; i < data.data.length; i++) {
-                    var req = data.data[i];
-                    var statusText = req.approved === 1 ? 'Approved' : (req.rejected === 1 ? 'Declined' : 'Pending');
-                    var statusClass = req.approved === 1 ? 'status-approved' : (req.rejected === 1 ? 'status-rejected' : 'status-pending-text');
-                    html += '<tr>';
-                    html += '<td>' + req.order_number + '</td>';
-                    html += '<td>' + req.customer_name + '</td>';
-                    html += '<td class="' + (req.approved === 1 ? '' : 'credit-amount') + '">' + (req.approved === 1 ? formatMoney(req.total_amount) : formatCreditMoney(req.total_amount)) + '</td>';
-                    html += '<td class="' + statusClass + '">' + statusText + '</td>';
-                    html += '<td>' + (req.due_date ? new Date(req.due_date).toLocaleDateString() : '-') + '</td>';
-                    html += '</tr>';
+                for (let req of data.data) {
+                    let status = req.approved === 1 ? 'Approved' : (req.rejected === 1 ? 'Declined' : 'Pending');
+                    html += `<tr>
+                        <td>${req.order_number}</td>
+                        <td>${req.customer_name}</td>
+                        <td class="${status === 'Pending' ? 'credit-amount' : ''}">${status === 'Pending' ? formatCreditMoney(req.total_amount) : formatMoney(req.total_amount)}</td>
+                        <td>${status}</td>
+                        <td>${req.due_date ? new Date(req.due_date).toLocaleDateString() : '-'}</td>
+                    </tr>`;
                 }
                 document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests</td></tr>';
                 document.getElementById('creditLoading').style.display = 'none';
@@ -551,64 +546,32 @@
         }
 
         async function submitDaySales() {
-            const today = new Date().toISOString().split('T')[0];
-            
-            if (confirm('📤 SUBMIT SALES FOR REVIEW\n\nAre you sure you want to submit today\'s sales for manager review?\n\n✅ You can STILL accept new allocations and continue selling after submission.\n\nClick OK to submit.')) {
-                
-                const result = await fetchAPI('/sales/submit-day', { 
-                    method: 'POST', 
-                    body: JSON.stringify({ 
-                        team_id: currentUser.team_id, 
-                        sales_date: today
-                    }) 
-                });
-                
-                if (result && result.success) {
-                    showMessage('✅ Sales submitted to manager! You can still accept new allocations and continue selling.', false, false, true);
-                    refreshData();
-                } else if (result && result.requires_action) {
-                    const userChoice = confirm(result.message + '\n\nClick OK to MOVE remaining goods to warehouse\nClick Cancel to KEEP goods for continued selling');
-                    
-                    const finalResult = await fetchAPI('/sales/submit-day', { 
-                        method: 'POST', 
-                        body: JSON.stringify({ 
-                            team_id: currentUser.team_id, 
-                            sales_date: today,
-                            move_remaining_goods: userChoice
-                        }) 
-                    });
-                    
-                    if (finalResult && finalResult.success) {
-                        showMessage(finalResult.message, false, false, true);
-                        refreshData();
-                    } else {
-                        showMessage('Failed to submit: ' + (finalResult?.message || 'Unknown error'), true);
-                    }
-                } else {
-                    showMessage('Failed to submit sales: ' + (result?.message || 'Unknown error'), true);
-                }
+            if (confirm('Submit sales for review? You can still accept new allocations after.')) {
+                const result = await fetchAPI('/sales/submit-day', { method: 'POST', body: JSON.stringify({ team_id: currentUser.team_id, sales_date: today }) });
+                if (result && result.success) showMessage('Sales submitted!', false, false, true);
+                else if (result && result.requires_action) {
+                    const choice = confirm(result.message + '\n\nOK = Move goods to warehouse\nCancel = Keep goods');
+                    const final = await fetchAPI('/sales/submit-day', { method: 'POST', body: JSON.stringify({ team_id: currentUser.team_id, sales_date: today, move_remaining_goods: choice }) });
+                    if (final && final.success) showMessage(final.message, false, false, true);
+                } else showMessage('Submit failed', true);
+                refreshData();
             }
         }
 
-        async function refreshData() {
-            showMessage('🔄 Refreshing data...', false, false, true);
-            await loadAllocatedStock();
-            await loadSalesHistory();
-            await loadCreditRequests();
-            showMessage('✅ Data refreshed!', false, false, true);
+        async function refreshData() { 
+            await loadAllocatedStock(); 
+            await loadTodayTransactions(); 
+            await loadCreditRequests(); 
+            showMessage('Data refreshed', false, false, true); 
         }
+        
+        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
 
-        function logout() { 
-            localStorage.clear(); 
-            window.location.href = 'login.html'; 
-        }
-
-        function startAutoRefresh() {
-            if (refreshInterval) clearInterval(refreshInterval);
-            refreshInterval = setInterval(function() {
-                loadAllocatedStock();
-            }, 30000);
-        }
+        document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                document.getElementById('creditDueDateGroup').style.display = this.value === 'credit' ? 'block' : 'none';
+            });
+        });
 
         document.getElementById('teamName').innerText = currentUser.full_name ? currentUser.full_name.split(' ')[0] : 'Sales';
         
@@ -616,9 +579,9 @@
             window.location.href = 'login.html';
         } else {
             loadAllocatedStock();
-            loadSalesHistory();
+            loadTodayTransactions();
             loadCreditRequests();
-            startAutoRefresh();
+            setInterval(() => loadAllocatedStock(), 30000);
         }
     </script>
 </body>
