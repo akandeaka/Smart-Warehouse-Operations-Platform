@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager Performance Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
+        .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .header h1 { font-size: 24px; }
+        .date-selector { background: rgba(255,255,255,0.2); padding: 8px 15px; border-radius: 5px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .date-selector input { padding: 5px 10px; border-radius: 5px; border: none; }
+        .date-selector button, .btn { background: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; color: #28a745; font-weight: bold; }
+        .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; padding: 20px; }
+        .stat-card { background: white; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .stat-card .label { font-size: 12px; color: #666; margin-bottom: 8px; }
+        .stat-card .value { font-size: 24px; font-weight: bold; color: #28a745; }
+        .stat-card .trend { font-size: 11px; margin-top: 5px; }
+        .card { background: white; padding: 20px; margin: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .card h3 { margin-bottom: 15px; color: #333; border-left: 4px solid #28a745; padding-left: 12px; }
+        table { width: 100%; margin-top: 15px; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f8f9fa; }
+        tr:hover { background: #f5f5f5; }
+        .rank-1 { background-color: #fff3e0; }
+        .progress-bar { background: #e0e0e0; border-radius: 10px; height: 8px; width: 100px; overflow: hidden; display: inline-block; }
+        .progress-fill { background: #28a745; height: 100%; border-radius: 10px; }
+        .positive { color: #28a745; }
+        .negative { color: #dc3545; }
+        .loading { text-align: center; padding: 40px; color: #666; }
+        .error-msg, .success-msg { padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
+        .error-msg { background: #f8d7da; color: #721c24; }
+        .success-msg { background: #d4edda; color: #155724; }
+        .tab-buttons { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #ddd; flex-wrap: wrap; }
+        .tab-btn { background: none; border: none; padding: 10px 20px; cursor: pointer; font-size: 16px; color: #666; }
+        .tab-btn.active { color: #28a745; border-bottom: 2px solid #28a745; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .summary-box { background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        .logout-btn, .refresh-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; border: none; color: white; margin-left: 10px; }
+        .back-btn { background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📊 Manager Performance Dashboard</h1>
+        <div>
+            <button class="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div id="errorMsg" class="error-msg"></div>
+    <div id="successMsg" class="success-msg"></div>
+
+    <!-- Controls -->
+    <div class="card" style="margin-bottom: 0;">
+        <div class="flex-between">
+            <div class="date-selector">
+                <span>📅 Select Date:</span>
+                <input type="date" id="dateSelector" value="">
+                <button onclick="loadAllData()">Load Report</button>
+            </div>
+            <div>
+                <button class="back-btn" onclick="goBack()">← Back to Dashboard</button>
+                <button onclick="downloadReport()" style="background: #17a2b8; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">📥 Download CSV</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="stats-container" id="statsContainer">
+        <div class="stat-card"><div class="label">Total Sales</div><div class="value" id="totalSales">₦0</div><div class="trend" id="totalSalesTrend"></div></div>
+        <div class="stat-card"><div class="label">Total Units Sold</div><div class="value" id="totalUnits">0</div><div class="trend" id="totalUnitsTrend"></div></div>
+        <div class="stat-card"><div class="label">Total Orders</div><div class="value" id="totalOrders">0</div><div class="trend" id="totalOrdersTrend"></div></div>
+        <div class="stat-card"><div class="label">Avg Order Value</div><div class="value" id="avgOrderValue">₦0</div><div class="trend"></div></div>
+        <div class="stat-card"><div class="label">Cash Sales</div><div class="value" id="cashSales">₦0</div><div class="trend"></div></div>
+        <div class="stat-card"><div class="label">Transfer Sales</div><div class="value" id="transferSales">₦0</div><div class="trend"></div></div>
+        <div class="stat-card"><div class="label">Credit Sales</div><div class="value" id="creditSales" style="color:#dc3545;">₦0</div><div class="trend"></div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="card">
+        <div class="tab-buttons">
+            <button class="tab-btn active" onclick="switchTab('team')">🏆 Team Performance</button>
+            <button class="tab-btn" onclick="switchTab('product')">📦 Product Performance</button>
+            <button class="tab-btn" onclick="switchTab('comparison')">📈 Comparison</button>
+        </div>
+
+        <div id="tab-team" class="tab-content active">
+            <div class="summary-box"><strong>📊 Team Ranking</strong> - Based on total sales value</div>
+            <div id="teamLoading" class="loading">Loading team performance...</div>
+            <table id="teamTable" style="display: none; width: 100%;">
+                <thead><tr><th>Rank</th><th>Team</th><th>Orders</th><th>Units</th><th>Cash</th><th>Transfer</th><th>Credit</th><th>Total</th><th>%</th></tr></thead>
+                <tbody id="teamTableBody"></tbody>
+            </table>
+        </div>
+
+        <div id="tab-product" class="tab-content">
+            <div class="summary-box"><strong>📊 Top Selling Products</strong> - Based on units sold</div>
+            <div id="productLoading" class="loading">Loading product performance...</div>
+            <table id="productTable" style="display: none; width: 100%;">
+                <thead><tr><th>Rank</th><th>Product</th><th>Units Sold</th><th>Total Value</th><th>Orders</th><th>% of Sales</th></tr></thead>
+                <tbody id="productTableBody"></tbody>
+            </table>
+        </div>
+
+        <div id="tab-comparison" class="tab-content">
+            <div id="comparisonLoading" class="loading">Loading comparison data...</div>
+            <div id="comparisonContent"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://warehouse-backend-new-u9rq.onrender.com/api';
+        let authToken = localStorage.getItem('token');
+        let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+        let currentDate = new Date().toISOString().split('T')[0];
+        let teamData = [];
+        let productData = [];
+
+        document.getElementById('dateSelector').value = currentDate;
+
+        function formatMoney(amount) {
+            let num = parseFloat(amount);
+            if (isNaN(num)) return '₦0';
+            return '₦' + Math.round(num).toLocaleString('en-NG');
+        }
+
+        function showMessage(msg, isError = false) {
+            let msgDiv = isError ? document.getElementById('errorMsg') : document.getElementById('successMsg');
+            msgDiv.innerHTML = msg;
+            msgDiv.style.display = 'block';
+            setTimeout(() => msgDiv.style.display = 'none', 4000);
+        }
+
+        async function fetchAPI(endpoint) {
+            try {
+                const response = await fetch(API_URL + endpoint, {
+                    headers: { 'Authorization': 'Bearer ' + authToken }
+                });
+                if (response.status === 401) { localStorage.clear(); window.location.href = 'login.html'; return null; }
+                return await response.json();
+            } catch (error) { 
+                showMessage('Network error: ' + error.message, true); 
+                return null; 
+            }
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        async function loadTeamPerformance() {
+            const loadingDiv = document.getElementById('teamLoading');
+            const table = document.getElementById('teamTable');
+            loadingDiv.style.display = 'block';
+            table.style.display = 'none';
+            
+            const data = await fetchAPI('/manager/team-performance?date=' + currentDate);
+            if (data && data.success) {
+                teamData = data.teams;
+                const overall = data.overall;
+                
+                document.getElementById('totalSales').innerHTML = formatMoney(overall.total_sales);
+                document.getElementById('totalUnits').innerHTML = overall.total_units_sold || 0;
+                document.getElementById('totalOrders').innerHTML = overall.total_orders || 0;
+                document.getElementById('avgOrderValue').innerHTML = formatMoney(overall.total_orders > 0 ? overall.total_sales / overall.total_orders : 0);
+                document.getElementById('cashSales').innerHTML = formatMoney(teamData.reduce((s,t)=>s+(t.cash_sales||0),0));
+                document.getElementById('transferSales').innerHTML = formatMoney(teamData.reduce((s,t)=>s+(t.transfer_sales||0),0));
+                document.getElementById('creditSales').innerHTML = formatMoney(teamData.reduce((s,t)=>s+(t.credit_sales||0),0));
+                
+                let html = '';
+                for (let i = 0; i < teamData.length; i++) {
+                    let t = teamData[i];
+                    let percent = overall.total_sales > 0 ? (t.total_sales / overall.total_sales * 100) : 0;
+                    html += `<tr class="${i === 0 ? 'rank-1' : ''}">
+                        <td><strong>#${i+1}</strong> ${i === 0 ? '🏆' : ''}</td>
+                        <td><strong>${t.team_name}</strong></td>
+                        <td>${t.num_orders || 0}</td>
+                        <td>${t.total_units_sold || 0}</td>
+                        <td>${formatMoney(t.cash_sales)}</td>
+                        <td>${formatMoney(t.transfer_sales)}</td>
+                        <td>${formatMoney(t.credit_sales)}</td>
+                        <td><strong>${formatMoney(t.total_sales)}</strong></td>
+                        <td><div class="progress-bar"><div class="progress-fill" style="width: ${percent}%;"></div></div> ${percent.toFixed(1)}%</td>
+                    </tr>`;
+                }
+                document.getElementById('teamTableBody').innerHTML = html;
+                loadingDiv.style.display = 'none';
+                table.style.display = 'table';
+            } else {
+                loadingDiv.innerHTML = 'Failed to load';
+            }
+        }
+
+        async function loadProductPerformance() {
+            const loadingDiv = document.getElementById('productLoading');
+            const table = document.getElementById('productTable');
+            loadingDiv.style.display = 'block';
+            table.style.display = 'none';
+            
+            const data = await fetchAPI('/manager/product-performance?date=' + currentDate);
+            if (data && data.success) {
+                productData = data.products;
+                const totalValue = productData.reduce((s,p) => s + p.total_value, 0);
+                
+                let html = '';
+                for (let i = 0; i < productData.length; i++) {
+                    let p = productData[i];
+                    let percent = totalValue > 0 ? (p.total_value / totalValue * 100) : 0;
+                    html += `<tr>
+                        <td><strong>#${i+1}</strong> ${i === 0 ? '🏆' : ''}</td>
+                        <td><strong>${p.product_name}</strong></td>
+                        <td>${p.units_sold || 0}</td>
+                        <td>${formatMoney(p.total_value)}</td>
+                        <td>${p.order_count || 0}</td>
+                        <td><div class="progress-bar"><div class="progress-fill" style="width: ${percent}%;"></div></div> ${percent.toFixed(1)}%</td>
+                    </tr>`;
+                }
+                document.getElementById('productTableBody').innerHTML = html;
+                loadingDiv.style.display = 'none';
+                table.style.display = 'table';
+            } else {
+                loadingDiv.innerHTML = 'Failed to load';
+            }
+        }
+
+        async function loadComparisonData() {
+            const loadingDiv = document.getElementById('comparisonLoading');
+            const container = document.getElementById('comparisonContent');
+            loadingDiv.style.display = 'block';
+            
+            const prevDate = new Date(currentDate);
+            prevDate.setDate(prevDate.getDate() - 1);
+            const prevDateStr = prevDate.toISOString().split('T')[0];
+            
+            const [current, previous] = await Promise.all([
+                fetchAPI('/manager/team-performance?date=' + currentDate),
+                fetchAPI('/manager/team-performance?date=' + prevDateStr)
+            ]);
+            
+            if (current && current.success) {
+                const cur = current.overall;
+                const prev = (previous && previous.success) ? previous.overall : { total_sales: 0, total_units_sold: 0, total_orders: 0 };
+                
+                const salesChange = cur.total_sales - prev.total_sales;
+                const salesPercent = prev.total_sales > 0 ? (salesChange / prev.total_sales * 100) : 0;
+                const unitsChange = cur.total_units_sold - prev.total_units_sold;
+                const unitsPercent = prev.total_units_sold > 0 ? (unitsChange / prev.total_units_sold * 100) : 0;
+                const ordersChange = cur.total_orders - prev.total_orders;
+                const ordersPercent = prev.total_orders > 0 ? (ordersChange / prev.total_orders * 100) : 0;
+                
+                document.getElementById('totalSalesTrend').innerHTML = `${salesChange >= 0 ? '▲' : '▼'} ${formatMoney(Math.abs(salesChange))} (${salesPercent.toFixed(1)}%)`;
+                document.getElementById('totalSalesTrend').className = `trend ${salesChange >= 0 ? 'positive' : 'negative'}`;
+                document.getElementById('totalUnitsTrend').innerHTML = `${unitsChange >= 0 ? '▲' : '▼'} ${Math.abs(unitsChange)} (${unitsPercent.toFixed(1)}%)`;
+                document.getElementById('totalUnitsTrend').className = `trend ${unitsChange >= 0 ? 'positive' : 'negative'}`;
+                document.getElementById('totalOrdersTrend').innerHTML = `${ordersChange >= 0 ? '▲' : '▼'} ${Math.abs(ordersChange)} (${ordersPercent.toFixed(1)}%)`;
+                document.getElementById('totalOrdersTrend').className = `trend ${ordersChange >= 0 ? 'positive' : 'negative'}`;
+                
+                let html = `<div class="summary-box"><strong>📈 Day vs Previous Day</strong><br>${currentDate} vs ${prevDateStr}</div>
+                <table style="width:100%"><thead><tr><th>Metric</th><th>${currentDate}</th><th>${prevDateStr}</th><th>Change</th></tr></thead><tbody>
+                <tr><td>Total Sales</td><td>${formatMoney(cur.total_sales)}</td><td>${formatMoney(prev.total_sales)}</td><td class="${salesChange >= 0 ? 'positive' : 'negative'}">${salesChange >= 0 ? '+' : ''}${formatMoney(salesChange)} (${salesPercent.toFixed(1)}%)</td></tr>
+                <tr><td>Units Sold</td><td>${cur.total_units_sold || 0}</td><td>${prev.total_units_sold || 0}</td><td class="${unitsChange >= 0 ? 'positive' : 'negative'}">${unitsChange >= 0 ? '+' : ''}${unitsChange} (${unitsPercent.toFixed(1)}%)</td></tr>
+                <tr><td>Orders</td><td>${cur.total_orders || 0}</td><td>${prev.total_orders || 0}</td><td class="${ordersChange >= 0 ? 'positive' : 'negative'}">${ordersChange >= 0 ? '+' : ''}${ordersChange} (${ordersPercent.toFixed(1)}%)</td></tr>
+                </tbody></table>`;
+                
+                if (current.teams && current.teams.length) {
+                    const best = current.teams.sort((a,b)=>b.total_sales - a.total_sales)[0];
+                    const worst = current.teams.sort((a,b)=>a.total_sales - b.total_sales)[0];
+                    html += `<div style="margin-top:20px;"><div class="summary-box">🏆 Best Team: ${best.team_name} - ${formatMoney(best.total_sales)}</div>
+                    <div class="summary-box" style="background:#fff3cd;">⚠️ Needs Improvement: ${worst.team_name} - ${formatMoney(worst.total_sales)}</div></div>`;
+                }
+                
+                container.innerHTML = html;
+                loadingDiv.style.display = 'none';
+            } else {
+                loadingDiv.innerHTML = 'Failed to load';
+            }
+        }
+
+        function downloadReport() {
+            if (!teamData.length && !productData.length) { showMessage('No data', true); return; }
+            let csv = `Performance Report for ${currentDate}\n\n`;
+            csv += `Team,Orders,Units Sold,Cash Sales,Transfer Sales,Credit Sales,Total Sales\n`;
+            teamData.forEach(t => csv += `"${t.team_name}",${t.num_orders || 0},${t.total_units_sold || 0},${t.cash_sales || 0},${t.transfer_sales || 0},${t.credit_sales || 0},${t.total_sales}\n`);
+            csv += `\nProduct,Units Sold,Total Value,Orders\n`;
+            productData.forEach(p => csv += `"${p.product_name}",${p.units_sold || 0},${p.total_value || 0},${p.order_count || 0}\n`);
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `performance_${currentDate}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showMessage('Download started!');
+        }
+
+        async function loadAllData() {
+            currentDate = document.getElementById('dateSelector').value;
+            await loadTeamPerformance();
+            await loadProductPerformance();
+            await loadComparisonData();
+            showMessage(`Loaded data for ${currentDate}`);
+        }
+
+        async function refreshData() { await loadAllData(); }
+        function goBack() { window.location.href = 'warehouse-dashboard.html'; }
+        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+
+        if (!authToken) window.location.href = 'login.html';
+        else loadAllData();
+    </script>
+</body>
+</html>
