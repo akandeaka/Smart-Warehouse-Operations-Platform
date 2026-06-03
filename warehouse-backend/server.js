@@ -1,4 +1,4 @@
-// server.js - WORKING VERSION + RETURNS PORTAL + DAILY BALANCE
+// server.js - WORKING VERSION + RETURNS PORTAL + DAILY BALANCE + PERFORMANCE
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
@@ -75,7 +75,7 @@ app.get('/health', async (req, res) => {
 });
 
 app.get('/api/version', (req, res) => {
-    res.json({ version: 'V8_WORKING', features: 'multiple_allocations_per_day' });
+    res.json({ version: 'V9_FULL', features: 'allocations,returns,balance,performance' });
 });
 
 // ============================================================
@@ -668,7 +668,7 @@ app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']),
 });
 
 // ============================================================
-// NEW: RETURNS SUMMARY PORTAL (Added - Does not affect existing)
+// RETURNS SUMMARY PORTAL
 // ============================================================
 app.get('/api/returns/summary', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
@@ -700,7 +700,7 @@ app.get('/api/returns/summary', authMiddleware, requireRole(['warehouse_manager'
 });
 
 // ============================================================
-// NEW: DAILY BALANCE REPORT (Added - Does not affect existing)
+// DAILY BALANCE REPORT
 // ============================================================
 app.get('/api/reports/daily-balance', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
@@ -758,24 +758,6 @@ app.get('/api/reports/daily-balance', authMiddleware, requireRole(['warehouse_ma
 });
 
 // ============================================================
-// START SERVER
-// ============================================================
-async function startServer() {
-    console.log('Testing database connection...');
-    const dbConnected = await testConnection();
-    
-    if (dbConnected) {
-        console.log('Database connected. Starting server...');
-    } else {
-        console.log('Database connection failed. Starting server with limited functionality...');
-    }
-    
-    app.listen(PORT, '0.0.0.0', () => {
-        console.log('Server running on port ' + PORT);
-        console.log('Health: https://warehouse-backend-new-u9rq.onrender.com/health');
-    });
-}
-// ============================================================
 // MANAGER PERFORMANCE DASHBOARD
 // ============================================================
 
@@ -802,7 +784,6 @@ app.get('/api/manager/team-performance', authMiddleware, requireRole(['warehouse
             [date]
         );
         
-        // Overall summary
         const [overall] = await pool.query(
             `SELECT 
                 COALESCE(SUM(o.total_amount), 0) as total_sales,
@@ -858,83 +839,22 @@ app.get('/api/manager/product-performance', authMiddleware, requireRole(['wareho
 });
 
 // ============================================================
-// MANAGER PERFORMANCE DASHBOARD ENDPOINTS (ADD TO server.js)
+// START SERVER (MUST BE LAST)
 // ============================================================
-
-// Team Performance Summary
-app.get('/api/manager/team-performance', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    try {
-        const date = req.query.date || new Date().toISOString().split('T')[0];
-        
-        const [teamPerformance] = await pool.query(
-            `SELECT 
-                st.team_name,
-                COUNT(DISTINCT o.id) as num_orders,
-                COALESCE(SUM(o.total_amount), 0) as total_sales,
-                COALESCE(SUM(soi.quantity), 0) as total_units_sold,
-                COALESCE(SUM(CASE WHEN o.payment_method = 'cash' THEN o.total_amount ELSE 0 END), 0) as cash_sales,
-                COALESCE(SUM(CASE WHEN o.payment_method = 'bank_transfer' THEN o.total_amount ELSE 0 END), 0) as transfer_sales,
-                COALESCE(SUM(CASE WHEN o.payment_method = 'credit' THEN o.total_amount ELSE 0 END), 0) as credit_sales
-             FROM sales_teams st
-             LEFT JOIN sales_orders o ON st.id = o.team_id AND o.sales_date = ? AND o.approval_status != 'rejected'
-             LEFT JOIN sales_order_items soi ON o.id = soi.order_id
-             WHERE st.is_active = 1
-             GROUP BY st.id, st.team_name
-             ORDER BY total_sales DESC`,
-            [date]
-        );
-        
-        const [overall] = await pool.query(
-            `SELECT 
-                COALESCE(SUM(o.total_amount), 0) as total_sales,
-                COALESCE(SUM(soi.quantity), 0) as total_units_sold,
-                COUNT(DISTINCT o.id) as total_orders
-             FROM sales_orders o
-             LEFT JOIN sales_order_items soi ON o.id = soi.order_id
-             WHERE o.sales_date = ? AND o.approval_status != 'rejected'`,
-            [date]
-        );
-        
-        res.json({ 
-            success: true, 
-            date: date,
-            overall: overall[0],
-            teams: teamPerformance
-        });
-    } catch (error) {
-        console.error('Team performance error:', error);
-        res.status(500).json({ success: false, message: error.message });
+async function startServer() {
+    console.log('Testing database connection...');
+    const dbConnected = await testConnection();
+    
+    if (dbConnected) {
+        console.log('Database connected. Starting server...');
+    } else {
+        console.log('Database connection failed. Starting server with limited functionality...');
     }
-});
+    
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log('Server running on port ' + PORT);
+        console.log('Health: https://warehouse-backend-new-u9rq.onrender.com/health');
+    });
+}
 
-// Product Performance Summary
-app.get('/api/manager/product-performance', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    try {
-        const date = req.query.date || new Date().toISOString().split('T')[0];
-        
-        const [productPerformance] = await pool.query(
-            `SELECT 
-                p.product_name,
-                COALESCE(SUM(soi.quantity), 0) as units_sold,
-                COALESCE(SUM(soi.quantity * soi.unit_price), 0) as total_value,
-                COUNT(DISTINCT o.id) as order_count
-             FROM products p
-             LEFT JOIN sales_order_items soi ON p.id = soi.product_id
-             LEFT JOIN sales_orders o ON soi.order_id = o.id AND o.sales_date = ? AND o.approval_status != 'rejected'
-             WHERE p.is_active = 1
-             GROUP BY p.id, p.product_name
-             ORDER BY units_sold DESC`,
-            [date]
-        );
-        
-        res.json({ 
-            success: true, 
-            date: date,
-            products: productPerformance
-        });
-    } catch (error) {
-        console.error('Product performance error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
 startServer();
