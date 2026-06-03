@@ -7,16 +7,23 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .header h1 { font-size: 22px; }
+        .nav-links { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        .nav-link { color: white; text-decoration: none; padding: 8px 16px; border-radius: 5px; transition: background 0.3s; }
+        .nav-link:hover { background: rgba(255,255,255,0.2); }
+        .logout-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; border: none; color: white; font-size: 14px; }
+        .logout-btn:hover { background: rgba(255,255,255,0.3); }
         .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; padding: 20px; }
         .stat-card { background: white; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .stat-card .label { font-size: 14px; color: #666; margin-bottom: 10px; }
         .stat-card .value { font-size: 28px; font-weight: bold; color: #667eea; }
         .tabs { background: white; padding: 0 20px; display: flex; gap: 5px; border-bottom: 2px solid #ddd; flex-wrap: wrap; }
         .tab { padding: 12px 24px; cursor: pointer; border: none; background: none; font-size: 16px; }
         .tab.active { border-bottom: 3px solid #667eea; color: #667eea; font-weight: bold; }
         .panel { display: none; padding: 20px; }
         .panel.active { display: block; }
-        table { width: 100%; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        table { width: 100%; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-collapse: collapse; }
         th { background: #f8f9fa; padding: 12px; text-align: left; }
         td { padding: 12px; border-top: 1px solid #eee; }
         .form-card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
@@ -28,7 +35,6 @@
         .approve-btn { background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
         .reject-btn { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
         .close-day-btn { background: #ffc107; color: #333; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; }
-        .logout-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; }
         .loading { text-align: center; padding: 40px; color: #666; }
         .success-msg { background: #d4edda; color: #155724; padding: 12px; margin: 20px; border-radius: 5px; display: none; }
         .error-msg { background: #f8d7da; color: #721c24; padding: 12px; margin: 20px; border-radius: 5px; display: none; }
@@ -38,22 +44,12 @@
 </head>
 <body>
     <div class="header">
-        <div class="header">
-    <h1>🏬 Warehouse Manager Dashboard</h1>
-    <div class="nav-links">
-        <a href="manager-dashboard.html">Dashboard</a>
-        <a href="manager-performance.html" style="color: #ffc107;">📊 Performance</a>
-        <button class="logout-btn" onclick="logout()">Logout</button>
-    </div>
-</div>
-        <a href="manager-performance.html" class="nav-link">📊 Performance</a>
-        <div class="card" onclick="window.location.href='manager-performance.html'" style="cursor: pointer;">
-    <div style="font-size: 40px;">📊</div>
-    <h3>Performance Dashboard</h3>
-    <p>View team and product performance metrics</p>
-</div>
-        <h1>🏪 Warehouse Manager Dashboard</h1>
-        <div class="logout-btn" onclick="logout()">Logout</div>
+        <h1>🏬 Warehouse Manager Dashboard</h1>
+        <div class="nav-links">
+            <a href="manager-dashboard.html" class="nav-link">🏠 Dashboard</a>
+            <a href="manager-performance.html" class="nav-link" style="background: rgba(255,193,7,0.3);">📊 Performance</a>
+            <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+        </div>
     </div>
 
     <div id="successMsg" class="success-msg"></div>
@@ -61,38 +57,38 @@
 
     <div class="stats-container">
         <div class="stat-card">
-            <div>Total Products</div>
+            <div class="label">Total Products</div>
             <div class="value" id="totalProducts">0</div>
         </div>
         <div class="stat-card">
-            <div>Warehouse Value (₦)</div>
-            <div class="value" id="totalValue">0</div>
+            <div class="label">Warehouse Value (₦)</div>
+            <div class="value" id="totalValue">₦0</div>
         </div>
         <div class="stat-card">
-            <div>Pending Approvals</div>
+            <div class="label">Pending Approvals</div>
             <div class="value" id="pendingApprovals">0</div>
         </div>
     </div>
 
     <div class="tabs">
-        <button class="tab" onclick="showPanel('allocate')">Allocate Stock</button>
-        <button class="tab" onclick="showPanel('stock')">Stock Management</button>
-        <button class="tab" onclick="showPanel('approvals')">Credit Approvals</button>
-        <button class="tab" onclick="showPanel('returns')">Pending Returns</button>
-        <button class="tab" onclick="showPanel('reports')">Daily Reports</button>
+        <button class="tab active" onclick="showPanel('allocate')">📦 Allocate Stock</button>
+        <button class="tab" onclick="showPanel('stock')">📊 Stock Management</button>
+        <button class="tab" onclick="showPanel('approvals')">✅ Credit Approvals</button>
+        <button class="tab" onclick="showPanel('returns')">🔄 Pending Returns</button>
+        <button class="tab" onclick="showPanel('reports')">📈 Daily Reports</button>
     </div>
 
     <!-- Allocate Stock Panel -->
-    <div id="allocatePanel" class="panel">
+    <div id="allocatePanel" class="panel active">
         <div class="form-card">
-            <h3>New Allocation</h3>
+            <h3>➕ New Allocation</h3>
             <div class="form-row">
                 <div class="form-group">
-                    <label>Team</label>
+                    <label>Select Team</label>
                     <select id="allocateTeamId"></select>
                 </div>
                 <div class="form-group">
-                    <label>Product</label>
+                    <label>Select Product</label>
                     <select id="allocateProductId"></select>
                 </div>
                 <div class="form-group">
@@ -100,61 +96,65 @@
                     <input type="number" id="allocateQuantity" min="1" placeholder="Enter quantity">
                 </div>
                 <div class="form-group">
-                    <button class="allocate-btn" onclick="allocateStock()">Allocate</button>
+                    <button class="allocate-btn" onclick="allocateStock()">✅ Allocate</button>
                 </div>
             </div>
         </div>
-        <h3>Today's Allocations</h3>
-        <div id="allocationsLoading" class="loading">Loading...</div>
+        <h3>📋 Today's Allocations</h3>
+        <div id="allocationsLoading" class="loading">Loading allocations...</div>
         <table id="allocationsTable" style="display:none">
             <thead>
                 <tr><th>Team</th><th>Product</th><th>Allocated</th><th>Sold</th><th>Remaining</th></tr>
             </thead>
             <tbody id="allocationsTableBody"></tbody>
-        </table>
+        寸
     </div>
 
     <!-- Stock Management Panel -->
     <div id="stockPanel" class="panel">
-        <div id="stockLoading" class="loading">Loading...</div>
+        <h3>📦 Current Stock Levels</h3>
+        <div id="stockLoading" class="loading">Loading stock...</div>
         <table id="stockTable" style="display:none">
             <thead><tr><th>Product</th><th>Quantity</th><th>Unit Cost</th><th>Total Value</th></tr></thead>
             <tbody id="stockTableBody"></tbody>
-        </table>
+        寸
     </div>
 
     <!-- Credit Approvals Panel -->
     <div id="approvalsPanel" class="panel">
-        <div id="approvalsLoading" class="loading">Loading pending approvals...</div>
+        <h3>📝 Pending Credit Approvals</h3>
+        <div id="approvalsLoading" class="loading">Loading approvals...</div>
         <table id="approvalsTable" style="display:none">
             <thead>
                 <tr><th>Order #</th><th>Customer</th><th>Original Amount</th><th>Modified Amount</th><th>Requested By</th><th>Action</th></tr>
             </thead>
             <tbody id="approvalsTableBody"></tbody>
-        </table>
+        寸
     </div>
 
     <!-- Pending Returns Panel -->
     <div id="returnsPanel" class="panel">
-        <div id="returnsLoading" class="loading">Loading...</div>
+        <h3>🔄 Pending Returns (Sales Submitted)</h3>
+        <div id="returnsLoading" class="loading">Loading returns...</div>
         <table id="returnsTable" style="display:none">
             <thead>
                 <tr><th>Team</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Action</th></tr>
             </thead>
             <tbody id="returnsTableBody"></tbody>
-        </table>
+        寸
     </div>
 
     <!-- Daily Reports Panel -->
     <div id="reportsPanel" class="panel">
         <button class="close-day-btn" onclick="closeDay()">🔒 Close Day (5 PM)</button>
-        <div id="reportLoading" class="loading">Loading...</div>
+        <h3>📊 Daily Sales Report</h3>
+        <div id="reportLoading" class="loading">Loading report...</div>
         <table id="salesReportTable" style="display:none">
             <thead>
                 <tr><th>Team</th><th>Orders</th><th>Cash</th><th>Transfer</th><th>Credit</th><th>Total</th></tr>
             </thead>
             <tbody id="salesReportBody"></tbody>
-        </table>
+        寸
     </div>
 
     <script>
@@ -188,7 +188,11 @@
                 });
                 if (response.status === 401) { localStorage.clear(); window.location.href = 'login.html'; return null; }
                 return await response.json();
-            } catch (error) { showMessage('Network error: ' + error.message, true); return null; }
+            } catch (error) { 
+                console.error('API Error:', error);
+                showMessage('Network error: ' + error.message, true); 
+                return null; 
+            }
         }
 
         async function loadTeams() {
@@ -206,7 +210,7 @@
                 let html = '<option value="">Select Product</option>';
                 data.data.forEach(p => {
                     if (p.current_qty > 0) {
-                        html += '<option value="' + p.id + '" data-stock="' + p.current_qty + '">' + p.product_name + ' (' + p.current_qty + ' left)</option>';
+                        html += '<option value="' + p.id + '" data-stock="' + p.current_qty + '">' + p.product_name + ' (' + p.current_qty + ' left, ' + formatMoney(p.selling_price) + ')</option>';
                     }
                 });
                 document.getElementById('allocateProductId').innerHTML = html;
@@ -217,11 +221,18 @@
             const teamId = document.getElementById('allocateTeamId').value;
             const productId = document.getElementById('allocateProductId').value;
             const quantity = document.getElementById('allocateQuantity').value;
-            if (!teamId || !productId || quantity < 1) { showMessage('Fill all fields', true); return; }
+            if (!teamId || !productId || quantity < 1) { showMessage('Please fill all fields', true); return; }
+            
             const result = await fetchAPI('/allocations', {
                 method: 'POST',
-                body: JSON.stringify({ team_id: parseInt(teamId), product_id: parseInt(productId), quantity: parseInt(quantity), allocated_date: new Date().toISOString().split('T')[0] })
+                body: JSON.stringify({ 
+                    team_id: parseInt(teamId), 
+                    product_id: parseInt(productId), 
+                    quantity: parseInt(quantity), 
+                    allocated_date: new Date().toISOString().split('T')[0] 
+                })
             });
+            
             if (result && result.success) {
                 showMessage(result.message);
                 document.getElementById('allocateQuantity').value = '';
@@ -241,7 +252,7 @@
                     const a = data.data[i];
                     const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
                     html += '<tr>';
-                    html += '<td>' + a.team_name + '</table>';
+                    html += '<td>' + a.team_name + '</td>';
                     html += '<td>' + a.product_name + '</td>';
                     html += '<td>' + a.allocated_qty + '</td>';
                     html += '<td>' + a.sold_qty + '</td>';
@@ -291,11 +302,11 @@
                         html += '<td>' + a.order_number + '</td>';
                         html += '<td>' + a.customer_name + '</td>';
                         html += '<td>' + formatMoney(a.total_amount) + '</td>';
-                        html += '<td><input type="number" id="amount_' + approvalId + '" value="' + a.total_amount + '" step="1000" style="width:120px">这些';
+                        html += '<td><input type="number" id="amount_' + approvalId + '" value="' + a.total_amount + '" step="1000" style="width:100px">这些';
                         html += '<td>' + (a.requested_by || 'Unknown') + '</td>';
                         html += '<td>';
-                        html += '<button class="approve-btn" onclick="approveCredit(' + approvalId + ')">Approve</button>';
-                        html += '<button class="reject-btn" onclick="rejectCredit(' + approvalId + ')">Reject</button>';
+                        html += '<button class="approve-btn" onclick="approveCredit(' + approvalId + ')">✅ Approve</button>';
+                        html += '<button class="reject-btn" onclick="rejectCredit(' + approvalId + ')">❌ Reject</button>';
                         html += '</td>';
                         html += '</tr>';
                     }
@@ -319,9 +330,7 @@
             
             if (result && result.success) {
                 showMessage('✅ Credit approved successfully');
-                // Refresh the pending approvals list
                 await loadPendingApprovals();
-                // Also refresh products and allocations to update stock
                 await loadProducts();
                 await loadTodayAllocations();
             } else {
@@ -339,7 +348,6 @@
             
             if (result && result.success) {
                 showMessage('❌ Credit rejected');
-                // Refresh the pending approvals list
                 await loadPendingApprovals();
             } else {
                 showMessage('Failed to reject credit: ' + (result?.message || 'Unknown error'), true);
@@ -362,7 +370,7 @@
                     html += '<td>' + (isCredit ? '📝 Credit' : (item.type === 'cash' ? '💵 Cash' : '🏦 Transfer')) + '</td>';
                     html += '<td>';
                     html += '<button class="approve-btn" onclick="confirmReturn(' + item.id + ', \'accept\')">✅ Accept</button>';
-                    html += '<button class="reject-btn" onclick="confirmReturn(' + item.id + ', \'reject\')">❌ Return to Team</button>';
+                    html += '<button class="reject-btn" onclick="confirmReturn(' + item.id + ', \'reject\')">🔄 Return to Team</button>';
                     html += '</td>';
                     html += '</tr>';
                 }
@@ -378,9 +386,11 @@
                 body: JSON.stringify({ item_id: itemId, action: action })
             });
             if (result && result.success) {
-                showMessage(action === 'accept' ? '✅ Item accepted and moved to warehouse' : '❌ Item returned to team');
-                loadPendingReturns();
-                loadProducts();
+                showMessage(action === 'accept' ? '✅ Item accepted and moved to warehouse' : '🔄 Item returned to team for resubmission');
+                await loadPendingReturns();
+                await loadProducts();
+            } else {
+                showMessage('Failed to process return: ' + (result?.message || 'Unknown error'), true);
             }
         }
 
@@ -407,15 +417,15 @@
         }
 
         async function closeDay() {
-            if (confirm('Close the day? This will return unsold stock to warehouse.')) {
+            if (confirm('⚠️ CLOSE DAY?\n\nThis will:\n- Return all unsold stock to warehouse\n- Lock today\'s transactions\n- Cannot be undone!\n\nContinue?')) {
                 const result = await fetchAPI('/daily/close', { method: 'POST' });
                 if (result && result.success) {
-                    showMessage('Day closed successfully');
-                    loadDailyReport();
-                    loadTodayAllocations();
-                    loadProducts();
+                    showMessage('✅ Day closed successfully');
+                    await loadDailyReport();
+                    await loadTodayAllocations();
+                    await loadProducts();
                 } else {
-                    showMessage('Failed to close day', true);
+                    showMessage('Failed to close day: ' + (result?.message || 'Unknown error'), true);
                 }
             }
         }
@@ -423,11 +433,24 @@
         function showPanel(name) {
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            const panels = ['allocate', 'stock', 'approvals', 'returns', 'reports'];
-            const index = panels.indexOf(name);
-            document.querySelectorAll('.tab')[index].classList.add('active');
-            document.getElementById(name + 'Panel').classList.add('active');
             
+            const panelMap = {
+                'allocate': 'allocatePanel',
+                'stock': 'stockPanel',
+                'approvals': 'approvalsPanel',
+                'returns': 'returnsPanel',
+                'reports': 'reportsPanel'
+            };
+            
+            document.getElementById(panelMap[name]).classList.add('active');
+            
+            // Find and activate the clicked tab
+            const tabs = document.querySelectorAll('.tab');
+            const tabMap = ['allocate', 'stock', 'approvals', 'returns', 'reports'];
+            const index = tabMap.indexOf(name);
+            if (index !== -1) tabs[index].classList.add('active');
+            
+            // Load data for the selected panel
             if (name === 'allocate') { loadTodayAllocations(); loadTeams(); loadProductsForAllocation(); }
             if (name === 'stock') loadProducts();
             if (name === 'approvals') loadPendingApprovals();
@@ -437,8 +460,16 @@
 
         function logout() { localStorage.clear(); window.location.href = 'login.html'; }
 
-        if (!authToken) { window.location.href = 'login.html'; }
-        else { loadProducts(); loadTeams(); loadProductsForAllocation(); }
+        // Initialize dashboard
+        if (!authToken) { 
+            window.location.href = 'login.html';
+        } else {
+            // Load initial data
+            loadProducts();
+            loadTodayAllocations();
+            loadTeams();
+            loadProductsForAllocation();
+        }
     </script>
 </body>
 </html>
