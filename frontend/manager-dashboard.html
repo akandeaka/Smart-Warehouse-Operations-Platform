@@ -444,13 +444,11 @@
             
             document.getElementById(panelMap[name]).classList.add('active');
             
-            // Find and activate the clicked tab
             const tabs = document.querySelectorAll('.tab');
             const tabMap = ['allocate', 'stock', 'approvals', 'returns', 'reports'];
             const index = tabMap.indexOf(name);
             if (index !== -1) tabs[index].classList.add('active');
             
-            // Load data for the selected panel
             if (name === 'allocate') { loadTodayAllocations(); loadTeams(); loadProductsForAllocation(); }
             if (name === 'stock') loadProducts();
             if (name === 'approvals') loadPendingApprovals();
@@ -464,7 +462,6 @@
         if (!authToken) { 
             window.location.href = 'login.html';
         } else {
-            // Load initial data
             loadProducts();
             loadTodayAllocations();
             loadTeams();
@@ -473,6 +470,3 @@
     </script>
 </body>
 </html>
-function goBack() { 
-    window.location.href = 'manager-dashboard.html'; 
-}<button class="back-btn" onclick="goBack()">← Back to Dashboard</button>
