@@ -603,23 +603,37 @@ app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
     }
 });
 
+// ============================================================
+// PENDING RETURNS - ONLY shows submitted sales waiting for manager action
+// ============================================================
 app.get('/api/sales/pending-submissions', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
         const [items] = await pool.query(
-            `SELECT so.id, st.team_name, so.customer_name, p.product_name, soi.quantity, (soi.quantity * soi.unit_price) as amount, so.payment_method as type 
+            `SELECT DISTINCT
+                so.id, 
+                st.team_name, 
+                so.customer_name, 
+                p.product_name, 
+                soi.quantity, 
+                (soi.quantity * soi.unit_price) as amount, 
+                so.payment_method as type,
+                so.created_at,
+                so.order_number
              FROM sales_orders so 
              JOIN sales_teams st ON so.team_id = st.id 
              JOIN sales_order_items soi ON so.id = soi.order_id 
              JOIN products p ON soi.product_id = p.id 
-             WHERE so.submitted_for_review = 1 AND so.manager_confirmed = 0`
+             WHERE so.submitted_for_review = 1 
+               AND so.manager_confirmed = 0
+             ORDER BY so.created_at DESC`
         );
+        
         res.json({ success: true, data: items });
     } catch (error) { 
         console.error('Get pending submissions error:', error);
         res.status(500).json({ success: false, message: error.message }); 
     }
 });
-
 app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     let connection;
     try {
