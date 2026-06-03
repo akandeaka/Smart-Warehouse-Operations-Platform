@@ -75,7 +75,7 @@ app.get('/health', async (req, res) => {
 });
 
 app.get('/api/version', (req, res) => {
-    res.json({ version: 'V9_FULL', features: 'allocations,returns,balance,performance' });
+    res.json({ version: 'V10_FINAL', features: 'allocations,returns,balance,performance,submit_two_options' });
 });
 
 // ============================================================
@@ -514,23 +514,86 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
 });
 
 // ============================================================
-// SUBMIT DAY SALES
+// SUBMIT DAY SALES - WITH TWO OPTIONS (Move or Keep)
 // ============================================================
 app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
     let connection;
     try {
-        const { team_id, sales_date } = req.body;
+        const { team_id, sales_date, move_remaining_goods } = req.body;
         
         connection = await pool.getConnection();
         await connection.beginTransaction();
         
+        // Get remaining goods before submission
+        const [remainingGoods] = await connection.query(
+            `SELECT a.id, a.product_id, 
+                    (a.allocated_qty - a.sold_qty - a.returned_qty) as remaining_qty
+             FROM sales_team_allocations a
+             WHERE a.team_id = ? AND a.allocated_date = ? AND a.status = 'active'
+               AND (a.allocated_qty - a.sold_qty - a.returned_qty) > 0`,
+            [team_id, sales_date]
+        );
+        
+        const hasRemaining = remainingGoods.length > 0;
+        let totalRemaining = 0;
+        for (const goods of remainingGoods) {
+            totalRemaining += goods.remaining_qty;
+        }
+        
+        // If there are remaining goods and user didn't specify what to do
+        if (hasRemaining && move_remaining_goods === undefined) {
+            await connection.rollback();
+            return res.json({ 
+                success: false, 
+                requires_action: true,
+                message: `You have ${totalRemaining} units of unsold goods. What would you like to do?`,
+                total_remaining: totalRemaining
+            });
+        }
+        
+        // Mark sales orders as submitted for review
         await connection.query(
             'UPDATE sales_orders SET submitted_for_review = 1 WHERE team_id = ? AND sales_date = ? AND submitted_for_review = 0',
             [team_id, sales_date]
         );
         
-        await connection.commit();
-        res.json({ success: true, message: 'Sales submitted for the day' });
+        let returnedCount = 0;
+        
+        // OPTION 1: move_remaining_goods = true (Move goods to warehouse)
+        if (move_remaining_goods === true) {
+            for (const goods of remainingGoods) {
+                if (goods.remaining_qty > 0) {
+                    // Update allocation - mark as returned
+                    await connection.query(
+                        'UPDATE sales_team_allocations SET returned_qty = returned_qty + ? WHERE id = ?',
+                        [goods.remaining_qty, goods.id]
+                    );
+                    // Return to warehouse
+                    await connection.query(
+                        'UPDATE products SET current_qty = current_qty + ? WHERE id = ?',
+                        [goods.remaining_qty, goods.product_id]
+                    );
+                    returnedCount += goods.remaining_qty;
+                }
+            }
+            await connection.commit();
+            res.json({ 
+                success: true, 
+                message: `${returnedCount} units returned to warehouse.`,
+                moved_count: returnedCount
+            });
+        } 
+        // OPTION 2: move_remaining_goods = false (Keep goods for continued selling)
+        else {
+            // Do NOT change anything - goods remain with sales team
+            await connection.commit();
+            res.json({ 
+                success: true, 
+                message: `${totalRemaining} units kept for continued selling. You can still sell them.`,
+                kept_count: totalRemaining
+            });
+        }
+        
     } catch (error) { 
         if (connection) await connection.rollback();
         console.error('Submit day error:', error);
