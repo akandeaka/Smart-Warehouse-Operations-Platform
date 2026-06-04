@@ -1,4 +1,4 @@
-// server.js - WORKING VERSION + RETURNS PORTAL + DAILY BALANCE + PERFORMANCE
+// server.js - WORKING VERSION WITH IMPROVEMENTS
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
@@ -75,7 +75,7 @@ app.get('/health', async (req, res) => {
 });
 
 app.get('/api/version', (req, res) => {
-    res.json({ version: 'V10_FINAL', features: 'allocations,returns,balance,performance,submit_two_options' });
+    res.json({ version: 'FINAL_V7', features: 'submit_two_options_returns_update_warehouse' });
 });
 
 // ============================================================
@@ -145,7 +145,7 @@ app.get('/api/products', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-// ALLOCATIONS
+// ALLOCATIONS - FIXED (ALWAYS INSERT NEW, NEVER UPDATE)
 // ============================================================
 app.post('/api/allocations', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     let connection;
@@ -170,11 +170,13 @@ app.post('/api/allocations', authMiddleware, requireRole(['warehouse_manager']),
                 throw new Error(`Only ${product[0].current_qty} units available in warehouse`);
             }
             
+            // Update product quantity in warehouse
             await connection.query(
                 'UPDATE products SET current_qty = current_qty - ? WHERE id = ?',
                 [quantity, product_id]
             );
             
+            // ALWAYS INSERT NEW ALLOCATION - never update existing
             await connection.query(
                 'INSERT INTO sales_team_allocations (team_id, product_id, allocated_qty, allocated_date, allocated_by, status, confirmed) VALUES (?, ?, ?, ?, ?, ?, 0)',
                 [team_id, product_id, quantity, allocationDate, req.user.id, 'active']
@@ -217,6 +219,7 @@ app.get('/api/allocations/today', authMiddleware, async (req, res) => {
     }
 });
 
+// Get team's allocated stock for today - FIXED (using parameter for 'active')
 app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) => {
     try {
         const { teamId } = req.params;
@@ -240,6 +243,7 @@ app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) 
     }
 });
 
+// Confirm allocation
 app.post('/api/allocations/confirm', authMiddleware, async (req, res) => {
     try {
         const { team_id, allocated_date } = req.body;
@@ -256,6 +260,7 @@ app.post('/api/allocations/confirm', authMiddleware, async (req, res) => {
     }
 });
 
+// Get confirmation status
 app.get('/api/allocations/confirmation-status/:teamId/:date', authMiddleware, async (req, res) => {
     try {
         const { teamId, date } = req.params;
@@ -391,6 +396,7 @@ app.get('/api/sales/order/:orderId/items', authMiddleware, async (req, res) => {
     }
 });
 
+// Check if sales already submitted
 app.get('/api/sales/check-submitted/:teamId/:date', authMiddleware, async (req, res) => {
     try {
         const { teamId, date } = req.params;
@@ -585,7 +591,7 @@ app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
         } 
         // OPTION 2: move_remaining_goods = false (Keep goods for continued selling)
         else {
-            // Do NOT change anything - goods remain with sales team
+            // Do NOT change allocation status - goods remain active
             await connection.commit();
             res.json({ 
                 success: true, 
@@ -604,51 +610,98 @@ app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-// PENDING RETURNS - ONLY shows submitted sales waiting for manager action
+// PENDING RETURNS - Shows submitted sales waiting for manager action
 // ============================================================
 app.get('/api/sales/pending-submissions', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
         const [items] = await pool.query(
-            `SELECT DISTINCT
-                so.id, 
-                st.team_name, 
-                so.customer_name, 
-                p.product_name, 
-                soi.quantity, 
-                (soi.quantity * soi.unit_price) as amount, 
-                so.payment_method as type,
-                so.created_at,
-                so.order_number
+            `SELECT so.id, st.team_name, so.customer_name, p.product_name, soi.quantity, (soi.quantity * soi.unit_price) as amount, so.payment_method as type 
              FROM sales_orders so 
              JOIN sales_teams st ON so.team_id = st.id 
              JOIN sales_order_items soi ON so.id = soi.order_id 
              JOIN products p ON soi.product_id = p.id 
-             WHERE so.submitted_for_review = 1 
-               AND so.manager_confirmed = 0
-             ORDER BY so.created_at DESC`
+             WHERE so.submitted_for_review = 1 AND so.manager_confirmed = 0`
         );
-        
         res.json({ success: true, data: items });
     } catch (error) { 
         console.error('Get pending submissions error:', error);
         res.status(500).json({ success: false, message: error.message }); 
     }
 });
+
+// ============================================================
+// CONFIRM RETURN - UPDATED to add goods back to warehouse
+// ============================================================
 app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     let connection;
     try {
         const { item_id, action } = req.body;
         
         connection = await pool.getConnection();
+        await connection.beginTransaction();
         
         if (action === 'accept') {
-            await connection.query('UPDATE sales_orders SET manager_confirmed = 1 WHERE id = ?', [item_id]);
+            // Get the order details to know what products and quantities to return
+            const [orderItems] = await connection.query(
+                `SELECT oi.product_id, oi.quantity, p.unit_cost
+                 FROM sales_order_items oi
+                 JOIN products p ON oi.product_id = p.id
+                 WHERE oi.order_id = ?`,
+                [item_id]
+            );
+            
+            let totalReturnedUnits = 0;
+            let totalReturnedValue = 0;
+            
+            for (const item of orderItems) {
+                // Add the goods back to warehouse stock
+                await connection.query(
+                    'UPDATE products SET current_qty = current_qty + ? WHERE id = ?',
+                    [item.quantity, item.product_id]
+                );
+                
+                totalReturnedUnits += item.quantity;
+                totalReturnedValue += item.quantity * item.unit_cost;
+                
+                // Record the return transaction
+                await connection.query(
+                    `INSERT INTO stock_transactions 
+                     (transaction_type, product_id, quantity_change, unit_cost_at_time, reference_type, created_by, notes)
+                     VALUES ('return_from_sales', ?, ?, ?, 'return_acceptance', ?, ?)`,
+                    [item.product_id, item.quantity, item.unit_cost, req.user.id, `Manager accepted return of ${item.quantity} units`]
+                );
+            }
+            
+            // Mark the order as confirmed/returned
+            await connection.query(
+                'UPDATE sales_orders SET manager_confirmed = 1, payment_status = "returned" WHERE id = ?',
+                [item_id]
+            );
+            
+            await connection.commit();
+            
+            res.json({ 
+                success: true, 
+                message: `Return accepted. ${totalReturnedUnits} units (worth ₦${totalReturnedValue.toLocaleString()}) added back to warehouse.`,
+                returned: {
+                    units: totalReturnedUnits,
+                    value: totalReturnedValue
+                }
+            });
+            
         } else if (action === 'reject') {
-            await connection.query('UPDATE sales_orders SET submitted_for_review = 0 WHERE id = ?', [item_id]);
+            // Reject the return - send back to team for resubmission
+            await connection.query(
+                'UPDATE sales_orders SET submitted_for_review = 0, manager_confirmed = 0 WHERE id = ?',
+                [item_id]
+            );
+            await connection.commit();
+            res.json({ success: true, message: 'Return rejected. Sales resubmission required.' });
+        } else {
+            throw new Error('Invalid action');
         }
-        
-        res.json({ success: true, message: `Return ${action}ed successfully` });
     } catch (error) { 
+        if (connection) await connection.rollback();
         console.error('Confirm return error:', error);
         res.status(500).json({ success: false, message: error.message }); 
     } finally {
@@ -745,178 +798,7 @@ app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']),
 });
 
 // ============================================================
-// RETURNS SUMMARY PORTAL
-// ============================================================
-app.get('/api/returns/summary', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    try {
-        const today = new Date().toISOString().split('T')[0];
-        
-        const [returnsSummary] = await pool.query(
-            `SELECT 
-                COALESCE(SUM(returned_qty), 0) as total_units_returned,
-                COALESCE(SUM(returned_qty * p.unit_cost), 0) as total_value_returned
-             FROM sales_team_allocations a
-             JOIN products p ON a.product_id = p.id
-             WHERE a.allocated_date = ? AND a.returned_qty > 0`,
-            [today]
-        );
-        
-        res.json({ 
-            success: true, 
-            data: {
-                today_returns: {
-                    units: returnsSummary[0]?.total_units_returned || 0,
-                    value: returnsSummary[0]?.total_value_returned || 0
-                }
-            }
-        });
-    } catch (error) {
-        console.error('Returns summary error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// ============================================================
-// DAILY BALANCE REPORT
-// ============================================================
-app.get('/api/reports/daily-balance', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    try {
-        const date = req.query.date || new Date().toISOString().split('T')[0];
-        
-        const [allocations] = await pool.query(
-            `SELECT COALESCE(SUM(allocated_qty), 0) as total_units
-             FROM sales_team_allocations WHERE allocated_date = ?`,
-            [date]
-        );
-        
-        const [sales] = await pool.query(
-            `SELECT COALESCE(SUM(soi.quantity), 0) as total_units
-             FROM sales_orders o
-             JOIN sales_order_items soi ON o.id = soi.order_id
-             WHERE o.sales_date = ? AND o.approval_status != 'rejected'`,
-            [date]
-        );
-        
-        const [returns] = await pool.query(
-            `SELECT COALESCE(SUM(returned_qty), 0) as total_units
-             FROM sales_team_allocations WHERE allocated_date = ? AND returned_qty > 0`,
-            [date]
-        );
-        
-        const [remaining] = await pool.query(
-            `SELECT COALESCE(SUM(allocated_qty - sold_qty - returned_qty), 0) as total_units
-             FROM sales_team_allocations WHERE allocated_date = ? AND status = 'active'`,
-            [date]
-        );
-        
-        const allocatedTotal = allocations[0]?.total_units || 0;
-        const salesTotal = sales[0]?.total_units || 0;
-        const returnsTotal = returns[0]?.total_units || 0;
-        const remainingTotal = remaining[0]?.total_units || 0;
-        
-        const isBalanced = allocatedTotal === (salesTotal + returnsTotal + remainingTotal);
-        
-        res.json({ 
-            success: true, 
-            date: date,
-            balance: {
-                allocated: allocatedTotal,
-                sold: salesTotal,
-                returned: returnsTotal,
-                remaining: remainingTotal,
-                is_balanced: isBalanced,
-                verification: `${allocatedTotal} = ${salesTotal} + ${returnsTotal} + ${remainingTotal}`
-            }
-        });
-    } catch (error) {
-        console.error('Daily balance error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// ============================================================
-// MANAGER PERFORMANCE DASHBOARD
-// ============================================================
-
-// Team Performance Summary
-app.get('/api/manager/team-performance', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    try {
-        const date = req.query.date || new Date().toISOString().split('T')[0];
-        
-        const [teamPerformance] = await pool.query(
-            `SELECT 
-                st.team_name,
-                COUNT(DISTINCT o.id) as num_orders,
-                COALESCE(SUM(o.total_amount), 0) as total_sales,
-                COALESCE(SUM(soi.quantity), 0) as total_units_sold,
-                COALESCE(SUM(CASE WHEN o.payment_method = 'cash' THEN o.total_amount ELSE 0 END), 0) as cash_sales,
-                COALESCE(SUM(CASE WHEN o.payment_method = 'bank_transfer' THEN o.total_amount ELSE 0 END), 0) as transfer_sales,
-                COALESCE(SUM(CASE WHEN o.payment_method = 'credit' THEN o.total_amount ELSE 0 END), 0) as credit_sales
-             FROM sales_teams st
-             LEFT JOIN sales_orders o ON st.id = o.team_id AND o.sales_date = ? AND o.approval_status != 'rejected'
-             LEFT JOIN sales_order_items soi ON o.id = soi.order_id
-             WHERE st.is_active = 1
-             GROUP BY st.id, st.team_name
-             ORDER BY total_sales DESC`,
-            [date]
-        );
-        
-        const [overall] = await pool.query(
-            `SELECT 
-                COALESCE(SUM(o.total_amount), 0) as total_sales,
-                COALESCE(SUM(soi.quantity), 0) as total_units_sold,
-                COUNT(DISTINCT o.id) as total_orders
-             FROM sales_orders o
-             LEFT JOIN sales_order_items soi ON o.id = soi.order_id
-             WHERE o.sales_date = ? AND o.approval_status != 'rejected'`,
-            [date]
-        );
-        
-        res.json({ 
-            success: true, 
-            date: date,
-            overall: overall[0],
-            teams: teamPerformance
-        });
-    } catch (error) {
-        console.error('Team performance error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// Product Sales Performance
-app.get('/api/manager/product-performance', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    try {
-        const date = req.query.date || new Date().toISOString().split('T')[0];
-        
-        const [productPerformance] = await pool.query(
-            `SELECT 
-                p.product_name,
-                COALESCE(SUM(soi.quantity), 0) as units_sold,
-                COALESCE(SUM(soi.quantity * soi.unit_price), 0) as total_value,
-                COUNT(DISTINCT o.id) as order_count
-             FROM products p
-             LEFT JOIN sales_order_items soi ON p.id = soi.product_id
-             LEFT JOIN sales_orders o ON soi.order_id = o.id AND o.sales_date = ? AND o.approval_status != 'rejected'
-             WHERE p.is_active = 1
-             GROUP BY p.id, p.product_name
-             ORDER BY units_sold DESC`,
-            [date]
-        );
-        
-        res.json({ 
-            success: true, 
-            date: date,
-            products: productPerformance
-        });
-    } catch (error) {
-        console.error('Product performance error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// ============================================================
-// START SERVER (MUST BE LAST)
+// START SERVER
 // ============================================================
 async function startServer() {
     console.log('Testing database connection...');
