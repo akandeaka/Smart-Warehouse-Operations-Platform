@@ -151,7 +151,7 @@
         <div id="reportLoading" class="loading">Loading report...</div>
         <table id="salesReportTable" style="display:none">
             <thead>
-                <tr><th>Team</th><th>Orders</th><th>Cash</th><th>Transfer</th><th>Credit</th><th>Total</th></tr>
+                <tr><th>Team</th><th>Orders</th><th>Cash</th><th>Transfer</th><th>Credit</th><th>Total</th></td>
             </thead>
             <tbody id="salesReportBody"></tbody>
         寸
@@ -248,18 +248,22 @@
             const data = await fetchAPI('/allocations/today');
             if (data && data.success) {
                 let html = '';
-                for (let i = 0; i < data.data.length; i++) {
-                    const a = data.data[i];
-                    const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
-                    html += '<tr>';
-                    html += '<td>' + a.team_name + '</td>';
-                    html += '<td>' + a.product_name + '</td>';
-                    html += '<td>' + a.allocated_qty + '</td>';
-                    html += '<td>' + a.sold_qty + '</td>';
-                    html += '<td>' + remaining + '</td>';
-                    html += '</tr>';
+                if (data.data.length === 0) {
+                    html = '<tr><td colspan="5">No allocations today</td><td style="display:none"></td><td style="display:none"></td><td style="display:none"></td><td style="display:none"></td></tr>';
+                } else {
+                    for (let i = 0; i < data.data.length; i++) {
+                        const a = data.data[i];
+                        const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
+                        html += '<tr>';
+                        html += '<td>' + a.team_name + '</td>';
+                        html += '<td>' + a.product_name + '</td>';
+                        html += '<td>' + a.allocated_qty + '</td>';
+                        html += '<td>' + a.sold_qty + '</td>';
+                        html += '<td>' + remaining + '</td>';
+                        html += '</tr>';
+                    }
                 }
-                document.getElementById('allocationsTableBody').innerHTML = html || '<tr><td colspan="5">No allocations today</td></tr>';
+                document.getElementById('allocationsTableBody').innerHTML = html;
                 document.getElementById('allocationsLoading').style.display = 'none';
                 document.getElementById('allocationsTable').style.display = 'table';
             }
@@ -293,7 +297,7 @@
                 document.getElementById('pendingApprovals').innerText = data.data.length;
                 let html = '';
                 if (data.data.length === 0) {
-                    html = '<tr><td colspan="6">No pending approvals</td></tr>';
+                    html = '<tr><td colspan="6">No pending approvals</td><td style="display:none"></td><td style="display:none"></td><td style="display:none"></td><td style="display:none"></td><td style="display:none"></td></tr>';
                 } else {
                     for (let i = 0; i < data.data.length; i++) {
                         const a = data.data[i];
@@ -358,23 +362,27 @@
             const data = await fetchAPI('/sales/pending-submissions');
             if (data && data.success) {
                 let html = '';
-                for (let i = 0; i < data.data.length; i++) {
-                    const item = data.data[i];
-                    const isCredit = item.type === 'credit';
-                    html += '<tr>';
-                    html += '<td>' + item.team_name + '</td>';
-                    html += '<td>' + item.customer_name + '</td>';
-                    html += '<td>' + item.product_name + '</td>';
-                    html += '<td>' + item.quantity + '</td>';
-                    html += (isCredit ? '<td class="credit-amount">' + formatCreditMoney(item.amount) + '</td>' : '<td>' + formatMoney(item.amount) + '</td>');
-                    html += '<td>' + (isCredit ? '📝 Credit' : (item.type === 'cash' ? '💵 Cash' : '🏦 Transfer')) + '</td>';
-                    html += '<td>';
-                    html += '<button class="approve-btn" onclick="confirmReturn(' + item.id + ', \'accept\')">✅ Accept</button>';
-                    html += '<button class="reject-btn" onclick="confirmReturn(' + item.id + ', \'reject\')">🔄 Return to Team</button>';
-                    html += '</td>';
-                    html += '</tr>';
+                if (data.data.length === 0) {
+                    html = '<tr><td colspan="7">No pending returns</td><td style="display:none"></td><td style="display:none"></td><td style="display:none"></td><td style="display:none"></td><td style="display:none"></td><td style="display:none"></td></tr>';
+                } else {
+                    for (let i = 0; i < data.data.length; i++) {
+                        const item = data.data[i];
+                        const isCredit = item.type === 'credit';
+                        html += '<tr>';
+                        html += '<td>' + item.team_name + '</td>';
+                        html += '<td>' + item.customer_name + '</td>';
+                        html += '<td>' + item.product_name + '</td>';
+                        html += '<td>' + item.quantity + '</td>';
+                        html += (isCredit ? '<td class="credit-amount">' + formatCreditMoney(item.amount) + '</td>' : '<td>' + formatMoney(item.amount) + '</td>');
+                        html += '<td>' + (isCredit ? '📝 Credit' : (item.type === 'cash' ? '💵 Cash' : '🏦 Transfer')) + '</td>';
+                        html += '<td>';
+                        html += '<button class="approve-btn" onclick="confirmReturn(' + item.id + ', \'accept\')">✅ Accept</button>';
+                        html += '<button class="reject-btn" onclick="confirmReturn(' + item.id + ', \'reject\')">🔄 Return to Team</button>';
+                        html += '</td>';
+                        html += '</tr>';
+                    }
                 }
-                document.getElementById('returnsTableBody').innerHTML = html || '<tr><td colspan="7">No pending returns</td></tr>';
+                document.getElementById('returnsTableBody').innerHTML = html;
                 document.getElementById('returnsLoading').style.display = 'none';
                 document.getElementById('returnsTable').style.display = 'table';
             }
@@ -408,7 +416,7 @@
                     html += '<td>' + formatMoney(t.transfer_sales || 0) + '</td>';
                     html += '<td class="' + (creditAmount > 0 ? 'credit-amount' : '') + '">' + (creditAmount > 0 ? '-' : '') + formatMoney(Math.abs(creditAmount)) + '</td>';
                     html += '<td>' + formatMoney(t.total_sales || 0) + '</td>';
-                    html += '</tr>';
+                    html += '</table>';
                 }
                 document.getElementById('salesReportBody').innerHTML = html;
                 document.getElementById('reportLoading').style.display = 'none';
@@ -458,24 +466,18 @@
 
         function logout() { localStorage.clear(); window.location.href = 'login.html'; }
 
-        // Initialize dashboard
+        // ============================================================
+        // CORRECTED INITIALIZATION - loadProducts() REMOVED
+        // ============================================================
         if (!authToken) { 
             window.location.href = 'login.html';
         } else {
-            loadProducts();
-            loadTodayAllocations();
-            loadTeams();
-            loadProductsForAllocation();
+            // Only load what is needed for the active tab (Allocate Stock)
+            loadTodayAllocations();      // Load allocations table
+            loadTeams();                 // Load teams for dropdown
+            loadProductsForAllocation(); // Load products for dropdown
+            // loadProducts() is NOT called here - it will load when user clicks Stock Management tab
         }
     </script>
 </body>
 </html>
-// Initialize dashboard
-if (!authToken) { 
-    window.location.href = 'login.html';
-} else {
-    loadTodayAllocations();   // Load allocations for Allocate Stock tab
-    loadTeams();              // Load teams for allocation dropdown
-    loadProductsForAllocation(); // Load products for allocation dropdown
-    // loadProducts() is NOT called here - it will load when user clicks Stock Management tab
-}
