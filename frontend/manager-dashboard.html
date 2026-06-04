@@ -470,3 +470,12 @@
     </script>
 </body>
 </html>
+// Initialize dashboard
+if (!authToken) { 
+    window.location.href = 'login.html';
+} else {
+    loadTodayAllocations();   // Load allocations for Allocate Stock tab
+    loadTeams();              // Load teams for allocation dropdown
+    loadProductsForAllocation(); // Load products for allocation dropdown
+    // loadProducts() is NOT called here - it will load when user clicks Stock Management tab
+}
