@@ -1,702 +1,472 @@
-// server.js - Complete Backend with Allocation Endpoints (FULLY FIXED)
-const express = require('express');
-const cors = require('cors');
-require('dotenv').config();
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warehouse Manager Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .header h1 { font-size: 22px; }
+        .nav-links { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        .nav-link { color: white; text-decoration: none; padding: 8px 16px; border-radius: 5px; transition: background 0.3s; }
+        .nav-link:hover { background: rgba(255,255,255,0.2); }
+        .logout-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; border: none; color: white; font-size: 14px; }
+        .logout-btn:hover { background: rgba(255,255,255,0.3); }
+        .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; padding: 20px; }
+        .stat-card { background: white; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .stat-card .label { font-size: 14px; color: #666; margin-bottom: 10px; }
+        .stat-card .value { font-size: 28px; font-weight: bold; color: #667eea; }
+        .tabs { background: white; padding: 0 20px; display: flex; gap: 5px; border-bottom: 2px solid #ddd; flex-wrap: wrap; }
+        .tab { padding: 12px 24px; cursor: pointer; border: none; background: none; font-size: 16px; }
+        .tab.active { border-bottom: 3px solid #667eea; color: #667eea; font-weight: bold; }
+        .panel { display: none; padding: 20px; }
+        .panel.active { display: block; }
+        table { width: 100%; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-collapse: collapse; }
+        th { background: #f8f9fa; padding: 12px; text-align: left; }
+        td { padding: 12px; border-top: 1px solid #eee; }
+        .form-card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        .form-row { display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
+        .form-group { flex: 1; min-width: 150px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .allocate-btn { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        .approve-btn { background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
+        .reject-btn { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
+        .close-day-btn { background: #ffc107; color: #333; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; }
+        .loading { text-align: center; padding: 40px; color: #666; }
+        .success-msg { background: #d4edda; color: #155724; padding: 12px; margin: 20px; border-radius: 5px; display: none; }
+        .error-msg { background: #f8d7da; color: #721c24; padding: 12px; margin: 20px; border-radius: 5px; display: none; }
+        .credit-amount { color: #dc3545; font-weight: bold; }
+        .credit-amount::before { content: "- "; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏬 Warehouse Manager Dashboard</h1>
+        <div class="nav-links">
+            <a href="manager-dashboard.html" class="nav-link">🏠 Dashboard</a>
+            <a href="manager-performance.html" class="nav-link" style="background: rgba(255,193,7,0.3);">📊 Performance</a>
+            <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+        </div>
+    </div>
 
-const { pool, testConnection } = require('./database');
+    <div id="successMsg" class="success-msg"></div>
+    <div id="errorMsg" class="error-msg"></div>
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+    <div class="stats-container">
+        <div class="stat-card">
+            <div class="label">Total Products</div>
+            <div class="value" id="totalProducts">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Warehouse Value (₦)</div>
+            <div class="value" id="totalValue">₦0</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Pending Approvals</div>
+            <div class="value" id="pendingApprovals">0</div>
+        </div>
+    </div>
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+    <div class="tabs">
+        <button class="tab active" onclick="showPanel('allocate')">📦 Allocate Stock</button>
+        <button class="tab" onclick="showPanel('stock')">📊 Stock Management</button>
+        <button class="tab" onclick="showPanel('approvals')">✅ Credit Approvals</button>
+        <button class="tab" onclick="showPanel('returns')">🔄 Pending Returns</button>
+        <button class="tab" onclick="showPanel('reports')">📈 Daily Reports</button>
+    </div>
 
-// ============================================================
-// AUTHENTICATION MIDDLEWARE
-// ============================================================
-const authMiddleware = async (req, res, next) => {
-    try {
-        const token = req.headers.authorization?.split(' ')[1];
-        if (!token) {
-            return res.status(401).json({ success: false, message: 'No token provided' });
+    <!-- Allocate Stock Panel -->
+    <div id="allocatePanel" class="panel active">
+        <div class="form-card">
+            <h3>➕ New Allocation</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Select Team</label>
+                    <select id="allocateTeamId"></select>
+                </div>
+                <div class="form-group">
+                    <label>Select Product</label>
+                    <select id="allocateProductId"></select>
+                </div>
+                <div class="form-group">
+                    <label>Quantity</label>
+                    <input type="number" id="allocateQuantity" min="1" placeholder="Enter quantity">
+                </div>
+                <div class="form-group">
+                    <button class="allocate-btn" onclick="allocateStock()">✅ Allocate</button>
+                </div>
+            </div>
+        </div>
+        <h3>📋 Today's Allocations</h3>
+        <div id="allocationsLoading" class="loading">Loading allocations...</div>
+        <table id="allocationsTable" style="display:none">
+            <thead>
+                <tr><th>Team</th><th>Product</th><th>Allocated</th><th>Sold</th><th>Remaining</th></tr>
+            </thead>
+            <tbody id="allocationsTableBody"></tbody>
+        寸
+    </div>
+
+    <!-- Stock Management Panel -->
+    <div id="stockPanel" class="panel">
+        <h3>📦 Current Stock Levels</h3>
+        <div id="stockLoading" class="loading">Loading stock...</div>
+        <table id="stockTable" style="display:none">
+            <thead><tr><th>Product</th><th>Quantity</th><th>Unit Cost</th><th>Total Value</th></tr></thead>
+            <tbody id="stockTableBody"></tbody>
+        寸
+    </div>
+
+    <!-- Credit Approvals Panel -->
+    <div id="approvalsPanel" class="panel">
+        <h3>📝 Pending Credit Approvals</h3>
+        <div id="approvalsLoading" class="loading">Loading approvals...</div>
+        <table id="approvalsTable" style="display:none">
+            <thead>
+                <tr><th>Order #</th><th>Customer</th><th>Original Amount</th><th>Modified Amount</th><th>Requested By</th><th>Action</th></tr>
+            </thead>
+            <tbody id="approvalsTableBody"></tbody>
+        寸
+    </div>
+
+    <!-- Pending Returns Panel -->
+    <div id="returnsPanel" class="panel">
+        <h3>🔄 Pending Returns (Sales Submitted)</h3>
+        <div id="returnsLoading" class="loading">Loading returns...</div>
+        <table id="returnsTable" style="display:none">
+            <thead>
+                <tr><th>Team</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Action</th></tr>
+            </thead>
+            <tbody id="returnsTableBody"></tbody>
+        寸
+    </div>
+
+    <!-- Daily Reports Panel -->
+    <div id="reportsPanel" class="panel">
+        <button class="close-day-btn" onclick="closeDay()">🔒 Close Day (5 PM)</button>
+        <h3>📊 Daily Sales Report</h3>
+        <div id="reportLoading" class="loading">Loading report...</div>
+        <table id="salesReportTable" style="display:none">
+            <thead>
+                <tr><th>Team</th><th>Orders</th><th>Cash</th><th>Transfer</th><th>Credit</th><th>Total</th></tr>
+            </thead>
+            <tbody id="salesReportBody"></tbody>
+        寸
+    </div>
+
+    <script>
+        const API_URL = 'https://warehouse-backend-new-u9rq.onrender.com/api';
+        let authToken = localStorage.getItem('token');
+        let currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+
+        function formatMoney(amount) {
+            if (amount === undefined || amount === null || isNaN(amount)) return '₦0';
+            return '₦' + Math.round(Number(amount)).toLocaleString('en-NG');
         }
-        const decoded = Buffer.from(token, 'base64').toString().split(':');
-        req.user = { 
-            id: 1, 
-            username: decoded[0], 
-            role: decoded[0] === 'warehouse_mgr' ? 'warehouse_manager' : 'sales_rep',
-            team_id: decoded[0] === 'warehouse_mgr' ? null : 1
-        };
-        next();
-    } catch (error) {
-        return res.status(401).json({ success: false, message: 'Invalid token' });
-    }
-};
 
-const requireRole = (roles) => {
-    return (req, res, next) => {
-        if (!req.user) {
-            return res.status(401).json({ success: false, message: 'Not authenticated' });
+        function formatCreditMoney(amount) {
+            if (amount === undefined || amount === null || isNaN(amount)) return '-₦0';
+            if (Number(amount) === 0) return '-₦0';
+            return '-₦' + Math.round(Number(amount)).toLocaleString('en-NG');
         }
-        if (!roles.includes(req.user.role)) {
-            return res.status(403).json({ success: false, message: 'Access denied. Requires role: ' + roles.join(' or ') });
-        }
-        next();
-    };
-};
 
-// ============================================================
-// HEALTH CHECK
-// ============================================================
-app.get('/health', async (req, res) => {
-    let dbStatus = 'not_connected';
-    let dbError = null;
-    
-    try {
-        const [result] = await pool.query('SELECT 1 as connected');
-        if (result && result[0] && result[0].connected === 1) {
-            dbStatus = 'connected';
+        function showMessage(msg, isError = false) {
+            const msgDiv = document.getElementById(isError ? 'errorMsg' : 'successMsg');
+            msgDiv.innerHTML = msg;
+            msgDiv.style.display = 'block';
+            setTimeout(() => { msgDiv.style.display = 'none'; }, 3000);
         }
-    } catch (error) {
-        dbStatus = 'failed';
-        dbError = error.message;
-    }
-    
-    res.json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        database: {
-            status: dbStatus,
-            error: dbError,
-            host: process.env.DB_HOST?.split('.')[0] + '...' || 'not_set'
-        }
-    });
-});
 
-app.get('/api/version', (req, res) => {
-    res.json({ version: 'FINAL_V5', feature: 'multiple_allocations_per_day', fixed: 'all_sql_parameters' });
-});
-
-// ============================================================
-// LOGIN
-// ============================================================
-app.post('/api/auth/login', async (req, res) => {
-    try {
-        const { username, password } = req.body;
-        
-        const [users] = await pool.query(
-            'SELECT id, username, full_name, email, role, team_id FROM users WHERE username = ? AND is_active = 1',
-            [username]
-        );
-        
-        if (users.length === 0) {
-            return res.status(401).json({ success: false, message: 'Invalid credentials' });
-        }
-        
-        const user = users[0];
-        
-        if (password !== 'password123') {
-            return res.status(401).json({ success: false, message: 'Invalid credentials' });
-        }
-        
-        const token = Buffer.from(`${username}:${Date.now()}`).toString('base64');
-        
-        res.json({
-            success: true,
-            token: token,
-            user: {
-                id: user.id,
-                username: user.username,
-                full_name: user.full_name,
-                role: user.role,
-                team_id: user.team_id
+        async function fetchAPI(endpoint, options = {}) {
+            try {
+                const response = await fetch(`${API_URL}${endpoint}`, {
+                    ...options,
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}`, ...options.headers }
+                });
+                if (response.status === 401) { localStorage.clear(); window.location.href = 'login.html'; return null; }
+                return await response.json();
+            } catch (error) { 
+                console.error('API Error:', error);
+                showMessage('Network error: ' + error.message, true); 
+                return null; 
             }
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// ============================================================
-// TEAMS
-// ============================================================
-app.get('/api/teams', authMiddleware, async (req, res) => {
-    try {
-        const [teams] = await pool.query('SELECT id, team_name FROM sales_teams WHERE is_active = 1');
-        res.json({ success: true, data: teams });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// ============================================================
-// PRODUCTS
-// ============================================================
-app.get('/api/products', authMiddleware, async (req, res) => {
-    try {
-        const [products] = await pool.query(
-            'SELECT id, product_name, current_qty, unit_cost, selling_price FROM products WHERE is_active = 1'
-        );
-        res.json({ success: true, data: products });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// ============================================================
-// ALLOCATIONS - FIXED (ALWAYS INSERT NEW, NEVER UPDATE)
-// ============================================================
-app.post('/api/allocations', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    let connection;
-    try {
-        const { team_id, product_id, quantity, allocated_date } = req.body;
-        
-        if (!team_id || !product_id || !quantity || quantity < 1) {
-            return res.status(400).json({ success: false, message: 'Missing required fields' });
         }
-        
-        const allocationDate = allocated_date || new Date().toISOString().split('T')[0];
-        
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
-        
-        try {
-            const [product] = await connection.query('SELECT unit_cost, current_qty FROM products WHERE id = ? AND is_active = 1', [product_id]);
-            if (product.length === 0) {
-                throw new Error('Product not found');
+
+        async function loadTeams() {
+            const data = await fetchAPI('/teams');
+            if (data && data.success) {
+                let html = '<option value="">Select Team</option>';
+                data.data.forEach(t => { html += '<option value="' + t.id + '">' + t.team_name + '</option>'; });
+                document.getElementById('allocateTeamId').innerHTML = html;
             }
-            if (product[0].current_qty < quantity) {
-                throw new Error(`Only ${product[0].current_qty} units available in warehouse`);
-            }
-            
-            // Update product quantity in warehouse
-            await connection.query(
-                'UPDATE products SET current_qty = current_qty - ? WHERE id = ?',
-                [quantity, product_id]
-            );
-            
-            // ALWAYS INSERT NEW ALLOCATION - never update existing
-            await connection.query(
-                'INSERT INTO sales_team_allocations (team_id, product_id, allocated_qty, allocated_date, allocated_by, status, confirmed) VALUES (?, ?, ?, ?, ?, ?, 0)',
-                [team_id, product_id, quantity, allocationDate, req.user.id, 'active']
-            );
-            
-            await connection.query(
-                'INSERT INTO stock_transactions (transaction_type, product_id, quantity_change, unit_cost_at_time, reference_type, team_id, created_by, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-                ['allocate_to_team', product_id, -quantity, product[0].unit_cost, 'team_allocation', team_id, req.user.id, 'Manager allocation']
-            );
-            
-            await connection.commit();
-            res.json({ success: true, message: `Allocated ${quantity} units to team` });
-        } catch (error) {
-            await connection.rollback();
-            throw error;
         }
-    } catch (error) {
-        console.error('Allocation error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    } finally {
-        if (connection) connection.release();
-    }
-});
 
-app.get('/api/allocations/today', authMiddleware, async (req, res) => {
-    try {
-        const today = new Date().toISOString().split('T')[0];
-        const [allocations] = await pool.query(
-            `SELECT a.id, t.team_name, p.product_name, a.allocated_qty, a.sold_qty, a.returned_qty, a.status, a.confirmed
-             FROM sales_team_allocations a
-             JOIN sales_teams t ON a.team_id = t.id
-             JOIN products p ON a.product_id = p.id
-             WHERE a.allocated_date = ?
-             ORDER BY t.team_name, p.product_name`,
-            [today]
-        );
-        res.json({ success: true, data: allocations });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// Get team's allocated stock for today - FIXED (using parameter for 'active')
-app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) => {
-    try {
-        const { teamId } = req.params;
-        const date = req.query.date || new Date().toISOString().split('T')[0];
-        
-        const [allocations] = await pool.query(
-            `SELECT p.id, p.product_name, p.selling_price, 
-                    a.allocated_qty, a.sold_qty, a.returned_qty, a.confirmed,
-                    (a.allocated_qty - a.sold_qty - a.returned_qty) as remaining_qty
-             FROM sales_team_allocations a
-             JOIN products p ON a.product_id = p.id
-             WHERE a.team_id = ? AND a.allocated_date = ? AND a.status = ?
-               AND (a.allocated_qty - a.sold_qty - a.returned_qty) > 0`,
-            [teamId, date, 'active']
-        );
-        
-        res.json({ success: true, data: allocations });
-    } catch (error) {
-        console.error('Get allocations error:', error);
-        res.json({ success: true, data: [] });
-    }
-});
-
-// Confirm allocation
-app.post('/api/allocations/confirm', authMiddleware, async (req, res) => {
-    try {
-        const { team_id, allocated_date } = req.body;
-        
-        await pool.query(
-            'UPDATE sales_team_allocations SET confirmed = 1 WHERE team_id = ? AND allocated_date = ? AND confirmed = 0',
-            [team_id, allocated_date]
-        );
-        
-        res.json({ success: true, message: 'Allocation confirmed successfully' });
-    } catch (error) {
-        console.error('Confirm allocation error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// Get confirmation status
-app.get('/api/allocations/confirmation-status/:teamId/:date', authMiddleware, async (req, res) => {
-    try {
-        const { teamId, date } = req.params;
-        
-        const [result] = await pool.query(
-            'SELECT confirmed FROM sales_team_allocations WHERE team_id = ? AND allocated_date = ? LIMIT 1',
-            [teamId, date]
-        );
-        
-        const isConfirmed = result.length > 0 && result[0].confirmed === 1;
-        res.json({ success: true, confirmed: isConfirmed });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// ============================================================
-// SALES
-// ============================================================
-app.post('/api/sales', authMiddleware, async (req, res) => {
-    let connection;
-    try {
-        const { team_id, customer_name, customer_phone, items, payment_method, sales_date, credit_due_date } = req.body;
-        
-        if (!team_id || !customer_name || !items || items.length === 0 || !payment_method) {
-            return res.status(400).json({ success: false, message: 'Missing required fields' });
-        }
-        
-        let total_amount = 0;
-        for (const item of items) {
-            total_amount += item.quantity * item.unit_price;
-        }
-        
-        const order_number = `SALE-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-        const saleDate = sales_date || new Date().toISOString().split('T')[0];
-        
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
-        
-        try {
-            const [orderResult] = await connection.query(
-                `INSERT INTO sales_orders 
-                 (order_number, team_id, customer_name, customer_phone, total_amount, payment_method, sales_date, created_by, approval_status, payment_status)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [order_number, team_id, customer_name, customer_phone, total_amount, payment_method, saleDate, req.user.id, 
-                 payment_method === 'credit' ? 'pending' : 'not_required', 'pending']
-            );
-            
-            const order_id = orderResult.insertId;
-            
-            for (const item of items) {
-                await connection.query(
-                    `INSERT INTO sales_order_items (order_id, product_id, quantity, unit_price, cost_of_goods)
-                     VALUES (?, ?, ?, ?, (SELECT unit_cost FROM products WHERE id = ?))`,
-                    [order_id, item.product_id, item.quantity, item.unit_price, item.product_id]
-                );
-                
-                await connection.query(
-                    `UPDATE sales_team_allocations 
-                     SET sold_qty = sold_qty + ?
-                     WHERE team_id = ? AND product_id = ? AND allocated_date = ? AND status = ?`,
-                    [item.quantity, team_id, item.product_id, saleDate, 'active']
-                );
+        async function loadProductsForAllocation() {
+            const data = await fetchAPI('/products');
+            if (data && data.success) {
+                let html = '<option value="">Select Product</option>';
+                data.data.forEach(p => {
+                    if (p.current_qty > 0) {
+                        html += '<option value="' + p.id + '" data-stock="' + p.current_qty + '">' + p.product_name + ' (' + p.current_qty + ' left, ' + formatMoney(p.selling_price) + ')</option>';
+                    }
+                });
+                document.getElementById('allocateProductId').innerHTML = html;
             }
+        }
+
+        async function allocateStock() {
+            const teamId = document.getElementById('allocateTeamId').value;
+            const productId = document.getElementById('allocateProductId').value;
+            const quantity = document.getElementById('allocateQuantity').value;
+            if (!teamId || !productId || quantity < 1) { showMessage('Please fill all fields', true); return; }
             
-            if (payment_method === 'credit') {
-                await connection.query(
-                    `INSERT INTO credit_approvals (order_id, requested_by, approved, rejected, amount_due, due_date)
-                     VALUES (?, ?, 0, 0, ?, ?)`,
-                    [order_id, req.user.id, total_amount, credit_due_date || null]
-                );
-            } else {
-                await connection.query(
-                    `INSERT INTO payment_reconciliations (order_id, payment_method, amount, reconciliation_status)
-                     VALUES (?, ?, ?, 'pending')`,
-                    [order_id, payment_method, total_amount]
-                );
-            }
-            
-            await connection.commit();
-            
-            res.json({
-                success: true,
-                order_id,
-                order_number,
-                message: payment_method === 'credit' ? 'Credit sale pending approval' : 'Sale recorded. Pending payment confirmation.'
+            const result = await fetchAPI('/allocations', {
+                method: 'POST',
+                body: JSON.stringify({ 
+                    team_id: parseInt(teamId), 
+                    product_id: parseInt(productId), 
+                    quantity: parseInt(quantity), 
+                    allocated_date: new Date().toISOString().split('T')[0] 
+                })
             });
-        } catch (error) {
-            await connection.rollback();
-            throw error;
-        }
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    } finally {
-        if (connection) connection.release();
-    }
-});
-
-app.get('/api/sales/team/:teamId/history', authMiddleware, async (req, res) => {
-    try {
-        const { teamId } = req.params;
-        
-        const [orders] = await pool.query(
-            `SELECT id, order_number, customer_name, total_amount, payment_method, payment_status, approval_status, created_at
-             FROM sales_orders
-             WHERE team_id = ?
-             ORDER BY created_at DESC
-             LIMIT 50`,
-            [teamId]
-        );
-        
-        res.json({ success: true, data: orders });
-    } catch (error) {
-        res.json({ success: true, data: [] });
-    }
-});
-
-app.get('/api/sales/order/:orderId/items', authMiddleware, async (req, res) => {
-    try {
-        const { orderId } = req.params;
-        
-        const [items] = await pool.query(
-            `SELECT oi.quantity, oi.unit_price, (oi.quantity * oi.unit_price) as total_price, p.product_name
-             FROM sales_order_items oi
-             JOIN products p ON oi.product_id = p.id
-             WHERE oi.order_id = ?`,
-            [orderId]
-        );
-        
-        res.json({ success: true, data: items });
-    } catch (error) {
-        res.json({ success: true, data: [] });
-    }
-});
-
-// Check if sales already submitted
-app.get('/api/sales/check-submitted/:teamId/:date', authMiddleware, async (req, res) => {
-    try {
-        const { teamId, date } = req.params;
-        
-        const [result] = await pool.query(
-            'SELECT COUNT(*) as count FROM sales_orders WHERE team_id = ? AND sales_date = ? AND submitted_for_review = 1',
-            [teamId, date]
-        );
-        
-        const isSubmitted = result[0]?.count > 0;
-        res.json({ success: true, submitted: isSubmitted });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// ============================================================
-// CREDIT APPROVALS
-// ============================================================
-app.get('/api/approvals/pending', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    try {
-        const [approvals] = await pool.query(
-            `SELECT c.id, o.order_number, o.customer_name, o.total_amount, o.payment_method, 
-                    u.full_name as requested_by, c.requested_at, c.due_date
-             FROM credit_approvals c
-             JOIN sales_orders o ON c.order_id = o.id
-             JOIN users u ON c.requested_by = u.id
-             WHERE c.approved = 0 AND c.rejected = 0`
-        );
-        res.json({ success: true, data: approvals });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-app.get('/api/approvals/my-requests', authMiddleware, async (req, res) => {
-    try {
-        const [requests] = await pool.query(
-            `SELECT c.id, o.order_number, o.customer_name, o.total_amount, 
-                    c.approved, c.rejected, c.requested_at, c.due_date
-             FROM credit_approvals c
-             JOIN sales_orders o ON c.order_id = o.id
-             WHERE o.created_by = ?
-             ORDER BY c.requested_at DESC`,
-            [req.user.id]
-        );
-        res.json({ success: true, data: requests });
-    } catch (error) {
-        res.json({ success: true, data: [] });
-    }
-});
-
-app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    let connection;
-    try {
-        const { approval_id, approved_amount } = req.body;
-        
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
-        
-        const [approval] = await connection.query('SELECT order_id FROM credit_approvals WHERE id = ?', [approval_id]);
-        if (approval.length === 0) throw new Error('Approval not found');
-        const order_id = approval[0].order_id;
-        
-        if (approved_amount && approved_amount > 0) {
-            await connection.query('UPDATE sales_orders SET total_amount = ? WHERE id = ?', [approved_amount, order_id]);
-        }
-        
-        await connection.query(
-            'UPDATE credit_approvals SET approved = 1, approved_by = ?, approved_at = NOW() WHERE id = ?',
-            [req.user.id, approval_id]
-        );
-        
-        await connection.query(
-            'UPDATE sales_orders SET approval_status = "approved", payment_status = "pending" WHERE id = ?',
-            [order_id]
-        );
-        
-        await connection.commit();
-        res.json({ success: true, message: 'Credit approved successfully' });
-        
-    } catch (error) {
-        if (connection) await connection.rollback();
-        res.status(500).json({ success: false, message: error.message });
-    } finally {
-        if (connection) connection.release();
-    }
-});
-
-app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    let connection;
-    try {
-        const { approval_id } = req.body;
-        
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
-        
-        const [approval] = await connection.query('SELECT order_id FROM credit_approvals WHERE id = ?', [approval_id]);
-        if (approval.length === 0) throw new Error('Approval not found');
-        const order_id = approval[0].order_id;
-        
-        await connection.query(
-            'UPDATE credit_approvals SET rejected = 1, approved_by = ?, approved_at = NOW() WHERE id = ?',
-            [req.user.id, approval_id]
-        );
-        
-        await connection.query(
-            'UPDATE sales_orders SET approval_status = "rejected" WHERE id = ?',
-            [order_id]
-        );
-        
-        await connection.commit();
-        res.json({ success: true, message: 'Credit rejected successfully' });
-        
-    } catch (error) {
-        if (connection) await connection.rollback();
-        res.status(500).json({ success: false, message: error.message });
-    } finally {
-        if (connection) connection.release();
-    }
-});
-
-// ============================================================
-// SUBMIT DAY SALES - UPDATED to mark allocations as submitted
-// ============================================================
-app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
-    let connection;
-    try {
-        const { team_id, sales_date } = req.body;
-        
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
-        
-        // Mark sales orders as submitted for review
-        await connection.query(
-            'UPDATE sales_orders SET submitted_for_review = 1 WHERE team_id = ? AND sales_date = ? AND submitted_for_review = 0',
-            [team_id, sales_date]
-        );
-        
-        // Mark allocations as submitted so they don't appear in active sales
-        await connection.query(
-            'UPDATE sales_team_allocations SET status = ? WHERE team_id = ? AND allocated_date = ? AND status = ?',
-            ['submitted', team_id, sales_date, 'active']
-        );
-        
-        await connection.commit();
-        res.json({ success: true, message: 'Sales submitted for the day' });
-    } catch (error) { 
-        if (connection) await connection.rollback();
-        console.error('Submit day error:', error);
-        res.status(500).json({ success: false, message: error.message }); 
-    } finally {
-        if (connection) connection.release();
-    }
-});
-
-app.get('/api/sales/pending-submissions', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    try {
-        const [items] = await pool.query(
-            `SELECT so.id, st.team_name, so.customer_name, p.product_name, soi.quantity, (soi.quantity * soi.unit_price) as amount, so.payment_method as type 
-             FROM sales_orders so 
-             JOIN sales_teams st ON so.team_id = st.id 
-             JOIN sales_order_items soi ON so.id = soi.order_id 
-             JOIN products p ON soi.product_id = p.id 
-             WHERE so.submitted_for_review = 1 AND so.manager_confirmed = 0`
-        );
-        res.json({ success: true, data: items });
-    } catch (error) { 
-        console.error('Get pending submissions error:', error);
-        res.status(500).json({ success: false, message: error.message }); 
-    }
-});
-
-app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    let connection;
-    try {
-        const { item_id, action } = req.body;
-        
-        connection = await pool.getConnection();
-        
-        if (action === 'accept') {
-            await connection.query('UPDATE sales_orders SET manager_confirmed = 1 WHERE id = ?', [item_id]);
-        } else if (action === 'reject') {
-            await connection.query('UPDATE sales_orders SET submitted_for_review = 0 WHERE id = ?', [item_id]);
-        }
-        
-        res.json({ success: true, message: `Return ${action}ed successfully` });
-    } catch (error) { 
-        console.error('Confirm return error:', error);
-        res.status(500).json({ success: false, message: error.message }); 
-    } finally {
-        if (connection) connection.release();
-    }
-});
-
-// ============================================================
-// REPORTS
-// ============================================================
-app.get('/api/reports/daily', authMiddleware, async (req, res) => {
-    try {
-        const today = new Date().toISOString().split('T')[0];
-        
-        const [report] = await pool.query(
-            `SELECT t.team_name,
-                    COUNT(DISTINCT o.id) as num_orders,
-                    COALESCE(SUM(o.total_amount), 0) as total_sales,
-                    COALESCE(SUM(CASE WHEN o.payment_method = 'cash' THEN o.total_amount ELSE 0 END), 0) as cash_sales,
-                    COALESCE(SUM(CASE WHEN o.payment_method = 'bank_transfer' THEN o.total_amount ELSE 0 END), 0) as transfer_sales,
-                    COALESCE(SUM(CASE WHEN o.payment_method = 'credit' THEN o.total_amount ELSE 0 END), 0) as credit_sales
-             FROM sales_teams t
-             LEFT JOIN sales_orders o ON t.id = o.team_id AND o.sales_date = ?
-             GROUP BY t.id`,
-            [today]
-        );
-        
-        res.json({ success: true, date: today, teams: report });
-    } catch (error) {
-        console.error('Daily report error:', error);
-        res.json({ success: true, date: new Date().toISOString().split('T')[0], teams: [] });
-    }
-});
-
-// ============================================================
-// DAILY CLOSURE
-// ============================================================
-app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
-    let connection;
-    try {
-        const today = new Date().toISOString().split('T')[0];
-        
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
-        
-        const [unsold] = await connection.query(
-            `SELECT team_id, product_id, (allocated_qty - sold_qty - returned_qty) as to_return
-             FROM sales_team_allocations
-             WHERE allocated_date = ? AND (allocated_qty - sold_qty - returned_qty) > 0 AND status = ?`,
-            [today, 'active']
-        );
-        
-        for (const item of unsold) {
-            await connection.query(
-                `UPDATE sales_team_allocations 
-                 SET returned_qty = returned_qty + ?, status = ?
-                 WHERE team_id = ? AND product_id = ? AND allocated_date = ?`,
-                [item.to_return, 'closed', item.team_id, item.product_id, today]
-            );
             
-            await connection.query(
-                `UPDATE products SET current_qty = current_qty + ? WHERE id = ?`,
-                [item.to_return, item.product_id]
-            );
-            
-            await connection.query(
-                `INSERT INTO stock_transactions 
-                 (transaction_type, product_id, quantity_change, unit_cost_at_time, reference_type, team_id, created_by)
-                 VALUES (?, ?, ?, (SELECT unit_cost FROM products WHERE id = ?), ?, ?, ?)`,
-                ['return_from_team', item.product_id, item.to_return, item.product_id, 'daily_closure', item.team_id, req.user.id]
-            );
+            if (result && result.success) {
+                showMessage(result.message);
+                document.getElementById('allocateQuantity').value = '';
+                loadTodayAllocations();
+                loadProducts();
+                loadProductsForAllocation();
+            } else {
+                showMessage(result?.message || 'Allocation failed', true);
+            }
         }
-        
-        const [beforeValue] = await connection.query('SELECT COALESCE(SUM(current_qty * unit_cost), 0) as value FROM products');
-        const [salesTotal] = await connection.query('SELECT COALESCE(SUM(total_amount),0) as total FROM sales_orders WHERE sales_date = ?', [today]);
-        const [afterValue] = await connection.query('SELECT COALESCE(SUM(current_qty * unit_cost), 0) as value FROM products');
-        
-        await connection.query(
-            `INSERT INTO daily_closures 
-             (closure_date, closed_by, warehouse_value_before_close, warehouse_value_after_close, total_sales_value, is_locked)
-             VALUES (?, ?, ?, ?, ?, 1)`,
-            [today, req.user.id, beforeValue[0].value, afterValue[0].value, salesTotal[0].total]
-        );
-        
-        await connection.commit();
-        res.json({ success: true, message: 'Day closed successfully' });
-    } catch (error) {
-        if (connection) await connection.rollback();
-        console.error('Daily closure error:', error);
-        res.status(500).json({ success: false, message: error.message });
-    } finally {
-        if (connection) connection.release();
-    }
-});
 
-// ============================================================
-// START SERVER
-// ============================================================
-async function startServer() {
-    console.log('Testing database connection...');
-    const dbConnected = await testConnection();
-    
-    if (dbConnected) {
-        console.log('Database connected. Starting server...');
-    } else {
-        console.log('Database connection failed. Starting server with limited functionality...');
-    }
-    
-    app.listen(PORT, '0.0.0.0', () => {
-        console.log('Server running on port ' + PORT);
-        console.log('Health: https://warehouse-backend-new-u9rq.onrender.com/health');
-    });
-}
+        async function loadTodayAllocations() {
+            const data = await fetchAPI('/allocations/today');
+            if (data && data.success) {
+                let html = '';
+                for (let i = 0; i < data.data.length; i++) {
+                    const a = data.data[i];
+                    const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
+                    html += '<tr>';
+                    html += '<td>' + a.team_name + '</td>';
+                    html += '<td>' + a.product_name + '</td>';
+                    html += '<td>' + a.allocated_qty + '</td>';
+                    html += '<td>' + a.sold_qty + '</td>';
+                    html += '<td>' + remaining + '</td>';
+                    html += '</tr>';
+                }
+                document.getElementById('allocationsTableBody').innerHTML = html || '<tr><td colspan="5">No allocations today</td></tr>';
+                document.getElementById('allocationsLoading').style.display = 'none';
+                document.getElementById('allocationsTable').style.display = 'table';
+            }
+        }
 
-startServer();
+        async function loadProducts() {
+            const data = await fetchAPI('/products');
+            if (data && data.success) {
+                let totalValue = 0, html = '';
+                for (let i = 0; i < data.data.length; i++) {
+                    const p = data.data[i];
+                    totalValue += p.current_qty * p.unit_cost;
+                    html += '<tr>';
+                    html += '<td>' + p.product_name + '</td>';
+                    html += '<td>' + p.current_qty + '</td>';
+                    html += '<td>' + formatMoney(p.unit_cost) + '</td>';
+                    html += '<td>' + formatMoney(p.current_qty * p.unit_cost) + '</td>';
+                    html += '</tr>';
+                }
+                document.getElementById('stockTableBody').innerHTML = html;
+                document.getElementById('totalProducts').innerText = data.data.length;
+                document.getElementById('totalValue').innerHTML = formatMoney(totalValue);
+                document.getElementById('stockLoading').style.display = 'none';
+                document.getElementById('stockTable').style.display = 'table';
+            }
+        }
+
+        async function loadPendingApprovals() {
+            const data = await fetchAPI('/approvals/pending');
+            if (data && data.success) {
+                document.getElementById('pendingApprovals').innerText = data.data.length;
+                let html = '';
+                if (data.data.length === 0) {
+                    html = '<tr><td colspan="6">No pending approvals</td></tr>';
+                } else {
+                    for (let i = 0; i < data.data.length; i++) {
+                        const a = data.data[i];
+                        const approvalId = a.id;
+                        html += '<tr>';
+                        html += '<td>' + a.order_number + '</td>';
+                        html += '<td>' + a.customer_name + '</td>';
+                        html += '<td>' + formatMoney(a.total_amount) + '</td>';
+                        html += '<td><input type="number" id="amount_' + approvalId + '" value="' + a.total_amount + '" step="1000" style="width:100px">这些';
+                        html += '<td>' + (a.requested_by || 'Unknown') + '</td>';
+                        html += '<td>';
+                        html += '<button class="approve-btn" onclick="approveCredit(' + approvalId + ')">✅ Approve</button>';
+                        html += '<button class="reject-btn" onclick="rejectCredit(' + approvalId + ')">❌ Reject</button>';
+                        html += '</td>';
+                        html += '</tr>';
+                    }
+                }
+                document.getElementById('approvalsTableBody').innerHTML = html;
+                document.getElementById('approvalsLoading').style.display = 'none';
+                document.getElementById('approvalsTable').style.display = 'table';
+            }
+        }
+
+        async function approveCredit(approvalId) {
+            const amountInput = document.getElementById('amount_' + approvalId);
+            const approvedAmount = amountInput ? amountInput.value : null;
+            
+            if (!confirm('Approve this credit for ' + formatMoney(approvedAmount) + '?')) return;
+            
+            const result = await fetchAPI('/approvals/approve', {
+                method: 'POST',
+                body: JSON.stringify({ approval_id: approvalId, approved_amount: parseFloat(approvedAmount) })
+            });
+            
+            if (result && result.success) {
+                showMessage('✅ Credit approved successfully');
+                await loadPendingApprovals();
+                await loadProducts();
+                await loadTodayAllocations();
+            } else {
+                showMessage('Failed to approve credit: ' + (result?.message || 'Unknown error'), true);
+            }
+        }
+
+        async function rejectCredit(approvalId) {
+            if (!confirm('Reject this credit request?')) return;
+            
+            const result = await fetchAPI('/approvals/reject', {
+                method: 'POST',
+                body: JSON.stringify({ approval_id: approvalId })
+            });
+            
+            if (result && result.success) {
+                showMessage('❌ Credit rejected');
+                await loadPendingApprovals();
+            } else {
+                showMessage('Failed to reject credit: ' + (result?.message || 'Unknown error'), true);
+            }
+        }
+
+        async function loadPendingReturns() {
+            const data = await fetchAPI('/sales/pending-submissions');
+            if (data && data.success) {
+                let html = '';
+                for (let i = 0; i < data.data.length; i++) {
+                    const item = data.data[i];
+                    const isCredit = item.type === 'credit';
+                    html += '<tr>';
+                    html += '<td>' + item.team_name + '</td>';
+                    html += '<td>' + item.customer_name + '</td>';
+                    html += '<td>' + item.product_name + '</td>';
+                    html += '<td>' + item.quantity + '</td>';
+                    html += (isCredit ? '<td class="credit-amount">' + formatCreditMoney(item.amount) + '</td>' : '<td>' + formatMoney(item.amount) + '</td>');
+                    html += '<td>' + (isCredit ? '📝 Credit' : (item.type === 'cash' ? '💵 Cash' : '🏦 Transfer')) + '</td>';
+                    html += '<td>';
+                    html += '<button class="approve-btn" onclick="confirmReturn(' + item.id + ', \'accept\')">✅ Accept</button>';
+                    html += '<button class="reject-btn" onclick="confirmReturn(' + item.id + ', \'reject\')">🔄 Return to Team</button>';
+                    html += '</td>';
+                    html += '</tr>';
+                }
+                document.getElementById('returnsTableBody').innerHTML = html || '<tr><td colspan="7">No pending returns</td></tr>';
+                document.getElementById('returnsLoading').style.display = 'none';
+                document.getElementById('returnsTable').style.display = 'table';
+            }
+        }
+
+        async function confirmReturn(itemId, action) {
+            const result = await fetchAPI('/sales/confirm-return', {
+                method: 'POST',
+                body: JSON.stringify({ item_id: itemId, action: action })
+            });
+            if (result && result.success) {
+                showMessage(action === 'accept' ? '✅ Item accepted and moved to warehouse' : '🔄 Item returned to team for resubmission');
+                await loadPendingReturns();
+                await loadProducts();
+            } else {
+                showMessage('Failed to process return: ' + (result?.message || 'Unknown error'), true);
+            }
+        }
+
+        async function loadDailyReport() {
+            const data = await fetchAPI('/reports/daily');
+            if (data && data.success) {
+                let html = '';
+                for (let i = 0; i < data.teams.length; i++) {
+                    const t = data.teams[i];
+                    const creditAmount = t.credit_sales || 0;
+                    html += '<tr>';
+                    html += '<td>' + t.team_name + '</td>';
+                    html += '<td>' + (t.num_orders || 0) + '</td>';
+                    html += '<td>' + formatMoney(t.cash_sales || 0) + '</td>';
+                    html += '<td>' + formatMoney(t.transfer_sales || 0) + '</td>';
+                    html += '<td class="' + (creditAmount > 0 ? 'credit-amount' : '') + '">' + (creditAmount > 0 ? '-' : '') + formatMoney(Math.abs(creditAmount)) + '</td>';
+                    html += '<td>' + formatMoney(t.total_sales || 0) + '</td>';
+                    html += '</tr>';
+                }
+                document.getElementById('salesReportBody').innerHTML = html;
+                document.getElementById('reportLoading').style.display = 'none';
+                document.getElementById('salesReportTable').style.display = 'table';
+            }
+        }
+
+        async function closeDay() {
+            if (confirm('⚠️ CLOSE DAY?\n\nThis will:\n- Return all unsold stock to warehouse\n- Lock today\'s transactions\n- Cannot be undone!\n\nContinue?')) {
+                const result = await fetchAPI('/daily/close', { method: 'POST' });
+                if (result && result.success) {
+                    showMessage('✅ Day closed successfully');
+                    await loadDailyReport();
+                    await loadTodayAllocations();
+                    await loadProducts();
+                } else {
+                    showMessage('Failed to close day: ' + (result?.message || 'Unknown error'), true);
+                }
+            }
+        }
+
+        function showPanel(name) {
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            
+            const panelMap = {
+                'allocate': 'allocatePanel',
+                'stock': 'stockPanel',
+                'approvals': 'approvalsPanel',
+                'returns': 'returnsPanel',
+                'reports': 'reportsPanel'
+            };
+            
+            document.getElementById(panelMap[name]).classList.add('active');
+            
+            const tabs = document.querySelectorAll('.tab');
+            const tabMap = ['allocate', 'stock', 'approvals', 'returns', 'reports'];
+            const index = tabMap.indexOf(name);
+            if (index !== -1) tabs[index].classList.add('active');
+            
+            if (name === 'allocate') { loadTodayAllocations(); loadTeams(); loadProductsForAllocation(); }
+            if (name === 'stock') loadProducts();
+            if (name === 'approvals') loadPendingApprovals();
+            if (name === 'returns') loadPendingReturns();
+            if (name === 'reports') loadDailyReport();
+        }
+
+        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+
+        // Initialize dashboard
+        if (!authToken) { 
+            window.location.href = 'login.html';
+        } else {
+            loadProducts();
+            loadTodayAllocations();
+            loadTeams();
+            loadProductsForAllocation();
+        }
+    </script>
+</body>
+</html>
