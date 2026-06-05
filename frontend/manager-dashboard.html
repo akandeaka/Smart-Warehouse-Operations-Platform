@@ -126,7 +126,7 @@
         <div id="approvalsLoading" class="loading">Loading approvals...</div>
         <table id="approvalsTable" style="display:none">
             <thead>
-                <tr><th>Order #</th><th>Customer</th><th>Original Amount</th><th>Modified Amount</th><th>Requested By</th><th>Action</th></tr>
+                <tr><th>Order #</th><th>Customer</th><th>Original Amount</th><th>Modified Amount</th><th>Requested By</th><th>Action</th><tr>
             </thead>
             <tbody id="approvalsTableBody"></tbody>
         寸
@@ -151,7 +151,7 @@
         <div id="reportLoading" class="loading">Loading report...</div>
         <table id="salesReportTable" style="display:none">
             <thead>
-                <tr><th>Team</th><th>Orders</th><th>Cash</th><th>Transfer</th><th>Credit</th><th>Total</th></td>
+                <tr><th>Team</th><th>Orders</th><th>Cash</th><th>Transfer</th><th>Credit</th><th>Total</th></tr>
             </thead>
             <tbody id="salesReportBody"></tbody>
         寸
@@ -416,7 +416,7 @@
                     html += '<td>' + formatMoney(t.transfer_sales || 0) + '</td>';
                     html += '<td class="' + (creditAmount > 0 ? 'credit-amount' : '') + '">' + (creditAmount > 0 ? '-' : '') + formatMoney(Math.abs(creditAmount)) + '</td>';
                     html += '<td>' + formatMoney(t.total_sales || 0) + '</td>';
-                    html += '</table>';
+                    html += '<tr>';
                 }
                 document.getElementById('salesReportBody').innerHTML = html;
                 document.getElementById('reportLoading').style.display = 'none';
@@ -467,25 +467,16 @@
         function logout() { localStorage.clear(); window.location.href = 'login.html'; }
 
         // ============================================================
-        // CORRECTED INITIALIZATION - loadProducts() REMOVED
+        // INITIALIZATION - loadProducts() is NOT called here
         // ============================================================
         if (!authToken) { 
             window.location.href = 'login.html';
         } else {
-            // Only load what is needed for the active tab (Allocate Stock)
-            loadTodayAllocations();      // Load allocations table
+            loadTodayAllocations();      // Load allocations for Allocate Stock tab
             loadTeams();                 // Load teams for dropdown
             loadProductsForAllocation(); // Load products for dropdown
-            // loadProducts() is NOT called here - it will load when user clicks Stock Management tab
+            // loadProducts() is NOT called - stock data loads when user clicks Stock Management tab
         }
     </script>
 </body>
 </html>
-// Initialize dashboard
-if (!authToken) { 
-    window.location.href = 'login.html';
-} else {
-    loadTodayAllocations();
-    loadTeams();
-    loadProductsForAllocation();
-}
