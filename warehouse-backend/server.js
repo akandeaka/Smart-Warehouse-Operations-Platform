@@ -75,7 +75,7 @@ app.get('/health', async (req, res) => {
 });
 
 app.get('/api/version', (req, res) => {
-    res.json({ version: 'FINAL_V5', feature: 'multiple_allocations_per_day', fixed: 'all_sql_parameters' });
+    res.json({ version: 'FINAL_V6', feature: 'multiple_allocations_per_day', fixed: 'pending_returns' });
 });
 
 // ============================================================
@@ -145,7 +145,7 @@ app.get('/api/products', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-// ALLOCATIONS - FIXED (ALWAYS INSERT NEW, NEVER UPDATE)
+// ALLOCATIONS
 // ============================================================
 app.post('/api/allocations', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     let connection;
@@ -170,13 +170,11 @@ app.post('/api/allocations', authMiddleware, requireRole(['warehouse_manager']),
                 throw new Error(`Only ${product[0].current_qty} units available in warehouse`);
             }
             
-            // Update product quantity in warehouse
             await connection.query(
                 'UPDATE products SET current_qty = current_qty - ? WHERE id = ?',
                 [quantity, product_id]
             );
             
-            // ALWAYS INSERT NEW ALLOCATION - never update existing
             await connection.query(
                 'INSERT INTO sales_team_allocations (team_id, product_id, allocated_qty, allocated_date, allocated_by, status, confirmed) VALUES (?, ?, ?, ?, ?, ?, 0)',
                 [team_id, product_id, quantity, allocationDate, req.user.id, 'active']
@@ -219,7 +217,6 @@ app.get('/api/allocations/today', authMiddleware, async (req, res) => {
     }
 });
 
-// Get team's allocated stock for today - FIXED (using parameter for 'active')
 app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) => {
     try {
         const { teamId } = req.params;
@@ -243,7 +240,6 @@ app.get('/api/sales/team/:teamId/allocations', authMiddleware, async (req, res) 
     }
 });
 
-// Confirm allocation
 app.post('/api/allocations/confirm', authMiddleware, async (req, res) => {
     try {
         const { team_id, allocated_date } = req.body;
@@ -260,7 +256,6 @@ app.post('/api/allocations/confirm', authMiddleware, async (req, res) => {
     }
 });
 
-// Get confirmation status
 app.get('/api/allocations/confirmation-status/:teamId/:date', authMiddleware, async (req, res) => {
     try {
         const { teamId, date } = req.params;
@@ -396,7 +391,6 @@ app.get('/api/sales/order/:orderId/items', authMiddleware, async (req, res) => {
     }
 });
 
-// Check if sales already submitted
 app.get('/api/sales/check-submitted/:teamId/:date', authMiddleware, async (req, res) => {
     try {
         const { teamId, date } = req.params;
@@ -520,7 +514,7 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
 });
 
 // ============================================================
-// SUBMIT DAY SALES - UPDATED to mark allocations as submitted
+// SUBMIT DAY SALES
 // ============================================================
 app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
     let connection;
@@ -553,19 +547,32 @@ app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
     }
 });
 
+// ============================================================
+// FIXED: PENDING RETURNS - Shows ONLY unsold returned goods
+// ============================================================
 app.get('/api/sales/pending-submissions', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
         const [items] = await pool.query(
-            `SELECT so.id, st.team_name, so.customer_name, p.product_name, soi.quantity, (soi.quantity * soi.unit_price) as amount, so.payment_method as type 
-             FROM sales_orders so 
-             JOIN sales_teams st ON so.team_id = st.id 
-             JOIN sales_order_items soi ON so.id = soi.order_id 
-             JOIN products p ON soi.product_id = p.id 
-             WHERE so.submitted_for_review = 1 AND so.manager_confirmed = 0`
+            `SELECT 
+                a.id as return_id,
+                st.team_name,
+                'Returned Goods' as customer_name,
+                p.product_name,
+                a.returned_qty as quantity,
+                (a.returned_qty * p.unit_cost) as amount,
+                'return' as type,
+                a.allocated_date
+             FROM sales_team_allocations a
+             JOIN sales_teams st ON a.team_id = st.id
+             JOIN products p ON a.product_id = p.id
+             WHERE a.returned_qty > 0
+               AND a.status != 'closed'
+             ORDER BY a.allocated_date DESC`
         );
+        
         res.json({ success: true, data: items });
     } catch (error) { 
-        console.error('Get pending submissions error:', error);
+        console.error('Get pending returns error:', error);
         res.status(500).json({ success: false, message: error.message }); 
     }
 });
