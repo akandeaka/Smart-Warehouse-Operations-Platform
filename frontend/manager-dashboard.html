@@ -37,14 +37,18 @@
     </style>
 </head>
 <body>
-    <!-- CLEAN HEADER - ONLY THIS SECTION WAS CHANGED -->
     <div class="header">
-        <h1>🏬 Warehouse Manager Dashboard</h1>
-        <div class="nav-links">
-            <a href="manager-dashboard.html">Dashboard</a>
-            <a href="manager-performance.html" style="color: #ffc107;">📊 Performance</a>
-            <button class="logout-btn" onclick="logout()">Logout</button>
-        </div>
+        <div class="header">
+    <h1>🏬 Warehouse Manager Dashboard</h1>
+    <div class="nav-links">
+        <a href="manager-dashboard.html">Dashboard</a>
+        <a href="manager-performance.html" style="color: #ffc107;">📊 Performance</a>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+</div>
+        
+        <h1>🏪 Warehouse Manager Dashboard</h1>
+        <div class="logout-btn" onclick="logout()">Logout</div>
     </div>
 
     <div id="successMsg" class="success-msg"></div>
@@ -102,7 +106,7 @@
                 <tr><th>Team</th><th>Product</th><th>Allocated</th><th>Sold</th><th>Remaining</th></tr>
             </thead>
             <tbody id="allocationsTableBody"></tbody>
-        寸
+        </table>
     </div>
 
     <!-- Stock Management Panel -->
@@ -111,7 +115,7 @@
         <table id="stockTable" style="display:none">
             <thead><tr><th>Product</th><th>Quantity</th><th>Unit Cost</th><th>Total Value</th></tr></thead>
             <tbody id="stockTableBody"></tbody>
-        寸
+        </table>
     </div>
 
     <!-- Credit Approvals Panel -->
@@ -122,7 +126,7 @@
                 <tr><th>Order #</th><th>Customer</th><th>Original Amount</th><th>Modified Amount</th><th>Requested By</th><th>Action</th></tr>
             </thead>
             <tbody id="approvalsTableBody"></tbody>
-        寸
+        </table>
     </div>
 
     <!-- Pending Returns Panel -->
@@ -133,7 +137,7 @@
                 <tr><th>Team</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Action</th></tr>
             </thead>
             <tbody id="returnsTableBody"></tbody>
-        寸
+        </table>
     </div>
 
     <!-- Daily Reports Panel -->
@@ -145,7 +149,7 @@
                 <tr><th>Team</th><th>Orders</th><th>Cash</th><th>Transfer</th><th>Credit</th><th>Total</th></tr>
             </thead>
             <tbody id="salesReportBody"></tbody>
-        寸
+        </table>
     </div>
 
     <script>
@@ -232,7 +236,7 @@
                     const a = data.data[i];
                     const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
                     html += '<tr>';
-                    html += '<td>' + a.team_name + '</td>';
+                    html += '<td>' + a.team_name + '</table>';
                     html += '<td>' + a.product_name + '</td>';
                     html += '<td>' + a.allocated_qty + '</td>';
                     html += '<td>' + a.sold_qty + '</td>';
