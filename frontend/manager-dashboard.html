@@ -37,15 +37,14 @@
     </style>
 </head>
 <body>
-       <div class="header">
+    <!-- CLEAN HEADER - NO DUPLICATES -->
+    <div class="header">
         <h1>🏬 Warehouse Manager Dashboard</h1>
         <div>
             <a href="manager-dashboard.html" style="color: white; text-decoration: none; margin-right: 15px;">Dashboard</a>
             <a href="manager-performance.html" style="color: #ffc107; text-decoration: none; margin-right: 15px;">📊 Performance</a>
             <button onclick="logout()" style="background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; border: none; color: white;">Logout</button>
         </div>
-        <h1>🏪 Warehouse Manager Dashboard</h1>
-        <div class="logout-btn" onclick="logout()">Logout</div>
     </div>
 
     <div id="successMsg" class="success-msg"></div>
@@ -103,7 +102,7 @@
                 <tr><th>Team</th><th>Product</th><th>Allocated</th><th>Sold</th><th>Remaining</th></tr>
             </thead>
             <tbody id="allocationsTableBody"></tbody>
-        </table>
+        寸
     </div>
 
     <!-- Stock Management Panel -->
@@ -112,7 +111,7 @@
         <table id="stockTable" style="display:none">
             <thead><tr><th>Product</th><th>Quantity</th><th>Unit Cost</th><th>Total Value</th></tr></thead>
             <tbody id="stockTableBody"></tbody>
-        </table>
+        寸
     </div>
 
     <!-- Credit Approvals Panel -->
@@ -123,7 +122,7 @@
                 <tr><th>Order #</th><th>Customer</th><th>Original Amount</th><th>Modified Amount</th><th>Requested By</th><th>Action</th></tr>
             </thead>
             <tbody id="approvalsTableBody"></tbody>
-        </table>
+        寸
     </div>
 
     <!-- Pending Returns Panel -->
@@ -134,7 +133,7 @@
                 <tr><th>Team</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Action</th></tr>
             </thead>
             <tbody id="returnsTableBody"></tbody>
-        </table>
+        寸
     </div>
 
     <!-- Daily Reports Panel -->
@@ -146,7 +145,7 @@
                 <tr><th>Team</th><th>Orders</th><th>Cash</th><th>Transfer</th><th>Credit</th><th>Total</th></tr>
             </thead>
             <tbody id="salesReportBody"></tbody>
-        </table>
+        寸
     </div>
 
     <script>
@@ -233,7 +232,7 @@
                     const a = data.data[i];
                     const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
                     html += '<tr>';
-                    html += '<td>' + a.team_name + '</table>';
+                    html += '<td>' + a.team_name + '</td>';
                     html += '<td>' + a.product_name + '</td>';
                     html += '<td>' + a.allocated_qty + '</td>';
                     html += '<td>' + a.sold_qty + '</td>';
@@ -311,9 +310,7 @@
             
             if (result && result.success) {
                 showMessage('✅ Credit approved successfully');
-                // Refresh the pending approvals list
                 await loadPendingApprovals();
-                // Also refresh products and allocations to update stock
                 await loadProducts();
                 await loadTodayAllocations();
             } else {
@@ -331,7 +328,6 @@
             
             if (result && result.success) {
                 showMessage('❌ Credit rejected');
-                // Refresh the pending approvals list
                 await loadPendingApprovals();
             } else {
                 showMessage('Failed to reject credit: ' + (result?.message || 'Unknown error'), true);
@@ -386,7 +382,7 @@
                     html += '<tr>';
                     html += '<td>' + t.team_name + '</td>';
                     html += '<td>' + (t.num_orders || 0) + '</td>';
-                    html += '<td>' + formatMoney(t.cash_sales || 0) + '</td>';
+                    html += '<td>' + formatMoney(t.cash_sales || 0) + '<td>';
                     html += '<td>' + formatMoney(t.transfer_sales || 0) + '</td>';
                     html += '<td class="' + (creditAmount > 0 ? 'credit-amount' : '') + '">' + (creditAmount > 0 ? '-' : '') + formatMoney(Math.abs(creditAmount)) + '</td>';
                     html += '<td>' + formatMoney(t.total_sales || 0) + '</td>';
