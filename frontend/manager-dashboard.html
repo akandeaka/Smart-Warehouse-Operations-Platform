@@ -481,3 +481,11 @@
     </script>
 </body>
 </html>
+// Initialize dashboard
+if (!authToken) { 
+    window.location.href = 'login.html';
+} else {
+    loadTodayAllocations();
+    loadTeams();
+    loadProductsForAllocation();
+}
