@@ -39,19 +39,19 @@
 <body>
     <div class="header">
         <div class="header">
-            <h1>🏬 Warehouse Manager Dashboard</h1>
-            <div class="nav-links">
-                <a href="manager-dashboard.html">Dashboard</a>
-                <a href="manager-performance.html" style="color: #ffc107;">📊 Performance</a>
-                <button class="logout-btn" onclick="logout()">Logout</button>
-            </div>
-        </div>
+    <h1>🏬 Warehouse Manager Dashboard</h1>
+    <div class="nav-links">
+        <a href="manager-dashboard.html">Dashboard</a>
+        <a href="manager-performance.html" style="color: #ffc107;">📊 Performance</a>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+</div>
         <a href="manager-performance.html" class="nav-link">📊 Performance</a>
         <div class="card" onclick="window.location.href='manager-performance.html'" style="cursor: pointer;">
-            <div style="font-size: 40px;">📊</div>
-            <h3>Performance Dashboard</h3>
-            <p>View team and product performance metrics</p>
-        </div>
+    <div style="font-size: 40px;">📊</div>
+    <h3>Performance Dashboard</h3>
+    <p>View team and product performance metrics</p>
+</div>
         <h1>🏪 Warehouse Manager Dashboard</h1>
         <div class="logout-btn" onclick="logout()">Logout</div>
     </div>
@@ -69,7 +69,7 @@
             <div class="value" id="totalValue">0</div>
         </div>
         <div class="stat-card">
-            <div id="card3Label">Pending Approvals</div>
+            <div>Pending Approvals</div>
             <div class="value" id="pendingApprovals">0</div>
         </div>
     </div>
@@ -111,7 +111,7 @@
                 <tr><th>Team</th><th>Product</th><th>Allocated</th><th>Sold</th><th>Remaining</th></tr>
             </thead>
             <tbody id="allocationsTableBody"></tbody>
-        寸
+        </table>
     </div>
 
     <!-- Stock Management Panel -->
@@ -120,7 +120,7 @@
         <table id="stockTable" style="display:none">
             <thead><tr><th>Product</th><th>Quantity</th><th>Unit Cost</th><th>Total Value</th></tr></thead>
             <tbody id="stockTableBody"></tbody>
-        寸
+        </table>
     </div>
 
     <!-- Credit Approvals Panel -->
@@ -131,7 +131,7 @@
                 <tr><th>Order #</th><th>Customer</th><th>Original Amount</th><th>Modified Amount</th><th>Requested By</th><th>Action</th></tr>
             </thead>
             <tbody id="approvalsTableBody"></tbody>
-        寸
+        </table>
     </div>
 
     <!-- Pending Returns Panel -->
@@ -142,7 +142,7 @@
                 <tr><th>Team</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Action</th></tr>
             </thead>
             <tbody id="returnsTableBody"></tbody>
-        寸
+        </table>
     </div>
 
     <!-- Daily Reports Panel -->
@@ -154,7 +154,7 @@
                 <tr><th>Team</th><th>Orders</th><th>Cash</th><th>Transfer</th><th>Credit</th><th>Total</th></tr>
             </thead>
             <tbody id="salesReportBody"></tbody>
-        寸
+        </table>
     </div>
 
     <script>
@@ -191,57 +191,6 @@
             } catch (error) { showMessage('Network error: ' + error.message, true); return null; }
         }
 
-        // ============================================================
-        // NEW: DYNAMIC CARD FUNCTIONS (ADDED ONLY)
-        // ============================================================
-        async function updateCardForTab(tabName) {
-            const card3Label = document.getElementById('card3Label');
-            const card3Value = document.getElementById('pendingApprovals');
-            
-            if (tabName === 'allocate') {
-                card3Label.innerHTML = 'Pending Approvals';
-                const data = await fetchAPI('/approvals/pending');
-                if (data && data.success) {
-                    card3Value.innerText = data.data.length;
-                }
-            }
-            else if (tabName === 'stock') {
-                card3Label.innerHTML = 'Low Stock Items';
-                const data = await fetchAPI('/products');
-                if (data && data.success) {
-                    const lowStock = data.data.filter(p => p.current_qty < 50);
-                    card3Value.innerText = lowStock.length;
-                }
-            }
-            else if (tabName === 'approvals') {
-                card3Label.innerHTML = 'Pending Credit Value';
-                const data = await fetchAPI('/approvals/pending');
-                if (data && data.success) {
-                    const totalValue = data.data.reduce((sum, a) => sum + a.total_amount, 0);
-                    card3Value.innerHTML = formatMoney(totalValue);
-                }
-            }
-            else if (tabName === 'returns') {
-                card3Label.innerHTML = 'Pending Returns Value';
-                const data = await fetchAPI('/sales/pending-submissions');
-                if (data && data.success) {
-                    const totalValue = data.data.reduce((sum, i) => sum + i.amount, 0);
-                    card3Value.innerHTML = formatMoney(totalValue);
-                }
-            }
-            else if (tabName === 'reports') {
-                card3Label.innerHTML = "Today's Sales";
-                const data = await fetchAPI('/reports/daily');
-                if (data && data.success) {
-                    const todayTotal = data.teams.reduce((sum, t) => sum + t.total_sales, 0);
-                    card3Value.innerHTML = formatMoney(todayTotal);
-                }
-            }
-        }
-
-        // ============================================================
-        // ORIGINAL FUNCTIONS (UNCHANGED)
-        // ============================================================
         async function loadTeams() {
             const data = await fetchAPI('/teams');
             if (data && data.success) {
@@ -292,7 +241,7 @@
                     const a = data.data[i];
                     const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
                     html += '<tr>';
-                    html += '<td>' + a.team_name + '</td>';
+                    html += '<td>' + a.team_name + '</table>';
                     html += '<td>' + a.product_name + '</td>';
                     html += '<td>' + a.allocated_qty + '</td>';
                     html += '<td>' + a.sold_qty + '</td>';
@@ -333,7 +282,7 @@
                 document.getElementById('pendingApprovals').innerText = data.data.length;
                 let html = '';
                 if (data.data.length === 0) {
-                    html = '<tr><td colspan="6">No pending approvals</table></tr>';
+                    html = '<tr><td colspan="6">No pending approvals</td></tr>';
                 } else {
                     for (let i = 0; i < data.data.length; i++) {
                         const a = data.data[i];
@@ -370,7 +319,9 @@
             
             if (result && result.success) {
                 showMessage('✅ Credit approved successfully');
+                // Refresh the pending approvals list
                 await loadPendingApprovals();
+                // Also refresh products and allocations to update stock
                 await loadProducts();
                 await loadTodayAllocations();
             } else {
@@ -388,6 +339,7 @@
             
             if (result && result.success) {
                 showMessage('❌ Credit rejected');
+                // Refresh the pending approvals list
                 await loadPendingApprovals();
             } else {
                 showMessage('Failed to reject credit: ' + (result?.message || 'Unknown error'), true);
@@ -446,7 +398,7 @@
                     html += '<td>' + formatMoney(t.transfer_sales || 0) + '</td>';
                     html += '<td class="' + (creditAmount > 0 ? 'credit-amount' : '') + '">' + (creditAmount > 0 ? '-' : '') + formatMoney(Math.abs(creditAmount)) + '</td>';
                     html += '<td>' + formatMoney(t.total_sales || 0) + '</td>';
-                    html += '</table>';
+                    html += '</tr>';
                 }
                 document.getElementById('salesReportBody').innerHTML = html;
                 document.getElementById('reportLoading').style.display = 'none';
@@ -468,9 +420,6 @@
             }
         }
 
-        // ============================================================
-        // UPDATED: showPanel function - now calls updateCardForTab
-        // ============================================================
         function showPanel(name) {
             document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -478,9 +427,6 @@
             const index = panels.indexOf(name);
             document.querySelectorAll('.tab')[index].classList.add('active');
             document.getElementById(name + 'Panel').classList.add('active');
-            
-            // NEW: Update the third card based on selected tab
-            updateCardForTab(name);
             
             if (name === 'allocate') { loadTodayAllocations(); loadTeams(); loadProductsForAllocation(); }
             if (name === 'stock') loadProducts();
@@ -491,17 +437,8 @@
 
         function logout() { localStorage.clear(); window.location.href = 'login.html'; }
 
-        // ============================================================
-        // INITIALIZATION (UNCHANGED - keeps loadProducts())
-        // ============================================================
         if (!authToken) { window.location.href = 'login.html'; }
-        else { 
-            loadProducts(); 
-            loadTeams(); 
-            loadProductsForAllocation();
-            // Set initial card for Allocate Stock tab
-            setTimeout(() => updateCardForTab('allocate'), 1000);
-        }
+        else { loadProducts(); loadTeams(); loadProductsForAllocation(); }
     </script>
 </body>
 </html>
