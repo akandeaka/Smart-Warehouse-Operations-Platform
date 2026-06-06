@@ -325,7 +325,7 @@
                         const a = data.data[i];
                         const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
                         html += '<tr>';
-                        html += '<td>' + a.team_name + '<tr>';
+                        html += '<td>' + a.team_name + '</td>';
                         html += '<td>' + a.product_name + '</td>';
                         html += '<td>' + a.allocated_qty + '</td>';
                         html += '<td>' + a.sold_qty + '</td>';
@@ -375,7 +375,7 @@
                         html += '<td>' + a.order_number + '</td>';
                         html += '<td>' + a.customer_name + '</td>';
                         html += '<td>' + formatMoney(a.total_amount) + '</td>';
-                        html += '<td><input type="number" id="amount_' + approvalId + '" value="' + a.total_amount + '" step="1000" style="width:100px">这些';
+                        html += '<td><input type="number" id="amount_' + approvalId + '" value="' + a.total_amount + '" step="1000" style="width:100px"></td>';
                         html += '<td>' + (a.requested_by || 'Unknown') + '</td>';
                         html += '<td>';
                         html += '<button class="approve-btn" onclick="approveCredit(' + approvalId + ')">✅ Approve</button>';
@@ -480,7 +480,7 @@
                     html += '<tr>';
                     html += '<td>' + t.team_name + '</td>';
                     html += '<td>' + (t.num_orders || 0) + '</td>';
-                    html += '<td>' + formatMoney(t.cash_sales || 0) + '<td>';
+                    html += '<td>' + formatMoney(t.cash_sales || 0) + '</td>';
                     html += '<td>' + formatMoney(t.transfer_sales || 0) + '</td>';
                     html += '<td class="' + (creditAmount > 0 ? 'credit-amount' : '') + '">' + (creditAmount > 0 ? '-' : '') + formatMoney(Math.abs(creditAmount)) + '</td>';
                     html += '<td>' + formatMoney(t.total_sales || 0) + '</td>';
@@ -507,58 +507,7 @@
         }
 
         // ============================================================
-        // SHOW PANEL - Updated to call card updates
-        // ============================================================
-        function showPanel(name) {
-            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            
-            const panelMap = {
-                'allocate': 'allocatePanel',
-                'stock': 'stockPanel',
-                'approvals': 'approvalsPanel',
-                'returns': 'returnsPanel',
-                'reports': 'reportsPanel'
-            };
-            
-            document.getElementById(panelMap[name]).classList.add('active');
-            
-            const tabs = document.querySelectorAll('.tab');
-            const tabMap = ['allocate', 'stock', 'approvals', 'returns', 'reports'];
-            const index = tabMap.indexOf(name);
-            if (index !== -1) tabs[index].classList.add('active');
-            
-            // Update top 3 cards based on selected tab
-            updateCardsForTab(name);
-            
-            if (name === 'allocate') { loadTodayAllocations(); loadTeams(); loadProductsForAllocation(); }
-            if (name === 'stock') loadProducts();
-            if (name === 'approvals') loadPendingApprovals();
-            if (name === 'returns') loadPendingReturns();
-            if (name === 'reports') loadDailyReport();
-        }
-
-        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
-
-        // ============================================================
-        // INITIALIZATION - loadProducts() removed from startup
-        // ============================================================
-        if (!authToken) { 
-            window.location.href = 'login.html';
-        } else {
-            loadTodayAllocations();
-            loadTeams();
-            loadProductsForAllocation();
-            updateCardsForTab('allocate');  // Set initial cards
-        }
-
-        // Force register showPanel to window (ensures it's globally accessible)
-        window.showPanel = showPanel;
-    </script>
-</body>
-</html>
-        // ============================================================
-        // SHOW PANEL - SIMPLIFIED VERSION
+        // SHOW PANEL - CORRECTED VERSION
         // ============================================================
         function showPanel(name) {
             // Get all panels
@@ -606,3 +555,23 @@
             if (name === 'returns') loadPendingReturns();
             if (name === 'reports') loadDailyReport();
         }
+
+        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+
+        // ============================================================
+        // INITIALIZATION
+        // ============================================================
+        if (!authToken) { 
+            window.location.href = 'login.html';
+        } else {
+            loadTodayAllocations();
+            loadTeams();
+            loadProductsForAllocation();
+            updateCardsForTab('allocate');
+        }
+
+        // Ensure showPanel is globally accessible
+        window.showPanel = showPanel;
+    </script>
+</body>
+</html>
