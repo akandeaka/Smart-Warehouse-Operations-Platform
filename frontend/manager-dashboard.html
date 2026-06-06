@@ -554,3 +554,8 @@
     </script>
 </body>
 </html>
+<script>
+    // Force register showPanel to window
+    window.showPanel = showPanel;
+    console.log('showPanel registered:', typeof showPanel);
+</script>
