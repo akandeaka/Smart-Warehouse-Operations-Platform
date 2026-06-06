@@ -37,22 +37,24 @@
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="header">
-    <h1>🏬 Warehouse Manager Dashboard</h1>
-    <div class="nav-links">
-        <a href="manager-dashboard.html">Dashboard</a>
-        <a href="manager-performance.html" style="color: #ffc107;">📊 Performance</a>
-        <button class="logout-btn" onclick="logout()">Logout</button>
-    </div>
-    <div class="header">
+       <div class="header">
         <h1>🏬 Warehouse Manager Dashboard</h1>
-        <div class="nav-links">
-            <a href="manager-dashboard.html">Dashboard</a>
-            <a href="manager-performance.html" style="color: #ffc107;">📊 Performance</a>
-            <button class="logout-btn" onclick="logout()">Logout</button>
+        <div>
+            <a href="manager-dashboard.html" style="color: white; text-decoration: none; margin-right: 15px;">Dashboard</a>
+            <a href="manager-performance.html" style="color: #ffc107; text-decoration: none; margin-right: 15px;">📊 Performance</a>
+            <button onclick="logout()" style="background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; border: none; color: white;">Logout</button>
         </div>
+        <h1>🏪 Warehouse Manager Dashboard</h1>
+        <div class="logout-btn" onclick="logout()">Logout</div>
     </div>
+
+    <div id="successMsg" class="success-msg"></div>
+    <div id="errorMsg" class="error-msg"></div>
+
+    <div class="stats-container">
+        <div class="stat-card">
+            <div>Total Products</div>
+            <div class="value" id="totalProducts">0</div>
         </div>
         <div class="stat-card">
             <div>Warehouse Value (₦)</div>
