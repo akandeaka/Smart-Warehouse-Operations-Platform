@@ -37,13 +37,20 @@
     </style>
 </head>
 <body>
-       <div class="header">
+          <div class="header">
         <h1>🏬 Warehouse Manager Dashboard</h1>
-        <div>
-            <a href="manager-dashboard.html" style="color: white; text-decoration: none; margin-right: 15px;">Dashboard</a>
-            <a href="manager-performance.html" style="color: #ffc107; text-decoration: none; margin-right: 15px;">📊 Performance</a>
-            <button onclick="logout()" style="background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; border: none; color: white;">Logout</button>
+        <div class="nav-links">
+            <a href="manager-dashboard.html">Dashboard</a>
+            <a href="manager-performance.html" style="color: #ffc107;">📊 Performance</a>
+            <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
+    </div>
+        <a href="manager-performance.html" class="nav-link">📊 Performance</a>
+        <div class="card" onclick="window.location.href='manager-performance.html'" style="cursor: pointer;">
+    <div style="font-size: 40px;">📊</div>
+    <h3>Performance Dashboard</h3>
+    <p>View team and product performance metrics</p>
+</div>
         <h1>🏪 Warehouse Manager Dashboard</h1>
         <div class="logout-btn" onclick="logout()">Logout</div>
     </div>
