@@ -557,3 +557,52 @@
     </script>
 </body>
 </html>
+        // ============================================================
+        // SHOW PANEL - SIMPLIFIED VERSION
+        // ============================================================
+        function showPanel(name) {
+            // Get all panels
+            var allocatePanel = document.getElementById('allocatePanel');
+            var stockPanel = document.getElementById('stockPanel');
+            var approvalsPanel = document.getElementById('approvalsPanel');
+            var returnsPanel = document.getElementById('returnsPanel');
+            var reportsPanel = document.getElementById('reportsPanel');
+            
+            // Hide all panels
+            allocatePanel.classList.remove('active');
+            stockPanel.classList.remove('active');
+            approvalsPanel.classList.remove('active');
+            returnsPanel.classList.remove('active');
+            reportsPanel.classList.remove('active');
+            
+            // Show selected panel
+            if (name === 'allocate') allocatePanel.classList.add('active');
+            if (name === 'stock') stockPanel.classList.add('active');
+            if (name === 'approvals') approvalsPanel.classList.add('active');
+            if (name === 'returns') returnsPanel.classList.add('active');
+            if (name === 'reports') reportsPanel.classList.add('active');
+            
+            // Update tab buttons
+            var tabs = document.querySelectorAll('.tab');
+            for (var i = 0; i < tabs.length; i++) {
+                tabs[i].classList.remove('active');
+            }
+            
+            // Find and activate the clicked tab
+            for (var i = 0; i < tabs.length; i++) {
+                if (tabs[i].getAttribute('onclick') === "showPanel('" + name + "')") {
+                    tabs[i].classList.add('active');
+                    break;
+                }
+            }
+            
+            // Update top 3 cards based on selected tab
+            updateCardsForTab(name);
+            
+            // Load data for selected panel
+            if (name === 'allocate') { loadTodayAllocations(); loadTeams(); loadProductsForAllocation(); }
+            if (name === 'stock') loadProducts();
+            if (name === 'approvals') loadPendingApprovals();
+            if (name === 'returns') loadPendingReturns();
+            if (name === 'reports') loadDailyReport();
+        }
