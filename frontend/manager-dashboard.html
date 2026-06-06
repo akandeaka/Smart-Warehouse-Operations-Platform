@@ -325,7 +325,7 @@
                         const a = data.data[i];
                         const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
                         html += '<tr>';
-                        html += '<td>' + a.team_name + '</td>';
+                        html += '<td>' + a.team_name + '<tr>';
                         html += '<td>' + a.product_name + '</td>';
                         html += '<td>' + a.allocated_qty + '</td>';
                         html += '<td>' + a.sold_qty + '</td>';
@@ -480,7 +480,7 @@
                     html += '<tr>';
                     html += '<td>' + t.team_name + '</td>';
                     html += '<td>' + (t.num_orders || 0) + '</td>';
-                    html += '<td>' + formatMoney(t.cash_sales || 0) + '</td>';
+                    html += '<td>' + formatMoney(t.cash_sales || 0) + '<td>';
                     html += '<td>' + formatMoney(t.transfer_sales || 0) + '</td>';
                     html += '<td class="' + (creditAmount > 0 ? 'credit-amount' : '') + '">' + (creditAmount > 0 ? '-' : '') + formatMoney(Math.abs(creditAmount)) + '</td>';
                     html += '<td>' + formatMoney(t.total_sales || 0) + '</td>';
@@ -551,11 +551,9 @@
             loadProductsForAllocation();
             updateCardsForTab('allocate');  // Set initial cards
         }
+
+        // Force register showPanel to window (ensures it's globally accessible)
+        window.showPanel = showPanel;
     </script>
 </body>
 </html>
-<script>
-    // Force register showPanel to window
-    window.showPanel = showPanel;
-    console.log('showPanel registered:', typeof showPanel);
-</script>
