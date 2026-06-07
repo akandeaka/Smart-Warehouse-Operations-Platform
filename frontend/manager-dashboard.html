@@ -512,24 +512,15 @@
         // TAB SWITCHING
         // ==========================================
         function switchTab(tabId, btnElement) {
-            // Hide all tab contents
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
-            
-            // Remove active class from all tabs
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
             });
-            
-            // Show selected tab
             document.getElementById(tabId).classList.add('active');
             btnElement.classList.add('active');
-            
-            // Load data for this tab
             loadTabData(tabId);
-            
-            // Update third card based on tab
             updateCardForTab(tabId);
         }
 
@@ -543,10 +534,8 @@
             }
         }
 
-        // Update third card based on active tab
         function updateCardForTab(tabId) {
             const card3Label = document.getElementById('card3Label');
-            const card3Value = document.getElementById('pendingApprovals');
             
             if (tabId === 'allocate') {
                 card3Label.innerHTML = 'Pending Approvals';
@@ -574,7 +563,6 @@
         // DATA LOADING FUNCTIONS
         // ==========================================
 
-        // Load Teams for dropdown
         async function loadTeams() {
             const data = await fetchAPI('/teams');
             if (data && data.success) {
@@ -584,7 +572,6 @@
             }
         }
 
-        // Load Products for dropdown
         async function loadProductsForAllocation() {
             const data = await fetchAPI('/products');
             if (data && data.success) {
@@ -598,7 +585,6 @@
             }
         }
 
-        // Load Today's Allocations
         async function loadTodayAllocations() {
             const data = await fetchAPI('/allocations/today');
             if (data && data.success) {
@@ -622,7 +608,6 @@
             }
         }
 
-        // Load Stock Products
         async function loadProducts() {
             const data = await fetchAPI('/products');
             if (data && data.success) {
@@ -644,7 +629,6 @@
             }
         }
 
-        // Load Pending Approvals
         async function loadPendingApprovals() {
             const data = await fetchAPI('/approvals/pending');
             if (data && data.success) {
@@ -672,7 +656,10 @@
             }
         }
 
-        // Load Pending Returns
+        // ==========================================
+        // LOAD PENDING RETURNS - CORRECTED VERSION
+        // Uses return_id (allocation ID) instead of id (sales order ID)
+        // ==========================================
         async function loadPendingReturns() {
             const data = await fetchAPI('/sales/pending-submissions');
             if (data && data.success) {
@@ -691,8 +678,8 @@
                             <td class="${isCredit ? 'credit-amount' : ''}">${isCredit ? formatCreditMoney(item.amount) : formatMoney(item.amount)}</td>
                             <td>${isCredit ? '📝 Credit' : (item.type === 'cash' ? '💵 Cash' : '🏦 Transfer')}</td>
                             <td>
-                                <button class="btn-approve" onclick="confirmReturn(${item.id}, 'accept')">✅ Accept</button>
-                                <button class="btn-reject" onclick="confirmReturn(${item.id}, 'reject')">🔄 Return to Team</button>
+                                <button class="btn-approve" onclick="confirmReturn(${item.return_id}, 'accept')">✅ Accept</button>
+                                <button class="btn-reject" onclick="confirmReturn(${item.return_id}, 'reject')">🔄 Return to Team</button>
                             </td>
                         </tr>`;
                     }
@@ -701,7 +688,6 @@
             }
         }
 
-        // Load Daily Report
         async function loadDailyReport() {
             const data = await fetchAPI('/reports/daily');
             if (data && data.success) {
@@ -768,7 +754,6 @@
         // ACTION FUNCTIONS
         // ==========================================
 
-        // Allocate Stock
         async function allocateStock() {
             const teamId = document.getElementById('allocateTeamId').value;
             const productId = document.getElementById('allocateProductId').value;
@@ -796,7 +781,6 @@
             }
         }
 
-        // Approve Credit
         async function approveCredit(approvalId) {
             const amountInput = document.getElementById('amount_' + approvalId);
             const approvedAmount = amountInput ? amountInput.value : null;
@@ -818,7 +802,6 @@
             }
         }
 
-        // Reject Credit
         async function rejectCredit(approvalId) {
             if (!confirm('Reject this credit request?')) return;
             
@@ -835,7 +818,6 @@
             }
         }
 
-        // Confirm Return
         async function confirmReturn(itemId, action) {
             const result = await fetchAPI('/sales/confirm-return', {
                 method: 'POST',
@@ -850,7 +832,6 @@
             }
         }
 
-        // Close Day
         async function closeDay() {
             if (confirm('⚠️ CLOSE DAY?\n\nThis will:\n- Return all unsold stock to warehouse\n- Lock today\'s transactions\n- Cannot be undone!\n\nContinue?')) {
                 const result = await fetchAPI('/daily/close', { method: 'POST' });
@@ -865,7 +846,6 @@
             }
         }
 
-        // Logout
         function logout() { 
             localStorage.clear(); 
             window.location.href = 'login.html'; 
@@ -877,12 +857,10 @@
         if (!authToken) { 
             window.location.href = 'login.html';
         } else {
-            // Load initial data for Allocate Stock tab (active by default)
             loadTodayAllocations();
             loadTeams();
             loadProductsForAllocation();
             loadPendingApprovalsCount();
-            // Also load products for stock management (but they will only display when tab is clicked)
             loadProducts();
         }
     </script>
