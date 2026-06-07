@@ -823,3 +823,146 @@ async function startServer() {
 }
 
 startServer();
+// ============================================================
+// CONFIRM RETURN - Complete fix for Accept and Reject
+// ============================================================
+app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    let connection;
+    try {
+        const { item_id, action } = req.body;
+        
+        console.log('Confirm return called:', { item_id, action }); // Debug log
+        
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+        
+        // First, get the allocation details
+        const [allocation] = await connection.query(
+            `SELECT a.id, a.team_id, a.product_id, a.returned_qty, a.allocated_qty, a.sold_qty, 
+                    a.status, a.allocated_date, p.unit_cost
+             FROM sales_team_allocations a
+             JOIN products p ON a.product_id = p.id
+             WHERE a.id = ?`,
+            [item_id]
+        );
+        
+        if (allocation.length === 0) {
+            await connection.rollback();
+            return res.json({ success: false, message: 'Allocation record not found' });
+        }
+        
+        const alloc = allocation[0];
+        
+        if (action === 'accept') {
+            // ACCEPT: Goods are already in warehouse from submit-day
+            // Just mark as closed and confirm
+            if (alloc.returned_qty <= 0) {
+                await connection.rollback();
+                return res.json({ success: false, message: 'No returned goods to accept' });
+            }
+            
+            // Mark allocation as closed
+            await connection.query(
+                'UPDATE sales_team_allocations SET status = "closed" WHERE id = ?',
+                [item_id]
+            );
+            
+            // Also mark any related sales order as confirmed if needed
+            await connection.query(
+                `UPDATE sales_orders so 
+                 SET so.manager_confirmed = 1 
+                 WHERE so.team_id = ? AND so.sales_date = ? AND so.submitted_for_review = 1`,
+                [alloc.team_id, alloc.allocated_date]
+            );
+            
+            await connection.commit();
+            
+            res.json({ 
+                success: true, 
+                message: `${alloc.returned_qty} units accepted and confirmed. Stock already in warehouse.`,
+                accepted: {
+                    units: alloc.returned_qty,
+                    value: alloc.returned_qty * alloc.unit_cost
+                }
+            });
+            
+        } else if (action === 'reject') {
+            // REJECT: Return goods BACK to sales team
+            // This means:
+            // 1. Reverse the returned_qty (set it back to 0)
+            // 2. Remove the goods from warehouse stock
+            // 3. Reactivate the allocation for the sales team
+            
+            if (alloc.returned_qty <= 0) {
+                await connection.rollback();
+                return res.json({ success: false, message: 'No returned goods to reject' });
+            }
+            
+            // Reverse the returned_qty (set to 0)
+            await connection.query(
+                'UPDATE sales_team_allocations SET returned_qty = 0, status = "active" WHERE id = ?',
+                [item_id]
+            );
+            
+            // Remove the goods from warehouse stock (since they were added during submit-day)
+            await connection.query(
+                'UPDATE products SET current_qty = current_qty - ? WHERE id = ?',
+                [alloc.returned_qty, alloc.product_id]
+            );
+            
+            // Also update the sales order to allow resubmission
+            await connection.query(
+                `UPDATE sales_orders so 
+                 SET so.submitted_for_review = 0, so.manager_confirmed = 0 
+                 WHERE so.team_id = ? AND so.sales_date = ?`,
+                [alloc.team_id, alloc.allocated_date]
+            );
+            
+            await connection.commit();
+            
+            res.json({ 
+                success: true, 
+                message: `${alloc.returned_qty} units returned to sales team. Stock removed from warehouse.`,
+                rejected: {
+                    units: alloc.returned_qty,
+                    value: alloc.returned_qty * alloc.unit_cost
+                }
+            });
+        } else {
+            throw new Error('Invalid action');
+        }
+    } catch (error) { 
+        if (connection) await connection.rollback();
+        console.error('Confirm return error:', error);
+        res.status(500).json({ success: false, message: error.message }); 
+    } finally {
+        if (connection) connection.release();
+    }
+});
+app.get('/api/sales/pending-submissions', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const [items] = await pool.query(
+            `SELECT 
+                a.id as return_id,
+                st.team_name,
+                'Returned Goods' as customer_name,
+                p.product_name,
+                a.returned_qty as quantity,
+                (a.returned_qty * p.unit_cost) as amount,
+                'return' as type,
+                a.allocated_date,
+                a.status
+             FROM sales_team_allocations a
+             JOIN sales_teams st ON a.team_id = st.id
+             JOIN products p ON a.product_id = p.id
+             WHERE a.returned_qty > 0
+               AND a.status != 'closed'
+             ORDER BY a.allocated_date DESC`
+        );
+        
+        res.json({ success: true, data: items });
+    } catch (error) { 
+        console.error('Get pending returns error:', error);
+        res.status(500).json({ success: false, message: error.message }); 
+    }
+});
