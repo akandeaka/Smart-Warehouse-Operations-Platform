@@ -17,7 +17,6 @@
             background-color: #f5f7fa;
         }
 
-        /* Header Styles */
         .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -66,12 +65,10 @@
             color: #667eea;
         }
 
-        /* Container */
         .container {
             padding: 30px 40px;
         }
 
-        /* Stats Grid */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -99,7 +96,6 @@
             color: #667eea;
         }
 
-        /* Tabs */
         .tabs {
             display: flex;
             gap: 10px;
@@ -129,7 +125,6 @@
             border-bottom-color: #667eea;
         }
 
-        /* Tab Content */
         .tab-content {
             background: white;
             padding: 30px;
@@ -154,7 +149,6 @@
             font-size: 16px;
         }
 
-        /* Form Styles */
         .form-row {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -228,7 +222,6 @@
             background-color: #c82333;
         }
 
-        /* Table Styles */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -305,7 +298,6 @@
     </style>
 </head>
 <body>
-    <!-- Header -->
     <header class="header">
         <div class="header-title">🏬 Warehouse Manager Dashboard</div>
         <nav class="header-nav">
@@ -318,9 +310,7 @@
     <div id="successMsg" class="success-msg"></div>
     <div id="errorMsg" class="error-msg"></div>
 
-    <!-- Main Container -->
     <div class="container">
-        <!-- Stats Cards -->
         <div class="stats-grid">
             <div class="stat-card">
                 <h3>Total Products</h3>
@@ -336,7 +326,6 @@
             </div>
         </div>
 
-        <!-- Tabs -->
         <div class="tabs">
             <button class="tab active" onclick="switchTab('allocate', this)">📦 Allocate Stock</button>
             <button class="tab" onclick="switchTab('stock', this)">📊 Stock Management</button>
@@ -345,7 +334,6 @@
             <button class="tab" onclick="switchTab('reports', this)">📈 Daily Reports</button>
         </div>
 
-        <!-- Tab 1: Allocate Stock -->
         <div id="allocate" class="tab-content active">
             <h2>➕ New Allocation</h2>
             <div class="form-row">
@@ -369,103 +357,43 @@
                     <button class="btn-allocate" onclick="allocateStock()">✅ Allocate</button>
                 </div>
             </div>
-
             <h3>📋 Today's Allocations</h3>
             <table>
-                <thead>
-                    <tr>
-                        <th>Team</th>
-                        <th>Product</th>
-                        <th>Allocated</th>
-                        <th>Sold</th>
-                        <th>Remaining</th>
-                    </tr>
-                </thead>
-                <tbody id="allocationsTable">
-                    <tr><td colspan="5" class="loading-text">Loading allocations...</td></tr>
-                </tbody>
+                <thead><tr><th>Team</th><th>Product</th><th>Allocated</th><th>Sold</th><th>Remaining</th></tr></thead>
+                <tbody id="allocationsTable"><tr><td colspan="5" class="loading-text">Loading allocations...</td></tr></tbody>
             </table>
         </div>
 
-        <!-- Tab 2: Stock Management -->
         <div id="stock" class="tab-content">
             <h2>📦 Current Stock Levels</h2>
             <table>
-                <thead>
-                    <tr>
-                        <th>Product</th>
-                        <th>Quantity</th>
-                        <th>Unit Cost</th>
-                        <th>Total Value</th>
-                    </tr>
-                </thead>
-                <tbody id="stockTable">
-                    <tr><td colspan="4" class="loading-text">Loading stock...</td></tr>
-                </tbody>
+                <thead><tr><th>Product</th><th>Quantity</th><th>Unit Cost</th><th>Total Value</th></tr></thead>
+                <tbody id="stockTable"><tr><td colspan="4" class="loading-text">Loading stock...</td></tr></tbody>
             </table>
         </div>
 
-        <!-- Tab 3: Credit Approvals -->
         <div id="approvals" class="tab-content">
             <h2>📝 Pending Credit Approvals</h2>
             <table>
-                <thead>
-                    <tr>
-                        <th>Order #</th>
-                        <th>Customer</th>
-                        <th>Original Amount</th>
-                        <th>Modified Amount</th>
-                        <th>Requested By</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="approvalsTable">
-                    <tr><td colspan="6" class="loading-text">Loading approvals...</td></tr>
-                </tbody>
+                <thead><tr><th>Order #</th><th>Customer</th><th>Original Amount</th><th>Modified Amount</th><th>Requested By</th><th>Action</th></tr></thead>
+                <tbody id="approvalsTable"><tr><td colspan="6" class="loading-text">Loading approvals...</td></tr></tbody>
             </table>
         </div>
 
-        <!-- Tab 4: Pending Returns -->
         <div id="returns" class="tab-content">
             <h2>🔄 Pending Returns (Unsold Goods)</h2>
             <table>
-                <thead>
-                    <tr>
-                        <th>Team</th>
-                        <th>Customer</th>
-                        <th>Product</th>
-                        <th>Qty</th>
-                        <th>Amount</th>
-                        <th>Type</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="returnsTable">
-                    <tr><td colspan="7" class="loading-text">Loading returns...</td></tr>
-                </tbody>
+                <thead><tr><th>Team</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Action</th></tr></thead>
+                <tbody id="returnsTable"><tr><td colspan="7" class="loading-text">Loading returns...</td></tr></tbody>
             </table>
         </div>
 
-        <!-- Tab 5: Daily Reports -->
         <div id="reports" class="tab-content">
-            <button class="btn-allocate btn-danger" onclick="closeDay()" style="margin-bottom: 20px;">
-                🔒 Close Day (5 PM)
-            </button>
+            <button class="btn-allocate btn-danger" onclick="closeDay()" style="margin-bottom: 20px;">🔒 Close Day (5 PM)</button>
             <h2>📊 Daily Sales Report</h2>
             <table>
-                <thead>
-                    <tr>
-                        <th>Team</th>
-                        <th>Orders</th>
-                        <th>Cash</th>
-                        <th>Transfer</th>
-                        <th>Credit</th>
-                        <th>Total</th>
-                    </tr>
-                </thead>
-                <tbody id="reportsTable">
-                    <tr><td colspan="6" class="loading-text">Loading report...</td></tr>
-                </tbody>
+                <thead><tr><th>Team</th><th>Orders</th><th>Cash</th><th>Transfer</th><th>Credit</th><th>Total</th></tr></thead>
+                <tbody id="reportsTable"><tr><td colspan="6" class="loading-text">Loading report...</td></tr></tbody>
             </table>
         </div>
     </div>
@@ -508,16 +436,9 @@
             }
         }
 
-        // ==========================================
-        // TAB SWITCHING
-        // ==========================================
         function switchTab(tabId, btnElement) {
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             document.getElementById(tabId).classList.add('active');
             btnElement.classList.add('active');
             loadTabData(tabId);
@@ -536,7 +457,6 @@
 
         function updateCardForTab(tabId) {
             const card3Label = document.getElementById('card3Label');
-            
             if (tabId === 'allocate') {
                 card3Label.innerHTML = 'Pending Approvals';
                 loadPendingApprovalsCount();
@@ -558,10 +478,6 @@
                 loadTodaySalesValue();
             }
         }
-
-        // ==========================================
-        // DATA LOADING FUNCTIONS
-        // ==========================================
 
         async function loadTeams() {
             const data = await fetchAPI('/teams');
@@ -592,16 +508,9 @@
                 if (data.data.length === 0) {
                     html = '<tr><td colspan="5" class="no-data-text">No allocations today</td></tr>';
                 } else {
-                    for (let i = 0; i < data.data.length; i++) {
-                        const a = data.data[i];
+                    for (let a of data.data) {
                         const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
-                        html += `<tr>
-                            <td>${a.team_name}</td>
-                            <td>${a.product_name}</td>
-                            <td>${a.allocated_qty}</td>
-                            <td>${a.sold_qty}</td>
-                            <td>${remaining}</td>
-                        </tr>`;
+                        html += `<tr><td>${a.team_name}</td><td>${a.product_name}</td><td>${a.allocated_qty}</td><td>${a.sold_qty}</td><td>${remaining}</td></tr>`;
                     }
                 }
                 document.getElementById('allocationsTable').innerHTML = html;
@@ -611,17 +520,10 @@
         async function loadProducts() {
             const data = await fetchAPI('/products');
             if (data && data.success) {
-                let totalValue = 0;
-                let html = '';
-                for (let i = 0; i < data.data.length; i++) {
-                    const p = data.data[i];
+                let totalValue = 0, html = '';
+                for (let p of data.data) {
                     totalValue += p.current_qty * p.unit_cost;
-                    html += `<tr>
-                        <td>${p.product_name}</td>
-                        <td>${p.current_qty}</td>
-                        <td>${formatMoney(p.unit_cost)}</td>
-                        <td>${formatMoney(p.current_qty * p.unit_cost)}</td>
-                    </tr>`;
+                    html += `<tr><td>${p.product_name}</td><td>${p.current_qty}</td><td>${formatMoney(p.unit_cost)}</td><td>${formatMoney(p.current_qty * p.unit_cost)}</td></tr>`;
                 }
                 document.getElementById('stockTable').innerHTML = html;
                 document.getElementById('totalProducts').innerText = data.data.length;
@@ -636,30 +538,18 @@
                 if (data.data.length === 0) {
                     html = '<tr><td colspan="6" class="no-data-text">No pending approvals</td></tr>';
                 } else {
-                    for (let i = 0; i < data.data.length; i++) {
-                        const a = data.data[i];
-                        const approvalId = a.id;
-                        html += `<tr>
-                            <td>${a.order_number}</td>
-                            <td>${a.customer_name}</td>
-                            <td>${formatMoney(a.total_amount)}</td>
-                            <td><input type="number" id="amount_${approvalId}" value="${a.total_amount}" step="1000" style="width:100px"></td>
-                            <td>${a.requested_by || 'Unknown'}</td>
-                            <td>
-                                <button class="btn-approve" onclick="approveCredit(${approvalId})">✅ Approve</button>
-                                <button class="btn-reject" onclick="rejectCredit(${approvalId})">❌ Reject</button>
-                            </td>
-                        </tr>`;
+                    for (let a of data.data) {
+                        html += `<tr><td>${a.order_number}</td><td>${a.customer_name}</td><td>${formatMoney(a.total_amount)}</td>
+                        <td><input type="number" id="amount_${a.id}" value="${a.total_amount}" step="1000" style="width:100px"></td>
+                        <td>${a.requested_by || 'Unknown'}</td>
+                        <td><button class="btn-approve" onclick="approveCredit(${a.id})">✅ Approve</button>
+                        <button class="btn-reject" onclick="rejectCredit(${a.id})">❌ Reject</button></td></tr>`;
                     }
                 }
                 document.getElementById('approvalsTable').innerHTML = html;
             }
         }
 
-        // ==========================================
-        // LOAD PENDING RETURNS - CORRECTED VERSION
-        // Uses return_id (allocation ID) instead of id (sales order ID)
-        // ==========================================
         async function loadPendingReturns() {
             const data = await fetchAPI('/sales/pending-submissions');
             if (data && data.success) {
@@ -667,21 +557,13 @@
                 if (data.data.length === 0) {
                     html = '<tr><td colspan="7" class="no-data-text">No pending returns</td></tr>';
                 } else {
-                    for (let i = 0; i < data.data.length; i++) {
-                        const item = data.data[i];
+                    for (let item of data.data) {
                         const isCredit = item.type === 'credit';
-                        html += `<tr>
-                            <td>${item.team_name}</td>
-                            <td>${item.customer_name}</td>
-                            <td>${item.product_name}</td>
-                            <td>${item.quantity}</td>
-                            <td class="${isCredit ? 'credit-amount' : ''}">${isCredit ? formatCreditMoney(item.amount) : formatMoney(item.amount)}</td>
-                            <td>${isCredit ? '📝 Credit' : (item.type === 'cash' ? '💵 Cash' : '🏦 Transfer')}</td>
-                            <td>
-                                <button class="btn-approve" onclick="confirmReturn(${item.return_id}, 'accept')">✅ Accept</button>
-                                <button class="btn-reject" onclick="confirmReturn(${item.return_id}, 'reject')">🔄 Return to Team</button>
-                            </td>
-                        </tr>`;
+                        html += `<tr><td>${item.team_name}</td><td>${item.customer_name}</td><td>${item.product_name}</td>
+                        <td>${item.quantity}</td><td class="${isCredit ? 'credit-amount' : ''}">${isCredit ? formatCreditMoney(item.amount) : formatMoney(item.amount)}</td>
+                        <td>${isCredit ? '📝 Credit' : (item.type === 'cash' ? '💵 Cash' : '🏦 Transfer')}</td>
+                        <td><button class="btn-approve" onclick="confirmReturn(${item.return_id}, 'accept')">✅ Accept</button>
+                        <button class="btn-reject" onclick="confirmReturn(${item.return_id}, 'reject')">🔄 Return to Team</button></td></tr>`;
                     }
                 }
                 document.getElementById('returnsTable').innerHTML = html;
@@ -692,30 +574,20 @@
             const data = await fetchAPI('/reports/daily');
             if (data && data.success) {
                 let html = '';
-                for (let i = 0; i < data.teams.length; i++) {
-                    const t = data.teams[i];
+                for (let t of data.teams) {
                     const creditAmount = t.credit_sales || 0;
-                    html += `<tr>
-                        <td>${t.team_name}</td>
-                        <td>${t.num_orders || 0}</td>
-                        <td>${formatMoney(t.cash_sales || 0)}</td>
-                        <td>${formatMoney(t.transfer_sales || 0)}</td>
-                        <td class="${creditAmount > 0 ? 'credit-amount' : ''}">${creditAmount > 0 ? '-' : ''}${formatMoney(Math.abs(creditAmount))}</td>
-                        <td>${formatMoney(t.total_sales || 0)}</td>
-                    </tr>`;
+                    html += `<tr><td>${t.team_name}</td><td>${t.num_orders || 0}</td>
+                    <td>${formatMoney(t.cash_sales || 0)}</td><td>${formatMoney(t.transfer_sales || 0)}</td>
+                    <td class="${creditAmount > 0 ? 'credit-amount' : ''}">${creditAmount > 0 ? '-' : ''}${formatMoney(Math.abs(creditAmount))}</td>
+                    <td>${formatMoney(t.total_sales || 0)}</td></tr>`;
                 }
                 document.getElementById('reportsTable').innerHTML = html;
             }
         }
 
-        // ==========================================
-        // CARD UPDATE FUNCTIONS
-        // ==========================================
         async function loadPendingApprovalsCount() {
             const data = await fetchAPI('/approvals/pending');
-            if (data && data.success) {
-                document.getElementById('pendingApprovals').innerText = data.data.length;
-            }
+            if (data && data.success) document.getElementById('pendingApprovals').innerText = data.data.length;
         }
 
         async function loadLowStockCount() {
@@ -750,26 +622,15 @@
             }
         }
 
-        // ==========================================
-        // ACTION FUNCTIONS
-        // ==========================================
-
         async function allocateStock() {
             const teamId = document.getElementById('allocateTeamId').value;
             const productId = document.getElementById('allocateProductId').value;
             const quantity = document.getElementById('allocateQuantity').value;
             if (!teamId || !productId || quantity < 1) { showMessage('Please fill all fields', true); return; }
-            
             const result = await fetchAPI('/allocations', {
                 method: 'POST',
-                body: JSON.stringify({ 
-                    team_id: parseInt(teamId), 
-                    product_id: parseInt(productId), 
-                    quantity: parseInt(quantity), 
-                    allocated_date: new Date().toISOString().split('T')[0] 
-                })
+                body: JSON.stringify({ team_id: parseInt(teamId), product_id: parseInt(productId), quantity: parseInt(quantity), allocated_date: new Date().toISOString().split('T')[0] })
             });
-            
             if (result && result.success) {
                 showMessage(result.message);
                 document.getElementById('allocateQuantity').value = '';
@@ -784,14 +645,11 @@
         async function approveCredit(approvalId) {
             const amountInput = document.getElementById('amount_' + approvalId);
             const approvedAmount = amountInput ? amountInput.value : null;
-            
             if (!confirm('Approve this credit for ' + formatMoney(approvedAmount) + '?')) return;
-            
             const result = await fetchAPI('/approvals/approve', {
                 method: 'POST',
                 body: JSON.stringify({ approval_id: approvalId, approved_amount: parseFloat(approvedAmount) })
             });
-            
             if (result && result.success) {
                 showMessage('✅ Credit approved successfully');
                 await loadPendingApprovals();
@@ -804,12 +662,10 @@
 
         async function rejectCredit(approvalId) {
             if (!confirm('Reject this credit request?')) return;
-            
             const result = await fetchAPI('/approvals/reject', {
                 method: 'POST',
                 body: JSON.stringify({ approval_id: approvalId })
             });
-            
             if (result && result.success) {
                 showMessage('❌ Credit rejected');
                 await loadPendingApprovals();
@@ -851,21 +707,6 @@
             window.location.href = 'login.html'; 
         }
 
-        // ==========================================
-        // INITIALIZATION
-        // ==========================================
-        if (!authToken) { 
-            window.location.href = 'login.html';
-        } else {
-            loadTodayAllocations();
-            loadTeams();
-            loadProductsForAllocation();
-            loadPendingApprovalsCount();
-            loadProducts();
-        }
-    </script>
-</body>
-</html>
         // ============================================================
         // SESSION TIMEOUT - Auto logout after 5 minutes inactivity
         // ============================================================
@@ -877,7 +718,7 @@
         function resetInactivityTimer() {
             clearTimeout(inactivityTimer);
             inactivityTimer = setTimeout(() => {
-                showMessage('⏰ Session expired due to inactivity. Logging out...', false, false, true);
+                showMessage('⏰ Session expired due to inactivity. Logging out...');
                 setTimeout(() => { logout(); }, 2000);
             }, INACTIVITY_TIMEOUT);
         }
@@ -906,4 +747,20 @@
             resetAllTimers();
         }
 
-        initSessionTimeout();        
+        initSessionTimeout();
+
+        // ==========================================
+        // INITIALIZATION
+        // ==========================================
+        if (!authToken) { 
+            window.location.href = 'login.html';
+        } else {
+            loadTodayAllocations();
+            loadTeams();
+            loadProductsForAllocation();
+            loadPendingApprovalsCount();
+            loadProducts();
+        }
+    </script>
+</body>
+</html>
