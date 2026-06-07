@@ -548,57 +548,176 @@ app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-// FIXED: PENDING RETURNS - Shows ONLY unsold returned goods
+// SUBMIT DAY SALES - WITH RETURNED_QTY UPDATE
 // ============================================================
-app.get('/api/sales/pending-submissions', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
+    let connection;
     try {
-        const [items] = await pool.query(
-            `SELECT 
-                a.id as return_id,
-                st.team_name,
-                'Returned Goods' as customer_name,
-                p.product_name,
-                a.returned_qty as quantity,
-                (a.returned_qty * p.unit_cost) as amount,
-                'return' as type,
-                a.allocated_date
+        const { team_id, sales_date, move_remaining_goods } = req.body;
+        
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+        
+        // Get remaining goods before submission
+        const [remainingGoods] = await connection.query(
+            `SELECT a.id, a.product_id, 
+                    (a.allocated_qty - a.sold_qty - a.returned_qty) as remaining_qty
              FROM sales_team_allocations a
-             JOIN sales_teams st ON a.team_id = st.id
-             JOIN products p ON a.product_id = p.id
-             WHERE a.returned_qty > 0
-               AND a.status != 'closed'
-             ORDER BY a.allocated_date DESC`
+             WHERE a.team_id = ? AND a.allocated_date = ? AND a.status = 'active'
+               AND (a.allocated_qty - a.sold_qty - a.returned_qty) > 0`,
+            [team_id, sales_date]
         );
         
-        res.json({ success: true, data: items });
+        const hasRemaining = remainingGoods.length > 0;
+        let totalRemaining = 0;
+        for (const goods of remainingGoods) {
+            totalRemaining += goods.remaining_qty;
+        }
+        
+        // If there are remaining goods and user didn't specify what to do
+        if (hasRemaining && move_remaining_goods === undefined) {
+            await connection.rollback();
+            return res.json({ 
+                success: false, 
+                requires_action: true,
+                message: `You have ${totalRemaining} units of unsold goods. What would you like to do?`,
+                total_remaining: totalRemaining
+            });
+        }
+        
+        // Mark sales orders as submitted for review
+        await connection.query(
+            'UPDATE sales_orders SET submitted_for_review = 1 WHERE team_id = ? AND sales_date = ?',
+            [team_id, sales_date]
+        );
+        
+        let returnedCount = 0;
+        
+        // OPTION 1: move_remaining_goods = true (Move goods to warehouse)
+        if (move_remaining_goods === true) {
+            for (const goods of remainingGoods) {
+                if (goods.remaining_qty > 0) {
+                    // UPDATE returned_qty - THIS IS THE KEY FIX
+                    await connection.query(
+                        'UPDATE sales_team_allocations SET returned_qty = returned_qty + ? WHERE id = ?',
+                        [goods.remaining_qty, goods.id]
+                    );
+                    // Return to warehouse stock
+                    await connection.query(
+                        'UPDATE products SET current_qty = current_qty + ? WHERE id = ?',
+                        [goods.remaining_qty, goods.product_id]
+                    );
+                    returnedCount += goods.remaining_qty;
+                }
+            }
+            await connection.commit();
+            res.json({ 
+                success: true, 
+                message: `${returnedCount} units returned to warehouse.`,
+                moved_count: returnedCount
+            });
+        } 
+        // OPTION 2: move_remaining_goods = false (Keep goods for continued selling)
+        else {
+            // Do NOT change returned_qty - goods remain with sales team
+            await connection.commit();
+            res.json({ 
+                success: true, 
+                message: `${totalRemaining} units kept for continued selling. You can still sell them.`,
+                kept_count: totalRemaining
+            });
+        }
+        
     } catch (error) { 
-        console.error('Get pending returns error:', error);
+        if (connection) await connection.rollback();
+        console.error('Submit day error:', error);
         res.status(500).json({ success: false, message: error.message }); 
+    } finally {
+        if (connection) connection.release();
     }
 });
-
+// ============================================================
+// CONFIRM RETURN - Adds goods back to warehouse stock
+// ============================================================
 app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     let connection;
     try {
         const { item_id, action } = req.body;
         
         connection = await pool.getConnection();
+        await connection.beginTransaction();
         
         if (action === 'accept') {
-            await connection.query('UPDATE sales_orders SET manager_confirmed = 1 WHERE id = ?', [item_id]);
+            // Get the returned goods details
+            const [returnItems] = await connection.query(
+                `SELECT a.product_id, a.returned_qty, p.unit_cost
+                 FROM sales_team_allocations a
+                 JOIN products p ON a.product_id = p.id
+                 WHERE a.id = ? AND a.returned_qty > 0`,
+                [item_id]
+            );
+            
+            if (returnItems.length === 0) {
+                await connection.rollback();
+                return res.json({ success: false, message: 'No returned goods found' });
+            }
+            
+            const item = returnItems[0];
+            
+            // Already added to warehouse during submit-day, so just mark as processed
+            // Update allocation status to closed/processed
+            await connection.query(
+                'UPDATE sales_team_allocations SET status = "closed" WHERE id = ?',
+                [item_id]
+            );
+            
+            await connection.commit();
+            
+            res.json({ 
+                success: true, 
+                message: `${item.returned_qty} units accepted and confirmed.`,
+                returned: {
+                    units: item.returned_qty,
+                    value: item.returned_qty * item.unit_cost
+                }
+            });
+            
         } else if (action === 'reject') {
-            await connection.query('UPDATE sales_orders SET submitted_for_review = 0 WHERE id = ?', [item_id]);
+            // Reject the return - reverse the returned_qty and restore to sales team
+            const [returnItems] = await connection.query(
+                `SELECT a.product_id, a.returned_qty
+                 FROM sales_team_allocations a
+                 WHERE a.id = ? AND a.returned_qty > 0`,
+                [item_id]
+            );
+            
+            if (returnItems.length > 0) {
+                const item = returnItems[0];
+                // Reverse the returned_qty
+                await connection.query(
+                    'UPDATE sales_team_allocations SET returned_qty = returned_qty - ? WHERE id = ?',
+                    [item.returned_qty, item_id]
+                );
+                // Remove from warehouse stock
+                await connection.query(
+                    'UPDATE products SET current_qty = current_qty - ? WHERE id = ?',
+                    [item.returned_qty, item.product_id]
+                );
+            }
+            
+            await connection.commit();
+            res.json({ success: true, message: 'Return rejected. Goods returned to sales team.' });
+        } else {
+            throw new Error('Invalid action');
         }
-        
-        res.json({ success: true, message: `Return ${action}ed successfully` });
     } catch (error) { 
+        if (connection) await connection.rollback();
         console.error('Confirm return error:', error);
         res.status(500).json({ success: false, message: error.message }); 
     } finally {
         if (connection) connection.release();
     }
 });
-
 // ============================================================
 // REPORTS
 // ============================================================
