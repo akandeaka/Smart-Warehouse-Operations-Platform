@@ -4,157 +4,470 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Warehouse Manager Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .header h1 { font-size: 22px; }
-        .nav-links { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
-        .nav-link { color: white; text-decoration: none; padding: 8px 16px; border-radius: 5px; transition: background 0.3s; }
-        .nav-link:hover { background: rgba(255,255,255,0.2); }
-        .logout-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; border: none; color: white; font-size: 14px; }
-        .logout-btn:hover { background: rgba(255,255,255,0.3); }
-        .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; padding: 20px; }
-        .stat-card { background: white; padding: 20px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .stat-card .label { font-size: 14px; color: #666; margin-bottom: 10px; }
-        .stat-card .value { font-size: 28px; font-weight: bold; color: #667eea; }
-        .tabs { background: white; padding: 0 20px; display: flex; gap: 5px; border-bottom: 2px solid #ddd; flex-wrap: wrap; }
-        .tab { padding: 12px 24px; cursor: pointer; border: none; background: none; font-size: 16px; }
-        .tab.active { border-bottom: 3px solid #667eea; color: #667eea; font-weight: bold; }
-        .panel { display: none; padding: 20px; }
-        .panel.active { display: block; }
-        table { width: 100%; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-collapse: collapse; }
-        th { background: #f8f9fa; padding: 12px; text-align: left; }
-        td { padding: 12px; border-top: 1px solid #eee; }
-        .form-card { background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
-        .form-row { display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
-        .form-group { flex: 1; min-width: 150px; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
-        .allocate-btn { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
-        .approve-btn { background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
-        .reject-btn { background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 5px; cursor: pointer; margin: 2px; }
-        .close-day-btn { background: #ffc107; color: #333; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; margin-bottom: 20px; }
-        .loading { text-align: center; padding: 40px; color: #666; }
-        .success-msg { background: #d4edda; color: #155724; padding: 12px; margin: 20px; border-radius: 5px; display: none; }
-        .error-msg { background: #f8d7da; color: #721c24; padding: 12px; margin: 20px; border-radius: 5px; display: none; }
-        .credit-amount { color: #dc3545; font-weight: bold; }
-        .credit-amount::before { content: "- "; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+        }
+
+        /* Header Styles */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .header-nav a {
+            color: white;
+            text-decoration: none;
+            font-size: 15px;
+            transition: opacity 0.3s;
+        }
+
+        .header-nav a:hover {
+            opacity: 0.8;
+        }
+
+        .logout-btn {
+            background-color: rgba(255,255,255,0.2);
+            border: 1px solid white;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            color: white;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background-color: white;
+            color: #667eea;
+        }
+
+        /* Container */
+        .container {
+            padding: 30px 40px;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 15px;
+            font-weight: 500;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .tab-content h2 {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 20px;
+        }
+
+        .tab-content h3 {
+            margin: 20px 0 15px 0;
+            color: #444;
+            font-size: 16px;
+        }
+
+        /* Form Styles */
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            align-items: end;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-group select,
+        .form-group input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .btn-allocate {
+            background-color: #28a745;
+            color: white;
+            padding: 10px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+
+        .btn-allocate:hover {
+            background-color: #218838;
+        }
+
+        .btn-approve {
+            background-color: #28a745;
+            color: white;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-right: 5px;
+        }
+
+        .btn-reject {
+            background-color: #dc3545;
+            color: white;
+            padding: 6px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        /* Table Styles */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+
+        tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .credit-amount {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .credit-amount::before {
+            content: "- ";
+        }
+
+        .loading-text {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .error-text {
+            text-align: center;
+            padding: 20px;
+            color: #dc3545;
+        }
+
+        .no-data-text {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+        }
+
+        .success-msg, .error-msg {
+            padding: 12px;
+            margin: 20px;
+            border-radius: 5px;
+            display: none;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .success-msg {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error-msg {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🏬 Warehouse Manager Dashboard</h1>
-        <div class="nav-links">
-            <a href="manager-dashboard.html" class="nav-link">🏠 Dashboard</a>
-            <a href="manager-performance.html" class="nav-link" style="background: rgba(255,193,7,0.3);">📊 Performance</a>
-            <button class="logout-btn" onclick="logout()">🚪 Logout</button>
-        </div>
-    </div>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-title">🏬 Warehouse Manager Dashboard</div>
+        <nav class="header-nav">
+            <a href="manager-dashboard.html"><i class="fas fa-home"></i> Dashboard</a>
+            <a href="manager-performance.html"><i class="fas fa-chart-bar"></i> Performance</a>
+            <button class="logout-btn" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        </nav>
+    </header>
 
     <div id="successMsg" class="success-msg"></div>
     <div id="errorMsg" class="error-msg"></div>
 
-    <div class="stats-container">
-        <div class="stat-card">
-            <div class="label">Total Products</div>
-            <div class="value" id="totalProducts">0</div>
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Products</h3>
+                <div class="value" id="totalProducts">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Warehouse Value (₦)</h3>
+                <div class="value" id="totalValue">₦0</div>
+            </div>
+            <div class="stat-card">
+                <h3 id="card3Label">Pending Approvals</h3>
+                <div class="value" id="pendingApprovals">0</div>
+            </div>
         </div>
-        <div class="stat-card">
-            <div class="label">Warehouse Value (₦)</div>
-            <div class="value" id="totalValue">₦0</div>
-        </div>
-        <div class="stat-card">
-            <div class="label" id="card3Label">Pending Approvals</div>
-            <div class="value" id="pendingApprovals">0</div>
-        </div>
-    </div>
 
-    <div class="tabs">
-        <button class="tab active" onclick="showPanel('allocate')">📦 Allocate Stock</button>
-        <button class="tab" onclick="showPanel('stock')">📊 Stock Management</button>
-        <button class="tab" onclick="showPanel('approvals')">✅ Credit Approvals</button>
-        <button class="tab" onclick="showPanel('returns')">🔄 Pending Returns</button>
-        <button class="tab" onclick="showPanel('reports')">📈 Daily Reports</button>
-    </div>
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('allocate', this)">📦 Allocate Stock</button>
+            <button class="tab" onclick="switchTab('stock', this)">📊 Stock Management</button>
+            <button class="tab" onclick="switchTab('approvals', this)">✅ Credit Approvals</button>
+            <button class="tab" onclick="switchTab('returns', this)">🔄 Pending Returns</button>
+            <button class="tab" onclick="switchTab('reports', this)">📈 Daily Reports</button>
+        </div>
 
-    <!-- Allocate Stock Panel -->
-    <div id="allocatePanel" class="panel active">
-        <div class="form-card">
-            <h3>➕ New Allocation</h3>
+        <!-- Tab 1: Allocate Stock -->
+        <div id="allocate" class="tab-content active">
+            <h2>➕ New Allocation</h2>
             <div class="form-row">
                 <div class="form-group">
-                    <label>Select Team</label>
-                    <select id="allocateTeamId"></select>
+                    <label>Team</label>
+                    <select id="allocateTeamId">
+                        <option value="">Select Team</option>
+                    </select>
                 </div>
                 <div class="form-group">
-                    <label>Select Product</label>
-                    <select id="allocateProductId"></select>
+                    <label>Product</label>
+                    <select id="allocateProductId">
+                        <option value="">Select Product</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>Quantity</label>
                     <input type="number" id="allocateQuantity" min="1" placeholder="Enter quantity">
                 </div>
                 <div class="form-group">
-                    <button class="allocate-btn" onclick="allocateStock()">✅ Allocate</button>
+                    <button class="btn-allocate" onclick="allocateStock()">✅ Allocate</button>
                 </div>
             </div>
+
+            <h3>📋 Today's Allocations</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Team</th>
+                        <th>Product</th>
+                        <th>Allocated</th>
+                        <th>Sold</th>
+                        <th>Remaining</th>
+                    </tr>
+                </thead>
+                <tbody id="allocationsTable">
+                    <tr><td colspan="5" class="loading-text">Loading allocations...</td></tr>
+                </tbody>
+            </table>
         </div>
-        <h3>📋 Today's Allocations</h3>
-        <div id="allocationsLoading" class="loading">Loading allocations...</div>
-        <table id="allocationsTable" style="display:none">
-            <thead>
-                <tr><th>Team</th><th>Product</th><th>Allocated</th><th>Sold</th><th>Remaining</th></tr>
-            </thead>
-            <tbody id="allocationsTableBody"></tbody>
-        寸
-    </div>
 
-    <!-- Stock Management Panel -->
-    <div id="stockPanel" class="panel">
-        <h3>📦 Current Stock Levels</h3>
-        <div id="stockLoading" class="loading">Loading stock...</div>
-        <table id="stockTable" style="display:none">
-            <thead><tr><th>Product</th><th>Quantity</th><th>Unit Cost</th><th>Total Value</th></tr></thead>
-            <tbody id="stockTableBody"></tbody>
-        寸
-    </div>
+        <!-- Tab 2: Stock Management -->
+        <div id="stock" class="tab-content">
+            <h2>📦 Current Stock Levels</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Quantity</th>
+                        <th>Unit Cost</th>
+                        <th>Total Value</th>
+                    </tr>
+                </thead>
+                <tbody id="stockTable">
+                    <tr><td colspan="4" class="loading-text">Loading stock...</td></tr>
+                </tbody>
+            </table>
+        </div>
 
-    <!-- Credit Approvals Panel -->
-    <div id="approvalsPanel" class="panel">
-        <h3>📝 Pending Credit Approvals</h3>
-        <div id="approvalsLoading" class="loading">Loading approvals...</div>
-        <table id="approvalsTable" style="display:none">
-            <thead>
-                <tr><th>Order #</th><th>Customer</th><th>Original Amount</th><th>Modified Amount</th><th>Requested By</th><th>Action</th></tr>
-            </thead>
-            <tbody id="approvalsTableBody"></tbody>
-        寸
-    </div>
+        <!-- Tab 3: Credit Approvals -->
+        <div id="approvals" class="tab-content">
+            <h2>📝 Pending Credit Approvals</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Order #</th>
+                        <th>Customer</th>
+                        <th>Original Amount</th>
+                        <th>Modified Amount</th>
+                        <th>Requested By</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="approvalsTable">
+                    <tr><td colspan="6" class="loading-text">Loading approvals...</td></tr>
+                </tbody>
+            </table>
+        </div>
 
-    <!-- Pending Returns Panel -->
-    <div id="returnsPanel" class="panel">
-        <h3>🔄 Pending Returns (Unsold Goods)</h3>
-        <div id="returnsLoading" class="loading">Loading returns...</div>
-        <table id="returnsTable" style="display:none">
-            <thead>
-                <td><th>Team</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Action</th></tr>
-            </thead>
-            <tbody id="returnsTableBody"></tbody>
-        寸
-    </div>
+        <!-- Tab 4: Pending Returns -->
+        <div id="returns" class="tab-content">
+            <h2>🔄 Pending Returns (Unsold Goods)</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Team</th>
+                        <th>Customer</th>
+                        <th>Product</th>
+                        <th>Qty</th>
+                        <th>Amount</th>
+                        <th>Type</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="returnsTable">
+                    <tr><td colspan="7" class="loading-text">Loading returns...</td></tr>
+                </tbody>
+            </table>
+        </div>
 
-    <!-- Daily Reports Panel -->
-    <div id="reportsPanel" class="panel">
-        <button class="close-day-btn" onclick="closeDay()">🔒 Close Day (5 PM)</button>
-        <h3>📊 Daily Sales Report</h3>
-        <div id="reportLoading" class="loading">Loading report...</div>
-        <table id="salesReportTable" style="display:none">
-            <thead>
-                <tr><th>Team</th><th>Orders</th><th>Cash</th><th>Transfer</th><th>Credit</th><th>Total</th></tr>
-            </thead>
-            <tbody id="salesReportBody"></tbody>
-        寸
+        <!-- Tab 5: Daily Reports -->
+        <div id="reports" class="tab-content">
+            <button class="btn-allocate btn-danger" onclick="closeDay()" style="margin-bottom: 20px;">
+                🔒 Close Day (5 PM)
+            </button>
+            <h2>📊 Daily Sales Report</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Team</th>
+                        <th>Orders</th>
+                        <th>Cash</th>
+                        <th>Transfer</th>
+                        <th>Credit</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody id="reportsTable">
+                    <tr><td colspan="6" class="loading-text">Loading report...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <script>
@@ -195,34 +508,223 @@
             }
         }
 
-        // ============================================================
-        // CARD UPDATE FUNCTIONS - Dynamic based on active tab
-        // ============================================================
-        async function updateCardsForTab(tabName) {
-            const card3Label = document.getElementById('card3Label');
+        // ==========================================
+        // TAB SWITCHING
+        // ==========================================
+        function switchTab(tabId, btnElement) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
             
-            if (tabName === 'allocate') {
-                card3Label.innerHTML = 'Pending Approvals';
-                await loadPendingApprovalsCount();
-            }
-            else if (tabName === 'stock') {
-                card3Label.innerHTML = 'Low Stock Items';
-                await loadLowStockCount();
-            }
-            else if (tabName === 'approvals') {
-                card3Label.innerHTML = 'Pending Credit Value';
-                await loadPendingCreditValue();
-            }
-            else if (tabName === 'returns') {
-                card3Label.innerHTML = 'Pending Returns Value';
-                await loadPendingReturnsValue();
-            }
-            else if (tabName === 'reports') {
-                card3Label.innerHTML = "Today's Sales";
-                await loadTodaySalesValue();
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabId).classList.add('active');
+            btnElement.classList.add('active');
+            
+            // Load data for this tab
+            loadTabData(tabId);
+            
+            // Update third card based on tab
+            updateCardForTab(tabId);
+        }
+
+        function loadTabData(tabId) {
+            switch(tabId) {
+                case 'allocate': loadTodayAllocations(); loadTeams(); loadProductsForAllocation(); break;
+                case 'stock': loadProducts(); break;
+                case 'approvals': loadPendingApprovals(); break;
+                case 'returns': loadPendingReturns(); break;
+                case 'reports': loadDailyReport(); break;
             }
         }
 
+        // Update third card based on active tab
+        function updateCardForTab(tabId) {
+            const card3Label = document.getElementById('card3Label');
+            const card3Value = document.getElementById('pendingApprovals');
+            
+            if (tabId === 'allocate') {
+                card3Label.innerHTML = 'Pending Approvals';
+                loadPendingApprovalsCount();
+            }
+            else if (tabId === 'stock') {
+                card3Label.innerHTML = 'Low Stock Items';
+                loadLowStockCount();
+            }
+            else if (tabId === 'approvals') {
+                card3Label.innerHTML = 'Pending Credit Value';
+                loadPendingCreditValue();
+            }
+            else if (tabId === 'returns') {
+                card3Label.innerHTML = 'Pending Returns Value';
+                loadPendingReturnsValue();
+            }
+            else if (tabId === 'reports') {
+                card3Label.innerHTML = "Today's Sales";
+                loadTodaySalesValue();
+            }
+        }
+
+        // ==========================================
+        // DATA LOADING FUNCTIONS
+        // ==========================================
+
+        // Load Teams for dropdown
+        async function loadTeams() {
+            const data = await fetchAPI('/teams');
+            if (data && data.success) {
+                let html = '<option value="">Select Team</option>';
+                data.data.forEach(t => { html += `<option value="${t.id}">${t.team_name}</option>`; });
+                document.getElementById('allocateTeamId').innerHTML = html;
+            }
+        }
+
+        // Load Products for dropdown
+        async function loadProductsForAllocation() {
+            const data = await fetchAPI('/products');
+            if (data && data.success) {
+                let html = '<option value="">Select Product</option>';
+                data.data.forEach(p => {
+                    if (p.current_qty > 0) {
+                        html += `<option value="${p.id}" data-stock="${p.current_qty}">${p.product_name} (${p.current_qty} left, ${formatMoney(p.selling_price)})</option>`;
+                    }
+                });
+                document.getElementById('allocateProductId').innerHTML = html;
+            }
+        }
+
+        // Load Today's Allocations
+        async function loadTodayAllocations() {
+            const data = await fetchAPI('/allocations/today');
+            if (data && data.success) {
+                let html = '';
+                if (data.data.length === 0) {
+                    html = '<tr><td colspan="5" class="no-data-text">No allocations today</td></tr>';
+                } else {
+                    for (let i = 0; i < data.data.length; i++) {
+                        const a = data.data[i];
+                        const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
+                        html += `<tr>
+                            <td>${a.team_name}</td>
+                            <td>${a.product_name}</td>
+                            <td>${a.allocated_qty}</td>
+                            <td>${a.sold_qty}</td>
+                            <td>${remaining}</td>
+                        </tr>`;
+                    }
+                }
+                document.getElementById('allocationsTable').innerHTML = html;
+            }
+        }
+
+        // Load Stock Products
+        async function loadProducts() {
+            const data = await fetchAPI('/products');
+            if (data && data.success) {
+                let totalValue = 0;
+                let html = '';
+                for (let i = 0; i < data.data.length; i++) {
+                    const p = data.data[i];
+                    totalValue += p.current_qty * p.unit_cost;
+                    html += `<tr>
+                        <td>${p.product_name}</td>
+                        <td>${p.current_qty}</td>
+                        <td>${formatMoney(p.unit_cost)}</td>
+                        <td>${formatMoney(p.current_qty * p.unit_cost)}</td>
+                    </tr>`;
+                }
+                document.getElementById('stockTable').innerHTML = html;
+                document.getElementById('totalProducts').innerText = data.data.length;
+                document.getElementById('totalValue').innerHTML = formatMoney(totalValue);
+            }
+        }
+
+        // Load Pending Approvals
+        async function loadPendingApprovals() {
+            const data = await fetchAPI('/approvals/pending');
+            if (data && data.success) {
+                let html = '';
+                if (data.data.length === 0) {
+                    html = '<tr><td colspan="6" class="no-data-text">No pending approvals</td></tr>';
+                } else {
+                    for (let i = 0; i < data.data.length; i++) {
+                        const a = data.data[i];
+                        const approvalId = a.id;
+                        html += `<tr>
+                            <td>${a.order_number}</td>
+                            <td>${a.customer_name}</td>
+                            <td>${formatMoney(a.total_amount)}</td>
+                            <td><input type="number" id="amount_${approvalId}" value="${a.total_amount}" step="1000" style="width:100px"></td>
+                            <td>${a.requested_by || 'Unknown'}</td>
+                            <td>
+                                <button class="btn-approve" onclick="approveCredit(${approvalId})">✅ Approve</button>
+                                <button class="btn-reject" onclick="rejectCredit(${approvalId})">❌ Reject</button>
+                            </td>
+                        </tr>`;
+                    }
+                }
+                document.getElementById('approvalsTable').innerHTML = html;
+            }
+        }
+
+        // Load Pending Returns
+        async function loadPendingReturns() {
+            const data = await fetchAPI('/sales/pending-submissions');
+            if (data && data.success) {
+                let html = '';
+                if (data.data.length === 0) {
+                    html = '<tr><td colspan="7" class="no-data-text">No pending returns</td></tr>';
+                } else {
+                    for (let i = 0; i < data.data.length; i++) {
+                        const item = data.data[i];
+                        const isCredit = item.type === 'credit';
+                        html += `<tr>
+                            <td>${item.team_name}</td>
+                            <td>${item.customer_name}</td>
+                            <td>${item.product_name}</td>
+                            <td>${item.quantity}</td>
+                            <td class="${isCredit ? 'credit-amount' : ''}">${isCredit ? formatCreditMoney(item.amount) : formatMoney(item.amount)}</td>
+                            <td>${isCredit ? '📝 Credit' : (item.type === 'cash' ? '💵 Cash' : '🏦 Transfer')}</td>
+                            <td>
+                                <button class="btn-approve" onclick="confirmReturn(${item.id}, 'accept')">✅ Accept</button>
+                                <button class="btn-reject" onclick="confirmReturn(${item.id}, 'reject')">🔄 Return to Team</button>
+                            </td>
+                        </tr>`;
+                    }
+                }
+                document.getElementById('returnsTable').innerHTML = html;
+            }
+        }
+
+        // Load Daily Report
+        async function loadDailyReport() {
+            const data = await fetchAPI('/reports/daily');
+            if (data && data.success) {
+                let html = '';
+                for (let i = 0; i < data.teams.length; i++) {
+                    const t = data.teams[i];
+                    const creditAmount = t.credit_sales || 0;
+                    html += `<tr>
+                        <td>${t.team_name}</td>
+                        <td>${t.num_orders || 0}</td>
+                        <td>${formatMoney(t.cash_sales || 0)}</td>
+                        <td>${formatMoney(t.transfer_sales || 0)}</td>
+                        <td class="${creditAmount > 0 ? 'credit-amount' : ''}">${creditAmount > 0 ? '-' : ''}${formatMoney(Math.abs(creditAmount))}</td>
+                        <td>${formatMoney(t.total_sales || 0)}</td>
+                    </tr>`;
+                }
+                document.getElementById('reportsTable').innerHTML = html;
+            }
+        }
+
+        // ==========================================
+        // CARD UPDATE FUNCTIONS
+        // ==========================================
         async function loadPendingApprovalsCount() {
             const data = await fetchAPI('/approvals/pending');
             if (data && data.success) {
@@ -262,31 +764,11 @@
             }
         }
 
-        // ============================================================
-        // ORIGINAL FUNCTIONS
-        // ============================================================
-        async function loadTeams() {
-            const data = await fetchAPI('/teams');
-            if (data && data.success) {
-                let html = '<option value="">Select Team</option>';
-                data.data.forEach(t => { html += '<option value="' + t.id + '">' + t.team_name + '</option>'; });
-                document.getElementById('allocateTeamId').innerHTML = html;
-            }
-        }
+        // ==========================================
+        // ACTION FUNCTIONS
+        // ==========================================
 
-        async function loadProductsForAllocation() {
-            const data = await fetchAPI('/products');
-            if (data && data.success) {
-                let html = '<option value="">Select Product</option>';
-                data.data.forEach(p => {
-                    if (p.current_qty > 0) {
-                        html += '<option value="' + p.id + '" data-stock="' + p.current_qty + '">' + p.product_name + ' (' + p.current_qty + ' left, ' + formatMoney(p.selling_price) + ')</option>';
-                    }
-                });
-                document.getElementById('allocateProductId').innerHTML = html;
-            }
-        }
-
+        // Allocate Stock
         async function allocateStock() {
             const teamId = document.getElementById('allocateTeamId').value;
             const productId = document.getElementById('allocateProductId').value;
@@ -314,82 +796,7 @@
             }
         }
 
-        async function loadTodayAllocations() {
-            const data = await fetchAPI('/allocations/today');
-            if (data && data.success) {
-                let html = '';
-                if (data.data.length === 0) {
-                    html = '</table><td colspan="5">No allocations today</td></tr>';
-                } else {
-                    for (let i = 0; i < data.data.length; i++) {
-                        const a = data.data[i];
-                        const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
-                        html += '<tr>';
-                        html += '<td>' + a.team_name + '</tr>';
-                        html += '<td>' + a.product_name + '</td>';
-                        html += '<td>' + a.allocated_qty + '</td>';
-                        html += '<td>' + a.sold_qty + '</td>';
-                        html += '<td>' + remaining + '</td>';
-                        html += '</tr>';
-                    }
-                }
-                document.getElementById('allocationsTableBody').innerHTML = html;
-                document.getElementById('allocationsLoading').style.display = 'none';
-                document.getElementById('allocationsTable').style.display = 'table';
-            }
-        }
-
-        async function loadProducts() {
-            const data = await fetchAPI('/products');
-            if (data && data.success) {
-                let totalValue = 0, html = '';
-                for (let i = 0; i < data.data.length; i++) {
-                    const p = data.data[i];
-                    totalValue += p.current_qty * p.unit_cost;
-                    html += '<tr>';
-                    html += '<td>' + p.product_name + '</td>';
-                    html += '<td>' + p.current_qty + '</td>';
-                    html += '<td>' + formatMoney(p.unit_cost) + '</td>';
-                    html += '<td>' + formatMoney(p.current_qty * p.unit_cost) + '</td>';
-                    html += '</tr>';
-                }
-                document.getElementById('stockTableBody').innerHTML = html;
-                document.getElementById('totalProducts').innerText = data.data.length;
-                document.getElementById('totalValue').innerHTML = formatMoney(totalValue);
-                document.getElementById('stockLoading').style.display = 'none';
-                document.getElementById('stockTable').style.display = 'table';
-            }
-        }
-
-        async function loadPendingApprovals() {
-            const data = await fetchAPI('/approvals/pending');
-            if (data && data.success) {
-                let html = '';
-                if (data.data.length === 0) {
-                    html = '<tr><td colspan="6">No pending approvals</td></tr>';
-                } else {
-                    for (let i = 0; i < data.data.length; i++) {
-                        const a = data.data[i];
-                        const approvalId = a.id;
-                        html += '<tr>';
-                        html += '<td>' + a.order_number + '</td>';
-                        html += '<td>' + a.customer_name + '</td>';
-                        html += '<td>' + formatMoney(a.total_amount) + '</td>';
-                        html += '<td><input type="number" id="amount_' + approvalId + '" value="' + a.total_amount + '" step="1000" style="width:100px"></td>';
-                        html += '<td>' + (a.requested_by || 'Unknown') + '</td>';
-                        html += '<td>';
-                        html += '<button class="approve-btn" onclick="approveCredit(' + approvalId + ')">✅ Approve</button>';
-                        html += '<button class="reject-btn" onclick="rejectCredit(' + approvalId + ')">❌ Reject</button>';
-                        html += '</td>';
-                        html += '</tr>';
-                    }
-                }
-                document.getElementById('approvalsTableBody').innerHTML = html;
-                document.getElementById('approvalsLoading').style.display = 'none';
-                document.getElementById('approvalsTable').style.display = 'table';
-            }
-        }
-
+        // Approve Credit
         async function approveCredit(approvalId) {
             const amountInput = document.getElementById('amount_' + approvalId);
             const approvedAmount = amountInput ? amountInput.value : null;
@@ -411,6 +818,7 @@
             }
         }
 
+        // Reject Credit
         async function rejectCredit(approvalId) {
             if (!confirm('Reject this credit request?')) return;
             
@@ -427,42 +835,14 @@
             }
         }
 
-        async function loadPendingReturns() {
-            const data = await fetchAPI('/sales/pending-submissions');
-            if (data && data.success) {
-                let html = '';
-                if (data.data.length === 0) {
-                    html = '<tr><td colspan="7">No pending returns</td></tr>';
-                } else {
-                    for (let i = 0; i < data.data.length; i++) {
-                        const item = data.data[i];
-                        html += '<tr>';
-                        html += '<td>' + item.team_name + '</td>';
-                        html += '<td>' + item.customer_name + '</td>';
-                        html += '<td>' + item.product_name + '</td>';
-                        html += '<td>' + item.quantity + '</td>';
-                        html += '<td>' + formatMoney(item.amount) + '</td>';
-                        html += '<td>' + (item.type === 'return' ? '🔄 Return' : item.type) + '</td>';
-                        html += '<td>';
-                        html += '<button class="approve-btn" onclick="confirmReturn(' + item.return_id + ', \'accept\')">✅ Accept</button>';
-                        html += '<button class="reject-btn" onclick="confirmReturn(' + item.return_id + ', \'reject\')">🔄 Return to Team</button>';
-                        html += '</td>';
-                        html += '</tr>';
-                    }
-                }
-                document.getElementById('returnsTableBody').innerHTML = html;
-                document.getElementById('returnsLoading').style.display = 'none';
-                document.getElementById('returnsTable').style.display = 'table';
-            }
-        }
-
+        // Confirm Return
         async function confirmReturn(itemId, action) {
             const result = await fetchAPI('/sales/confirm-return', {
                 method: 'POST',
                 body: JSON.stringify({ item_id: itemId, action: action })
             });
             if (result && result.success) {
-                showMessage(action === 'accept' ? '✅ Return accepted' : '🔄 Return rejected');
+                showMessage(action === 'accept' ? '✅ Item accepted and moved to warehouse' : '🔄 Item returned to team for resubmission');
                 await loadPendingReturns();
                 await loadProducts();
             } else {
@@ -470,28 +850,7 @@
             }
         }
 
-        async function loadDailyReport() {
-            const data = await fetchAPI('/reports/daily');
-            if (data && data.success) {
-                let html = '';
-                for (let i = 0; i < data.teams.length; i++) {
-                    const t = data.teams[i];
-                    const creditAmount = t.credit_sales || 0;
-                    html += '<tr>';
-                    html += '<td>' + t.team_name + '</td>';
-                    html += '<td>' + (t.num_orders || 0) + '</td>';
-                    html += '<td>' + formatMoney(t.cash_sales || 0) + '</td>';
-                    html += '<td>' + formatMoney(t.transfer_sales || 0) + '</td>';
-                    html += '<td class="' + (creditAmount > 0 ? 'credit-amount' : '') + '">' + (creditAmount > 0 ? '-' : '') + formatMoney(Math.abs(creditAmount)) + '</td>';
-                    html += '<td>' + formatMoney(t.total_sales || 0) + '</td>';
-                    html += '</tr>';
-                }
-                document.getElementById('salesReportBody').innerHTML = html;
-                document.getElementById('reportLoading').style.display = 'none';
-                document.getElementById('salesReportTable').style.display = 'table';
-            }
-        }
-
+        // Close Day
         async function closeDay() {
             if (confirm('⚠️ CLOSE DAY?\n\nThis will:\n- Return all unsold stock to warehouse\n- Lock today\'s transactions\n- Cannot be undone!\n\nContinue?')) {
                 const result = await fetchAPI('/daily/close', { method: 'POST' });
@@ -506,48 +865,26 @@
             }
         }
 
-        // ============================================================
-        // SHOW PANEL - FIXED (from Version 6 with card updates added)
-        // ============================================================
-        function showPanel(name) {
-            // Hide all panels
-            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-            // Remove active class from all tabs
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            
-            // Show selected panel (using Version 6 logic)
-            const panels = ['allocate', 'stock', 'approvals', 'returns', 'reports'];
-            const index = panels.indexOf(name);
-            document.querySelectorAll('.tab')[index].classList.add('active');
-            document.getElementById(name + 'Panel').classList.add('active');
-            
-            // Load data for selected panel
-            if (name === 'allocate') { loadTodayAllocations(); loadTeams(); loadProductsForAllocation(); }
-            if (name === 'stock') loadProducts();
-            if (name === 'approvals') loadPendingApprovals();
-            if (name === 'returns') loadPendingReturns();
-            if (name === 'reports') loadDailyReport();
-            
-            // Update the third card (from Version 19)
-            updateCardsForTab(name);
+        // Logout
+        function logout() { 
+            localStorage.clear(); 
+            window.location.href = 'login.html'; 
         }
 
-        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
-
-        // ============================================================
+        // ==========================================
         // INITIALIZATION
-        // ============================================================
+        // ==========================================
         if (!authToken) { 
             window.location.href = 'login.html';
         } else {
+            // Load initial data for Allocate Stock tab (active by default)
             loadTodayAllocations();
             loadTeams();
             loadProductsForAllocation();
-            updateCardsForTab('allocate');
+            loadPendingApprovalsCount();
+            // Also load products for stock management (but they will only display when tab is clicked)
+            loadProducts();
         }
-
-        // Ensure showPanel is globally accessible
-        window.showPanel = showPanel;
     </script>
 </body>
 </html>
