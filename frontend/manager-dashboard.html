@@ -867,12 +867,12 @@
 </body>
 </html>
         // ============================================================
-        // SESSION TIMEOUT - Auto logout after 30 minutes inactivity
+        // SESSION TIMEOUT - Auto logout after 5 minutes inactivity
         // ============================================================
         let inactivityTimer;
         let warningTimer;
-        const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
-        const WARNING_TIME = 29 * 60 * 1000; // 29 minutes
+        const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+        const WARNING_TIME = 4 * 60 * 1000; // 4 minutes
 
         function resetInactivityTimer() {
             clearTimeout(inactivityTimer);
@@ -906,4 +906,4 @@
             resetAllTimers();
         }
 
-        initSessionTimeout();
+        initSessionTimeout();        
