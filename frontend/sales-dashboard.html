@@ -73,7 +73,6 @@
     <div id="warningMsg" class="warning-msg"></div>
     <div id="infoMsg" class="info-msg"></div>
 
-    <!-- TODAY'S STATS - Resets to zero on new day -->
     <div class="stats-container">
         <div class="stat-card"><div class="label">Cash Sales</div><div class="value" id="cashSales">₦0</div></div>
         <div class="stat-card"><div class="label">Transfer Sales</div><div class="value" id="transferSales">₦0</div></div>
@@ -82,7 +81,6 @@
         <div class="stat-card"><div class="label">Credit Sales</div><div class="credit-value" id="creditTotal">-₦0</div></div>
     </div>
 
-    <!-- TODAY'S ALLOCATED STOCK -->
     <div class="card">
         <h3>📦 My Allocated Stock (Today)</h3>
         <div id="allocationSummary" class="allocation-summary" style="display: none;">
@@ -95,7 +93,6 @@
         <button id="confirmReceiptBtn" class="confirm-btn" onclick="confirmAllocation()" style="display: none;">✅ CONFIRM RECEIPT OF GOODS ✅</button>
     </div>
 
-    <!-- SELLING FORM -->
     <div class="card">
         <h3>➕ Record New Sale</h3>
         <div id="saleDisabledWarning" class="warning-msg" style="display: none;">⚠️ You must confirm goods first!</div>
@@ -114,7 +111,6 @@
         </form>
     </div>
 
-    <!-- TABS FOR TRANSACTIONS -->
     <div class="card">
         <div class="tab-buttons">
             <button class="tab-btn active" onclick="switchTab('today')">📋 Today's Transactions</button>
@@ -122,7 +118,6 @@
             <button class="tab-btn" onclick="switchTab('credit')">💳 Credit Requests</button>
         </div>
         
-        <!-- TODAY'S TRANSACTIONS TAB -->
         <div id="tab-today" class="tab-content active">
             <div id="todayLoading" class="loading">Loading today's transactions...</div>
             <table id="todayTable" style="display: none;">
@@ -132,7 +127,6 @@
             <div id="noTodayTransactions" class="zero-state" style="display: none;">📭 No transactions recorded today.</div>
         </div>
         
-        <!-- PAST TRANSACTIONS TAB (VIEW ONLY - NO EDIT) -->
         <div id="tab-history" class="tab-content">
             <button class="download-btn" onclick="downloadPastTransactions()">📥 Download Past Transactions (CSV)</button>
             <div id="historyLoading" class="loading">Loading past transactions...</div>
@@ -140,7 +134,6 @@
             <div id="noPastTransactions" class="zero-state" style="display: none;">📭 No past transactions found.</div>
         </div>
         
-        <!-- CREDIT REQUESTS TAB -->
         <div id="tab-credit" class="tab-content">
             <div id="creditLoading" class="loading">Loading credit requests...</div>
             <table id="creditTable" style="display: none;">
@@ -166,7 +159,6 @@
             localStorage.setItem('user', JSON.stringify(currentUser));
         }
 
-        // Display today's date
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('dateDisplay').innerHTML = `📅 ${new Date().toLocaleDateString('en-NG')}`;
 
@@ -234,8 +226,6 @@
                     confirmBtn.style.display = 'none';
                     allocationSummary.style.display = 'none';
                     enableSelling(false);
-                    
-                    // RESET STATS TO ZERO FOR NEW DAY
                     resetStatsToZero();
                 } else {
                     let totalValue = 0;
@@ -381,7 +371,6 @@
                 if (data && data.success) {
                     let cashTotal = 0, transferTotal = 0, totalCredit = 0, totalItems = 0;
                     let todayHtml = '';
-                    let pastHtml = '';
                     let pastTransactionsList = [];
                     
                     for (let sale of data.data) {
@@ -404,7 +393,6 @@
                                 };
                                 
                                 if (saleDate === today) {
-                                    // TODAY'S TRANSACTIONS
                                     if (sale.payment_method === 'cash') { cashTotal += amount; totalItems += item.quantity; }
                                     else if (sale.payment_method === 'bank_transfer') { transferTotal += amount; totalItems += item.quantity; }
                                     else if (sale.payment_method === 'credit' && sale.approval_status === 'approved') { totalCredit += amount; }
@@ -419,21 +407,18 @@
                                         <td>${row.status}</td>
                                     </tr>`;
                                 } else {
-                                    // PAST TRANSACTIONS (View Only)
                                     pastTransactionsList.push(row);
                                 }
                             }
                         }
                     }
                     
-                    // Update today's stats
                     document.getElementById('cashSales').innerHTML = formatMoney(cashTotal);
                     document.getElementById('transferSales').innerHTML = formatMoney(transferTotal);
                     document.getElementById('totalSales').innerHTML = formatMoney(cashTotal + transferTotal);
                     document.getElementById('itemsSold').innerHTML = totalItems;
                     document.getElementById('creditTotal').innerHTML = formatCreditMoney(totalCredit);
                     
-                    // Display today's transactions
                     const todayBody = document.getElementById('todayTransactionsBody');
                     const todayTable = document.getElementById('todayTable');
                     const noTodayDiv = document.getElementById('noTodayTransactions');
@@ -448,7 +433,6 @@
                     }
                     document.getElementById('todayLoading').style.display = 'none';
                     
-                    // Store and display past transactions
                     pastTransactions = pastTransactionsList;
                     displayPastTransactions(pastTransactionsList);
                 }
@@ -470,7 +454,6 @@
             
             noPastDiv.style.display = 'none';
             
-            // Group by date
             const grouped = {};
             for (let t of transactions) {
                 if (!grouped[t.date]) grouped[t.date] = [];
@@ -507,7 +490,6 @@
                 return;
             }
             
-            // Create CSV
             let csv = 'Date,Time,Customer,Product,Quantity,Amount,Type,Status\n';
             for (let t of pastTransactions) {
                 csv += `"${t.date}","${t.time}","${t.customer}","${t.product}",${t.quantity},"${t.amount}","${t.type}","${t.status}"\n`;
@@ -531,7 +513,7 @@
                 let html = '';
                 for (let req of data.data) {
                     let status = req.approved === 1 ? 'Approved' : (req.rejected === 1 ? 'Declined' : 'Pending');
-                    html += `<tr>
+                    html += `</tr>
                         <td>${req.order_number}</td>
                         <td>${req.customer_name}</td>
                         <td class="${status === 'Pending' ? 'credit-amount' : ''}">${status === 'Pending' ? formatCreditMoney(req.total_amount) : formatMoney(req.total_amount)}</td>
@@ -539,40 +521,30 @@
                         <td>${req.due_date ? new Date(req.due_date).toLocaleDateString() : '-'}</td>
                     </tr>`;
                 }
-                document.getElementById('creditTableBody').innerHTML = html || '</table><td colspan="5">No credit requests<\/td><tr>';
+                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests<\/td></tr>';
                 document.getElementById('creditLoading').style.display = 'none';
                 document.getElementById('creditTable').style.display = 'table';
             }
         }
 
-        // ============================================================
-        // CORRECTED SUBMIT DAY FUNCTION - BOTH OPTIONS WORK
-        // ============================================================
         async function submitDaySales() {
             const todayDate = new Date().toISOString().split('T')[0];
             
-            // First confirmation
             if (!confirm('📤 SUBMIT SALES FOR REVIEW\n\nAre you sure you want to submit today\'s sales for manager review?\n\nYou can still accept new allocations and continue selling after submission.\n\nClick OK to submit.')) {
                 return;
             }
             
             try {
-                // First API call - check for remaining goods
                 const result = await fetchAPI('/sales/submit-day', { 
                     method: 'POST', 
-                    body: JSON.stringify({ 
-                        team_id: currentUser.team_id, 
-                        sales_date: todayDate 
-                    }) 
+                    body: JSON.stringify({ team_id: currentUser.team_id, sales_date: todayDate }) 
                 });
                 
                 if (result && result.success) {
-                    // No remaining goods - simple success
                     showMessage('✅ Sales submitted to manager!', false, false, true);
                     refreshData();
                     
                 } else if (result && result.requires_action) {
-                    // There are remaining goods - show popup with TWO options
                     const userChoice = confirm(
                         `${result.message}\n\n` +
                         `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
@@ -581,24 +553,19 @@
                         `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
                     );
                     
-                    // userChoice = true  → OK button (Move goods)
-                    // userChoice = false → Cancel button (Keep goods)
-                    
                     const finalResult = await fetchAPI('/sales/submit-day', { 
                         method: 'POST', 
                         body: JSON.stringify({ 
                             team_id: currentUser.team_id, 
                             sales_date: todayDate,
-                            move_remaining_goods: userChoice  // true = Move, false = Keep
+                            move_remaining_goods: userChoice
                         }) 
                     });
                     
                     if (finalResult && finalResult.success) {
                         if (userChoice === true) {
-                            // OPTION 1: Move goods to warehouse
                             showMessage(`✅ Sales submitted! ${finalResult.message || 'Goods moved to warehouse.'}`, false, false, true);
                         } else {
-                            // OPTION 2: Keep goods for continued selling
                             showMessage(`✅ Sales submitted! ${finalResult.message || 'Goods kept for continued selling.'}`, false, false, true);
                         }
                         refreshData();
@@ -621,7 +588,52 @@
             showMessage('Data refreshed', false, false, true); 
         }
         
-        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+        function logout() { 
+            localStorage.clear(); 
+            window.location.href = 'login.html'; 
+        }
+
+        // ============================================================
+        // SESSION TIMEOUT - Auto logout after 5 minutes inactivity
+        // ============================================================
+        let inactivityTimer;
+        let warningTimer;
+        const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+        const WARNING_TIME = 4 * 60 * 1000; // 4 minutes
+
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(() => {
+                showMessage('⏰ Session expired due to inactivity. Logging out...', false, false, true);
+                setTimeout(() => { logout(); }, 2000);
+            }, INACTIVITY_TIMEOUT);
+        }
+
+        function setupWarningTimer() {
+            clearTimeout(warningTimer);
+            warningTimer = setTimeout(() => {
+                showMessage('⚠️ Warning: You will be logged out in 1 minute due to inactivity.', false, true);
+            }, WARNING_TIME);
+        }
+
+        function resetAllTimers() {
+            resetInactivityTimer();
+            setupWarningTimer();
+        }
+
+        function setupActivityListeners() {
+            const events = ['mousemove', 'mousedown', 'keypress', 'scroll', 'click', 'touchstart'];
+            events.forEach(event => {
+                document.addEventListener(event, resetAllTimers);
+            });
+        }
+
+        function initSessionTimeout() {
+            setupActivityListeners();
+            resetAllTimers();
+        }
+
+        initSessionTimeout();
 
         document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
             radio.addEventListener('change', function() {
