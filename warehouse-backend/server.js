@@ -75,7 +75,7 @@ app.get('/health', async (req, res) => {
 });
 
 app.get('/api/version', (req, res) => {
-    res.json({ version: 'FINAL_V6', feature: 'multiple_allocations_per_day', fixed: 'pending_returns' });
+    res.json({ version: 'FINAL_V7', feature: 'pending_returns_with_qty_update' });
 });
 
 // ============================================================
@@ -514,41 +514,7 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
 });
 
 // ============================================================
-// SUBMIT DAY SALES
-// ============================================================
-app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
-    let connection;
-    try {
-        const { team_id, sales_date } = req.body;
-        
-        connection = await pool.getConnection();
-        await connection.beginTransaction();
-        
-        // Mark sales orders as submitted for review
-        await connection.query(
-            'UPDATE sales_orders SET submitted_for_review = 1 WHERE team_id = ? AND sales_date = ? AND submitted_for_review = 0',
-            [team_id, sales_date]
-        );
-        
-        // Mark allocations as submitted so they don't appear in active sales
-        await connection.query(
-            'UPDATE sales_team_allocations SET status = ? WHERE team_id = ? AND allocated_date = ? AND status = ?',
-            ['submitted', team_id, sales_date, 'active']
-        );
-        
-        await connection.commit();
-        res.json({ success: true, message: 'Sales submitted for the day' });
-    } catch (error) { 
-        if (connection) await connection.rollback();
-        console.error('Submit day error:', error);
-        res.status(500).json({ success: false, message: error.message }); 
-    } finally {
-        if (connection) connection.release();
-    }
-});
-
-// ============================================================
-// SUBMIT DAY SALES - WITH RETURNED_QTY UPDATE
+// SUBMIT DAY SALES - WITH RETURNED_QTY UPDATE (CORRECTED - SINGLE VERSION)
 // ============================================================
 app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
     let connection;
@@ -636,6 +602,37 @@ app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
         if (connection) connection.release();
     }
 });
+
+// ============================================================
+// FIXED: PENDING RETURNS - Shows ONLY unsold returned goods
+// ============================================================
+app.get('/api/sales/pending-submissions', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const [items] = await pool.query(
+            `SELECT 
+                a.id as return_id,
+                st.team_name,
+                'Returned Goods' as customer_name,
+                p.product_name,
+                a.returned_qty as quantity,
+                (a.returned_qty * p.unit_cost) as amount,
+                'return' as type,
+                a.allocated_date
+             FROM sales_team_allocations a
+             JOIN sales_teams st ON a.team_id = st.id
+             JOIN products p ON a.product_id = p.id
+             WHERE a.returned_qty > 0
+               AND a.status != 'closed'
+             ORDER BY a.allocated_date DESC`
+        );
+        
+        res.json({ success: true, data: items });
+    } catch (error) { 
+        console.error('Get pending returns error:', error);
+        res.status(500).json({ success: false, message: error.message }); 
+    }
+});
+
 // ============================================================
 // CONFIRM RETURN - Adds goods back to warehouse stock
 // ============================================================
@@ -664,7 +661,6 @@ app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_ma
             
             const item = returnItems[0];
             
-            // Already added to warehouse during submit-day, so just mark as processed
             // Update allocation status to closed/processed
             await connection.query(
                 'UPDATE sales_team_allocations SET status = "closed" WHERE id = ?',
@@ -718,6 +714,7 @@ app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_ma
         if (connection) connection.release();
     }
 });
+
 // ============================================================
 // REPORTS
 // ============================================================
