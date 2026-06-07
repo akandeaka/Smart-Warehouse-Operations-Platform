@@ -582,7 +582,7 @@ app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_ma
             await connection.query(
                 `INSERT INTO stock_transactions 
                  (transaction_type, product_id, quantity_change, unit_cost_at_time, reference_type, created_by, notes)
-                 VALUES ('return_accepted', ?, ?, ?, 'manager_acceptance', ?, ?)`,
+                 VALUES ('return_from_team', ?, ?, ?, 'manager_acceptance', ?, ?)`,
                 [item.product_id, item.returned_qty, item.unit_cost, req.user.id, `Manager accepted return of ${item.returned_qty} units`]
             );
             
