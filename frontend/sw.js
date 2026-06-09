@@ -1,11 +1,14 @@
 // sw.js - Service Worker for PWA
-const CACHE_NAME = 'wms-v1';
+const CACHE_NAME = 'wms-v1';  // Keep your original version
 const urlsToCache = [
   '/',
+  '/index.html',              // ADDED
   '/login.html',
   '/manager-dashboard.html',
   '/sales-dashboard.html',
-  '/manager-performance.html'
+  '/manager-performance.html',
+  '/config.js',               // ADDED
+  '/manifest.json'            // ADDED
 ];
 
 self.addEventListener('install', event => {
@@ -25,7 +28,16 @@ self.addEventListener('fetch', event => {
         if (response) {
           return response;
         }
-        return fetch(event.request);
+        return fetch(event.request).then(response => {
+          if (!response || response.status !== 200 || response.type !== 'basic') {
+            return response;
+          }
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseToCache);
+          });
+          return response;
+        });
       })
   );
 });
