@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sales Team Dashboard</title>
+    
+    <!-- PWA Support -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="WMS">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <meta name="theme-color" content="#28a745">
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
@@ -57,90 +66,30 @@
         .history-date { font-weight: bold; color: #28a745; margin-bottom: 10px; }
         @keyframes pulse { 0% { transform: scale(1); background-color: #28a745; } 50% { transform: scale(1.02); background-color: #34ce57; } 100% { transform: scale(1); background-color: #28a745; } }
 
-        /* ============================================================
-        MOBILE RESPONSIVE STYLES
-        ============================================================ */
-        
+        /* Mobile Responsive */
         @media screen and (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                text-align: center;
-                gap: 15px;
-                padding: 15px;
-            }
-            .stats-container {
-                grid-template-columns: 1fr;
-                gap: 10px;
-                padding: 10px;
-            }
-            .stat-card {
-                padding: 12px;
-            }
-            .stat-card .value {
-                font-size: 20px;
-            }
-            .tabs {
-                gap: 5px;
-                padding: 0 10px;
-            }
-            .tab {
-                padding: 8px 12px;
-                font-size: 12px;
-            }
-            .card {
-                padding: 12px;
-                margin: 10px;
-            }
-            .product-grid {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
-            .product-item {
-                padding: 10px;
-            }
-            .form-row {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
-            table {
-                display: block;
-                overflow-x: auto;
-                white-space: nowrap;
-                font-size: 12px;
-            }
-            th, td {
-                padding: 8px;
-                min-width: 80px;
-            }
-            .btn-allocate, .btn-approve, .btn-reject, .close-day-btn, .submit-btn, .confirm-btn {
-                width: 100%;
-                padding: 10px;
-                font-size: 14px;
-            }
-            td button {
-                display: block;
-                width: 100%;
-                margin: 3px 0;
-            }
-            .tab-buttons {
-                flex-wrap: wrap;
-            }
-            .tab-btn {
-                padding: 6px 12px;
-                font-size: 12px;
-            }
+            .header { flex-direction: column; text-align: center; gap: 15px; padding: 15px; }
+            .stats-container { grid-template-columns: 1fr; gap: 10px; padding: 10px; }
+            .stat-card { padding: 12px; }
+            .stat-card .value { font-size: 20px; }
+            .tabs { gap: 5px; padding: 0 10px; }
+            .tab { padding: 8px 12px; font-size: 12px; }
+            .card { padding: 12px; margin: 10px; }
+            .product-grid { grid-template-columns: 1fr; gap: 10px; }
+            .product-item { padding: 10px; }
+            .form-row { grid-template-columns: 1fr; gap: 10px; }
+            table { display: block; overflow-x: auto; white-space: nowrap; font-size: 12px; }
+            th, td { padding: 8px; min-width: 80px; }
+            .btn-allocate, .btn-approve, .btn-reject, .close-day-btn, .submit-btn, .confirm-btn { width: 100%; padding: 10px; font-size: 14px; }
+            td button { display: block; width: 100%; margin: 3px 0; }
+            .tab-buttons { flex-wrap: wrap; }
+            .tab-btn { padding: 6px 12px; font-size: 12px; }
         }
         
         @media screen and (min-width: 769px) and (max-width: 1024px) {
-            .stats-container {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            .product-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            .form-row {
-                grid-template-columns: repeat(2, 1fr);
-            }
+            .stats-container { grid-template-columns: repeat(2, 1fr); }
+            .product-grid { grid-template-columns: repeat(2, 1fr); }
+            .form-row { grid-template-columns: repeat(2, 1fr); }
         }
         
         @media (hover: none) and (pointer: coarse) {
@@ -148,10 +97,7 @@
                 min-height: 44px;
                 min-width: 44px;
             }
-            input, select {
-                min-height: 44px;
-                font-size: 16px;
-            }
+            input, select { min-height: 44px; font-size: 16px; }
         }
     </style>
 </head>
@@ -220,7 +166,7 @@
             <table id="todayTable" style="display: none;">
                 <thead><tr><th>Time</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Status</th></tr></thead>
                 <tbody id="todayTransactionsBody"></tbody>
-            </table>
+            </tr>
             <div id="noTodayTransactions" class="zero-state" style="display: none;">📭 No transactions recorded today.</div>
         </div>
         
@@ -690,13 +636,11 @@
             window.location.href = 'login.html'; 
         }
 
-        // ============================================================
-        // SESSION TIMEOUT - Auto logout after 5 minutes inactivity
-        // ============================================================
+        // Session Timeout
         let inactivityTimer;
         let warningTimer;
-        const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
-        const WARNING_TIME = 4 * 60 * 1000; // 4 minutes
+        const INACTIVITY_TIMEOUT = 5 * 60 * 1000;
+        const WARNING_TIME = 4 * 60 * 1000;
 
         function resetInactivityTimer() {
             clearTimeout(inactivityTimer);
@@ -747,6 +691,15 @@
             loadTodayTransactions();
             loadCreditRequests();
             setInterval(() => loadAllocatedStock(), 30000);
+        }
+
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('Service Worker registered:', reg))
+                    .catch(err => console.error('Service Worker registration failed:', err));
+            });
         }
     </script>
 </body>
