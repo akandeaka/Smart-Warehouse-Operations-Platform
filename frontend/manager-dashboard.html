@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Warehouse Manager Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- PWA Support -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="WMS">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <meta name="theme-color" content="#667eea">
+    
     <style>
         * {
             margin: 0;
@@ -295,219 +304,106 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
-                /* ============================================================
-        MOBILE RESPONSIVE STYLES
-        ============================================================ */
         
-        /* Mobile view (phones) */
+        /* Mobile Responsive Styles */
         @media screen and (max-width: 768px) {
-            /* Header */
             .header {
                 flex-direction: column;
                 text-align: center;
                 gap: 15px;
                 padding: 15px;
             }
-            
             .header-title {
                 font-size: 18px;
             }
-            
             .header-nav {
                 flex-wrap: wrap;
                 justify-content: center;
                 gap: 10px;
             }
-            
-            /* Stats Grid - 1 column on mobile */
             .stats-grid {
                 grid-template-columns: 1fr;
                 gap: 10px;
                 padding: 10px;
             }
-            
             .stat-card {
                 padding: 12px;
             }
-            
             .stat-card .value {
                 font-size: 20px;
             }
-            
-            .stat-card h3 {
-                font-size: 12px;
-            }
-            
-            /* Tabs - wrap and smaller */
             .tabs {
                 gap: 5px;
                 padding: 0 10px;
             }
-            
             .tab {
                 padding: 8px 12px;
                 font-size: 12px;
             }
-            
-            /* Container */
             .container {
                 padding: 15px;
             }
-            
-            /* Tables - horizontal scroll on mobile */
             table {
                 display: block;
                 overflow-x: auto;
                 white-space: nowrap;
                 font-size: 12px;
             }
-            
             th, td {
                 padding: 8px;
                 min-width: 80px;
             }
-            
-            /* Form rows - stack vertically */
             .form-row {
                 grid-template-columns: 1fr;
                 gap: 10px;
             }
-            
-            .form-group label {
-                font-size: 12px;
-            }
-            
-            .form-group select,
-            .form-group input {
-                padding: 8px;
-                font-size: 14px;
-            }
-            
-            /* Buttons - full width on mobile */
-            .btn-allocate,
-            .btn-approve,
-            .btn-reject,
-            .close-day-btn,
-            .submit-btn,
-            .confirm-btn {
+            .btn-allocate, .btn-approve, .btn-reject, .close-day-btn, .submit-btn, .confirm-btn {
                 width: 100%;
-                margin-bottom: 5px;
                 padding: 10px;
                 font-size: 14px;
             }
-            
-            /* Action buttons in table - stack vertically */
             td button {
                 display: block;
                 width: 100%;
                 margin: 3px 0;
             }
-            
-            /* Product grid */
             .product-grid {
                 grid-template-columns: 1fr;
                 gap: 10px;
             }
-            
-            .product-item {
-                padding: 10px;
-            }
-            
-            .product-item h4 {
-                font-size: 14px;
-            }
-            
-            .product-item .price {
-                font-size: 16px;
-            }
-            
-            .product-item .stock {
-                font-size: 12px;
-            }
-            
-            /* Card content */
             .card {
                 padding: 12px;
                 margin: 10px;
             }
-            
-            .card h3 {
-                font-size: 16px;
-            }
-            
-            /* Tab buttons for transaction history */
             .tab-buttons {
                 flex-wrap: wrap;
             }
-            
             .tab-btn {
                 padding: 6px 12px;
                 font-size: 12px;
             }
-            
-            /* Action buttons in pending returns */
-            .btn-approve, .btn-reject {
-                padding: 8px 12px;
-                font-size: 12px;
-            }
-            
-            /* Modal/dialog content (if any) */
-            .success-msg, .error-msg, .warning-msg, .info-msg {
-                font-size: 12px;
-                padding: 10px;
-                margin: 10px;
-            }
         }
         
-        /* Tablet view (iPad, small laptops) */
         @media screen and (min-width: 769px) and (max-width: 1024px) {
             .stats-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
-            
             .form-row {
                 grid-template-columns: repeat(2, 1fr);
             }
-            
             .product-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
-            
-            table {
-                font-size: 13px;
-            }
-            
-            th, td {
-                padding: 10px;
-            }
         }
         
-        /* Large desktop screens */
-        @media screen and (min-width: 1200px) {
-            .container {
-                max-width: 1400px;
-                margin: 0 auto;
-            }
-        }
-        
-        /* Touch-friendly button sizes for mobile devices */
         @media (hover: none) and (pointer: coarse) {
-            button, 
-            .tab, 
-            .btn-allocate, 
-            .btn-approve, 
-            .btn-reject,
-            .logout-btn,
-            .refresh-btn,
-            .confirm-btn,
-            .submit-btn {
+            button, .tab, .btn-allocate, .btn-approve, .btn-reject, .logout-btn, .refresh-btn, .confirm-btn, .submit-btn {
                 min-height: 44px;
                 min-width: 44px;
             }
-            
-            input, select, textarea {
+            input, select {
                 min-height: 44px;
-                font-size: 16px; /* Prevents zoom on iOS when focusing */
+                font-size: 16px;
             }
         }
     </style>
@@ -754,11 +650,15 @@
                     html = '<tr><td colspan="6" class="no-data-text">No pending approvals</td></tr>';
                 } else {
                     for (let a of data.data) {
-                        html += `<tr><td>${a.order_number}</td><td>${a.customer_name}</td><td>${formatMoney(a.total_amount)}</td>
-                        <td><input type="number" id="amount_${a.id}" value="${a.total_amount}" step="1000" style="width:100px"></td>
-                        <td>${a.requested_by || 'Unknown'}</td>
-                        <td><button class="btn-approve" onclick="approveCredit(${a.id})">✅ Approve</button>
-                        <button class="btn-reject" onclick="rejectCredit(${a.id})">❌ Reject</button></td></tr>`;
+                        html += `<tr>
+                            <td>${a.order_number}</td>
+                            <td>${a.customer_name}</td>
+                            <td>${formatMoney(a.total_amount)}</td>
+                            <td><input type="number" id="amount_${a.id}" value="${a.total_amount}" step="1000" style="width:100px"></td>
+                            <td>${a.requested_by || 'Unknown'}</td>
+                            <td><button class="btn-approve" onclick="approveCredit(${a.id})">✅ Approve</button>
+                            <button class="btn-reject" onclick="rejectCredit(${a.id})">❌ Reject</button></td>
+                        </tr>`;
                     }
                 }
                 document.getElementById('approvalsTable').innerHTML = html;
@@ -774,11 +674,16 @@
                 } else {
                     for (let item of data.data) {
                         const isCredit = item.type === 'credit';
-                        html += `<tr><td>${item.team_name}</td><td>${item.customer_name}</td><td>${item.product_name}</td>
-                        <td>${item.quantity}</td><td class="${isCredit ? 'credit-amount' : ''}">${isCredit ? formatCreditMoney(item.amount) : formatMoney(item.amount)}</td>
-                        <td>${isCredit ? '📝 Credit' : (item.type === 'cash' ? '💵 Cash' : '🏦 Transfer')}</td>
-                        <td><button class="btn-approve" onclick="confirmReturn(${item.return_id}, 'accept')">✅ Accept</button>
-                        <button class="btn-reject" onclick="confirmReturn(${item.return_id}, 'reject')">🔄 Return to Team</button></td></tr>`;
+                        html += `<tr>
+                            <td>${item.team_name}</td>
+                            <td>${item.customer_name}</td>
+                            <td>${item.product_name}</td>
+                            <td>${item.quantity}</td>
+                            <td class="${isCredit ? 'credit-amount' : ''}">${isCredit ? formatCreditMoney(item.amount) : formatMoney(item.amount)}</td>
+                            <td>${isCredit ? '📝 Credit' : (item.type === 'cash' ? '💵 Cash' : '🏦 Transfer')}</td>
+                            <td><button class="btn-approve" onclick="confirmReturn(${item.return_id}, 'accept')">✅ Accept</button>
+                            <button class="btn-reject" onclick="confirmReturn(${item.return_id}, 'reject')">🔄 Return to Team</button></td>
+                        </tr>`;
                     }
                 }
                 document.getElementById('returnsTable').innerHTML = html;
@@ -791,10 +696,14 @@
                 let html = '';
                 for (let t of data.teams) {
                     const creditAmount = t.credit_sales || 0;
-                    html += `<tr><td>${t.team_name}</td><td>${t.num_orders || 0}</td>
-                    <td>${formatMoney(t.cash_sales || 0)}</td><td>${formatMoney(t.transfer_sales || 0)}</td>
-                    <td class="${creditAmount > 0 ? 'credit-amount' : ''}">${creditAmount > 0 ? '-' : ''}${formatMoney(Math.abs(creditAmount))}</td>
-                    <td>${formatMoney(t.total_sales || 0)}</td></tr>`;
+                    html += `<tr>
+                        <td>${t.team_name}</td>
+                        <td>${t.num_orders || 0}</td>
+                        <td>${formatMoney(t.cash_sales || 0)}</td>
+                        <td>${formatMoney(t.transfer_sales || 0)}</td>
+                        <td class="${creditAmount > 0 ? 'credit-amount' : ''}">${creditAmount > 0 ? '-' : ''}${formatMoney(Math.abs(creditAmount))}</td>
+                        <td>${formatMoney(t.total_sales || 0)}</td>
+                    </tr>`;
                 }
                 document.getElementById('reportsTable').innerHTML = html;
             }
@@ -922,13 +831,11 @@
             window.location.href = 'login.html'; 
         }
 
-        // ============================================================
-        // SESSION TIMEOUT - Auto logout after 5 minutes inactivity
-        // ============================================================
+        // Session Timeout
         let inactivityTimer;
         let warningTimer;
-        const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
-        const WARNING_TIME = 4 * 60 * 1000; // 4 minutes
+        const INACTIVITY_TIMEOUT = 5 * 60 * 1000;
+        const WARNING_TIME = 4 * 60 * 1000;
 
         function resetInactivityTimer() {
             clearTimeout(inactivityTimer);
@@ -964,9 +871,7 @@
 
         initSessionTimeout();
 
-        // ==========================================
-        // INITIALIZATION
-        // ==========================================
+        // Initialize
         if (!authToken) { 
             window.location.href = 'login.html';
         } else {
@@ -975,6 +880,15 @@
             loadProductsForAllocation();
             loadPendingApprovalsCount();
             loadProducts();
+        }
+
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('Service Worker registered:', reg))
+                    .catch(err => console.error('Service Worker registration failed:', err));
+            });
         }
     </script>
 </body>
