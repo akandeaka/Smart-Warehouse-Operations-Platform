@@ -295,6 +295,221 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+                /* ============================================================
+        MOBILE RESPONSIVE STYLES
+        ============================================================ */
+        
+        /* Mobile view (phones) */
+        @media screen and (max-width: 768px) {
+            /* Header */
+            .header {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+                padding: 15px;
+            }
+            
+            .header-title {
+                font-size: 18px;
+            }
+            
+            .header-nav {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 10px;
+            }
+            
+            /* Stats Grid - 1 column on mobile */
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+                padding: 10px;
+            }
+            
+            .stat-card {
+                padding: 12px;
+            }
+            
+            .stat-card .value {
+                font-size: 20px;
+            }
+            
+            .stat-card h3 {
+                font-size: 12px;
+            }
+            
+            /* Tabs - wrap and smaller */
+            .tabs {
+                gap: 5px;
+                padding: 0 10px;
+            }
+            
+            .tab {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+            
+            /* Container */
+            .container {
+                padding: 15px;
+            }
+            
+            /* Tables - horizontal scroll on mobile */
+            table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+                font-size: 12px;
+            }
+            
+            th, td {
+                padding: 8px;
+                min-width: 80px;
+            }
+            
+            /* Form rows - stack vertically */
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .form-group label {
+                font-size: 12px;
+            }
+            
+            .form-group select,
+            .form-group input {
+                padding: 8px;
+                font-size: 14px;
+            }
+            
+            /* Buttons - full width on mobile */
+            .btn-allocate,
+            .btn-approve,
+            .btn-reject,
+            .close-day-btn,
+            .submit-btn,
+            .confirm-btn {
+                width: 100%;
+                margin-bottom: 5px;
+                padding: 10px;
+                font-size: 14px;
+            }
+            
+            /* Action buttons in table - stack vertically */
+            td button {
+                display: block;
+                width: 100%;
+                margin: 3px 0;
+            }
+            
+            /* Product grid */
+            .product-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .product-item {
+                padding: 10px;
+            }
+            
+            .product-item h4 {
+                font-size: 14px;
+            }
+            
+            .product-item .price {
+                font-size: 16px;
+            }
+            
+            .product-item .stock {
+                font-size: 12px;
+            }
+            
+            /* Card content */
+            .card {
+                padding: 12px;
+                margin: 10px;
+            }
+            
+            .card h3 {
+                font-size: 16px;
+            }
+            
+            /* Tab buttons for transaction history */
+            .tab-buttons {
+                flex-wrap: wrap;
+            }
+            
+            .tab-btn {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+            
+            /* Action buttons in pending returns */
+            .btn-approve, .btn-reject {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+            
+            /* Modal/dialog content (if any) */
+            .success-msg, .error-msg, .warning-msg, .info-msg {
+                font-size: 12px;
+                padding: 10px;
+                margin: 10px;
+            }
+        }
+        
+        /* Tablet view (iPad, small laptops) */
+        @media screen and (min-width: 769px) and (max-width: 1024px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .form-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .product-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            table {
+                font-size: 13px;
+            }
+            
+            th, td {
+                padding: 10px;
+            }
+        }
+        
+        /* Large desktop screens */
+        @media screen and (min-width: 1200px) {
+            .container {
+                max-width: 1400px;
+                margin: 0 auto;
+            }
+        }
+        
+        /* Touch-friendly button sizes for mobile devices */
+        @media (hover: none) and (pointer: coarse) {
+            button, 
+            .tab, 
+            .btn-allocate, 
+            .btn-approve, 
+            .btn-reject,
+            .logout-btn,
+            .refresh-btn,
+            .confirm-btn,
+            .submit-btn {
+                min-height: 44px;
+                min-width: 44px;
+            }
+            
+            input, select, textarea {
+                min-height: 44px;
+                font-size: 16px; /* Prevents zoom on iOS when focusing */
+            }
+        }
     </style>
 </head>
 <body>
