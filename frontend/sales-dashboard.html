@@ -56,6 +56,103 @@
         .history-item { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 3px solid #28a745; }
         .history-date { font-weight: bold; color: #28a745; margin-bottom: 10px; }
         @keyframes pulse { 0% { transform: scale(1); background-color: #28a745; } 50% { transform: scale(1.02); background-color: #34ce57; } 100% { transform: scale(1); background-color: #28a745; } }
+
+        /* ============================================================
+        MOBILE RESPONSIVE STYLES
+        ============================================================ */
+        
+        @media screen and (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+                padding: 15px;
+            }
+            .stats-container {
+                grid-template-columns: 1fr;
+                gap: 10px;
+                padding: 10px;
+            }
+            .stat-card {
+                padding: 12px;
+            }
+            .stat-card .value {
+                font-size: 20px;
+            }
+            .tabs {
+                gap: 5px;
+                padding: 0 10px;
+            }
+            .tab {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+            .card {
+                padding: 12px;
+                margin: 10px;
+            }
+            .product-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            .product-item {
+                padding: 10px;
+            }
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+                font-size: 12px;
+            }
+            th, td {
+                padding: 8px;
+                min-width: 80px;
+            }
+            .btn-allocate, .btn-approve, .btn-reject, .close-day-btn, .submit-btn, .confirm-btn {
+                width: 100%;
+                padding: 10px;
+                font-size: 14px;
+            }
+            td button {
+                display: block;
+                width: 100%;
+                margin: 3px 0;
+            }
+            .tab-buttons {
+                flex-wrap: wrap;
+            }
+            .tab-btn {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+        }
+        
+        @media screen and (min-width: 769px) and (max-width: 1024px) {
+            .stats-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .product-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .form-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (hover: none) and (pointer: coarse) {
+            button, .tab, .btn-allocate, .btn-approve, .btn-reject, .logout-btn, .refresh-btn, .confirm-btn, .submit-btn {
+                min-height: 44px;
+                min-width: 44px;
+            }
+            input, select {
+                min-height: 44px;
+                font-size: 16px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -513,7 +610,7 @@
                 let html = '';
                 for (let req of data.data) {
                     let status = req.approved === 1 ? 'Approved' : (req.rejected === 1 ? 'Declined' : 'Pending');
-                    html += `</tr>
+                    html += `<tr>
                         <td>${req.order_number}</td>
                         <td>${req.customer_name}</td>
                         <td class="${status === 'Pending' ? 'credit-amount' : ''}">${status === 'Pending' ? formatCreditMoney(req.total_amount) : formatMoney(req.total_amount)}</td>
@@ -521,7 +618,7 @@
                         <td>${req.due_date ? new Date(req.due_date).toLocaleDateString() : '-'}</td>
                     </tr>`;
                 }
-                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests<\/td></tr>';
+                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests<\/td></td>';
                 document.getElementById('creditLoading').style.display = 'none';
                 document.getElementById('creditTable').style.display = 'table';
             }
