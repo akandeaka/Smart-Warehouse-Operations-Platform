@@ -63,11 +63,25 @@ app.get('/api/version', (req, res) => {
 });
 
 // ============================================================
-// LOGIN
+// LOGIN - With attempt limiting
 // ============================================================
+// Store failed attempts (in memory - resets when server restarts)
+const failedAttempts = new Map();
+
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { username, password } = req.body;
+        const ip = req.ip || req.connection.remoteAddress;
+        
+        // Check if account is locked
+        const attempt = failedAttempts.get(username);
+        if (attempt && attempt.lockUntil && Date.now() < attempt.lockUntil) {
+            const minutesLeft = Math.ceil((attempt.lockUntil - Date.now()) / 60000);
+            return res.status(403).json({ 
+                success: false, 
+                message: `Account locked. Try again in ${minutesLeft} minutes.` 
+            });
+        }
         
         const [users] = await pool.query(
             'SELECT id, username, full_name, email, role, team_id FROM users WHERE username = ? AND is_active = 1',
@@ -75,8 +89,25 @@ app.post('/api/auth/login', async (req, res) => {
         );
         
         if (users.length === 0 || password !== 'password123') {
+            // Record failed attempt
+            const currentAttempt = failedAttempts.get(username) || { count: 0, lockUntil: null };
+            currentAttempt.count = (currentAttempt.count || 0) + 1;
+            
+            if (currentAttempt.count >= 5) {
+                currentAttempt.lockUntil = Date.now() + (15 * 60 * 1000); // Lock for 15 minutes
+                failedAttempts.set(username, currentAttempt);
+                return res.status(403).json({ 
+                    success: false, 
+                    message: 'Too many failed attempts. Account locked for 15 minutes.' 
+                });
+            }
+            
+            failedAttempts.set(username, currentAttempt);
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
+        
+        // Reset failed attempts on successful login
+        failedAttempts.delete(username);
         
         const user = users[0];
         const token = Buffer.from(`${username}:${Date.now()}`).toString('base64');
