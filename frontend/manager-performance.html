@@ -4,43 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manager Performance Dashboard</title>
+    
+    <!-- PWA Support -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="WMS">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <meta name="theme-color" content="#667eea">
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
-        .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-        .header h1 { font-size: 24px; }
-        .date-selector { background: rgba(255,255,255,0.2); padding: 8px 15px; border-radius: 5px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-        .date-selector input { padding: 5px 10px; border-radius: 5px; border: none; }
-        .date-selector button, .btn { background: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; color: #28a745; font-weight: bold; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; padding: 20px; }
         .stat-card { background: white; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .stat-card .label { font-size: 12px; color: #666; margin-bottom: 8px; }
         .stat-card .value { font-size: 24px; font-weight: bold; color: #28a745; }
-        .stat-card .trend { font-size: 11px; margin-top: 5px; }
         .card { background: white; padding: 20px; margin: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .card h3 { margin-bottom: 15px; color: #333; border-left: 4px solid #28a745; padding-left: 12px; }
-        table { width: 100%; margin-top: 15px; border-collapse: collapse; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
         th { background: #f8f9fa; }
-        tr:hover { background: #f5f5f5; }
-        .rank-1 { background-color: #fff3e0; }
-        .progress-bar { background: #e0e0e0; border-radius: 10px; height: 8px; width: 100px; overflow: hidden; display: inline-block; }
-        .progress-fill { background: #28a745; height: 100%; border-radius: 10px; }
-        .positive { color: #28a745; }
-        .negative { color: #dc3545; }
         .loading { text-align: center; padding: 40px; color: #666; }
-        .error-msg, .success-msg { padding: 12px; margin: 0 20px; border-radius: 5px; display: none; }
-        .error-msg { background: #f8d7da; color: #721c24; }
-        .success-msg { background: #d4edda; color: #155724; }
         .tab-buttons { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #ddd; flex-wrap: wrap; }
         .tab-btn { background: none; border: none; padding: 10px 20px; cursor: pointer; font-size: 16px; color: #666; }
-        .tab-btn.active { color: #28a745; border-bottom: 2px solid #28a745; }
+        .tab-btn.active { color: #667eea; border-bottom: 2px solid #667eea; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .summary-box { background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-        .logout-btn, .refresh-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; border: none; color: white; margin-left: 10px; }
-        .back-btn { background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; }
-        .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .logout-btn, .refresh-btn, .back-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; border: none; color: white; margin-left: 10px; }
+        .download-btn { background: #17a2b8; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; margin: 10px; }
+        .positive { color: #28a745; }
+        .negative { color: #dc3545; }
+        .progress-bar { background: #e0e0e0; border-radius: 10px; height: 8px; width: 100px; overflow: hidden; display: inline-block; }
+        .progress-fill { background: #28a745; height: 100%; border-radius: 10px; }
+        @media screen and (max-width: 768px) {
+            .stats-container { grid-template-columns: 1fr; }
+            table { display: block; overflow-x: auto; white-space: nowrap; font-size: 12px; }
+            th, td { padding: 8px; min-width: 80px; }
+            .tab-btn { padding: 6px 12px; font-size: 12px; }
+        }
     </style>
 </head>
 <body>
@@ -48,40 +49,32 @@
         <h1>📊 Manager Performance Dashboard</h1>
         <div>
             <button class="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
+            <button class="back-btn" onclick="goBack()">← Back to Dashboard</button>
             <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
     </div>
 
-    <div id="errorMsg" class="error-msg"></div>
-    <div id="successMsg" class="success-msg"></div>
+    <div id="errorMsg" style="background:#f8d7da; color:#721c24; padding:12px; margin:20px; border-radius:5px; display:none;"></div>
+    <div id="successMsg" style="background:#d4edda; color:#155724; padding:12px; margin:20px; border-radius:5px; display:none;"></div>
 
-    <!-- Controls -->
-    <div class="card" style="margin-bottom: 0;">
-        <div class="flex-between">
-            <div class="date-selector">
+    <div class="card" style="margin-bottom:0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+            <div style="display: flex; gap: 15px; align-items: center;">
                 <span>📅 Select Date:</span>
                 <input type="date" id="dateSelector" value="">
-                <button onclick="loadAllData()">Load Report</button>
+                <button class="download-btn" onclick="loadAllData()">Load Report</button>
             </div>
-            <div>
-                <button class="back-btn" onclick="goBack()">← Back to Dashboard</button>
-                <button onclick="downloadReport()" style="background: #17a2b8; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer;">📥 Download CSV</button>
-            </div>
+            <button class="download-btn" onclick="downloadReport()">📥 Download CSV</button>
         </div>
     </div>
 
-    <!-- Summary Stats -->
     <div class="stats-container" id="statsContainer">
         <div class="stat-card"><div class="label">Total Sales</div><div class="value" id="totalSales">₦0</div><div class="trend" id="totalSalesTrend"></div></div>
         <div class="stat-card"><div class="label">Total Units Sold</div><div class="value" id="totalUnits">0</div><div class="trend" id="totalUnitsTrend"></div></div>
         <div class="stat-card"><div class="label">Total Orders</div><div class="value" id="totalOrders">0</div><div class="trend" id="totalOrdersTrend"></div></div>
-        <div class="stat-card"><div class="label">Avg Order Value</div><div class="value" id="avgOrderValue">₦0</div><div class="trend"></div></div>
-        <div class="stat-card"><div class="label">Cash Sales</div><div class="value" id="cashSales">₦0</div><div class="trend"></div></div>
-        <div class="stat-card"><div class="label">Transfer Sales</div><div class="value" id="transferSales">₦0</div><div class="trend"></div></div>
-        <div class="stat-card"><div class="label">Credit Sales</div><div class="value" id="creditSales" style="color:#dc3545;">₦0</div><div class="trend"></div></div>
+        <div class="stat-card"><div class="label">Avg Order Value</div><div class="value" id="avgOrderValue">₦0</div></div>
     </div>
 
-    <!-- Tabs -->
     <div class="card">
         <div class="tab-buttons">
             <button class="tab-btn active" onclick="switchTab('team')">🏆 Team Performance</button>
@@ -90,18 +83,16 @@
         </div>
 
         <div id="tab-team" class="tab-content active">
-            <div class="summary-box"><strong>📊 Team Ranking</strong> - Based on total sales value</div>
             <div id="teamLoading" class="loading">Loading team performance...</div>
-            <table id="teamTable" style="display: none; width: 100%;">
+            <table id="teamTable" style="display:none; width:100%;">
                 <thead><tr><th>Rank</th><th>Team</th><th>Orders</th><th>Units</th><th>Cash</th><th>Transfer</th><th>Credit</th><th>Total</th><th>%</th></tr></thead>
                 <tbody id="teamTableBody"></tbody>
             </table>
         </div>
 
         <div id="tab-product" class="tab-content">
-            <div class="summary-box"><strong>📊 Top Selling Products</strong> - Based on units sold</div>
             <div id="productLoading" class="loading">Loading product performance...</div>
-            <table id="productTable" style="display: none; width: 100%;">
+            <table id="productTable" style="display:none; width:100%;">
                 <thead><tr><th>Rank</th><th>Product</th><th>Units Sold</th><th>Total Value</th><th>Orders</th><th>% of Sales</th></tr></thead>
                 <tbody id="productTableBody"></tbody>
             </table>
@@ -130,10 +121,10 @@
         }
 
         function showMessage(msg, isError = false) {
-            let msgDiv = isError ? document.getElementById('errorMsg') : document.getElementById('successMsg');
+            const msgDiv = document.getElementById(isError ? 'errorMsg' : 'successMsg');
             msgDiv.innerHTML = msg;
             msgDiv.style.display = 'block';
-            setTimeout(() => msgDiv.style.display = 'none', 4000);
+            setTimeout(() => { msgDiv.style.display = 'none'; }, 3000);
         }
 
         async function fetchAPI(endpoint) {
@@ -171,9 +162,6 @@
                 document.getElementById('totalUnits').innerHTML = overall.total_units_sold || 0;
                 document.getElementById('totalOrders').innerHTML = overall.total_orders || 0;
                 document.getElementById('avgOrderValue').innerHTML = formatMoney(overall.total_orders > 0 ? overall.total_sales / overall.total_orders : 0);
-                document.getElementById('cashSales').innerHTML = formatMoney(teamData.reduce((s,t)=>s+(t.cash_sales||0),0));
-                document.getElementById('transferSales').innerHTML = formatMoney(teamData.reduce((s,t)=>s+(t.transfer_sales||0),0));
-                document.getElementById('creditSales').innerHTML = formatMoney(teamData.reduce((s,t)=>s+(t.credit_sales||0),0));
                 
                 let html = '';
                 for (let i = 0; i < teamData.length; i++) {
@@ -263,18 +251,25 @@
                 document.getElementById('totalOrdersTrend').innerHTML = `${ordersChange >= 0 ? '▲' : '▼'} ${Math.abs(ordersChange)} (${ordersPercent.toFixed(1)}%)`;
                 document.getElementById('totalOrdersTrend').className = `trend ${ordersChange >= 0 ? 'positive' : 'negative'}`;
                 
-                let html = `<div class="summary-box"><strong>📈 Day vs Previous Day</strong><br>${currentDate} vs ${prevDateStr}</div>
-                <table style="width:100%"><thead><tr><th>Metric</th><th>${currentDate}</th><th>${prevDateStr}</th><th>Change</th></tr></thead><tbody>
-                <tr><td>Total Sales</td><td>${formatMoney(cur.total_sales)}</td><td>${formatMoney(prev.total_sales)}</td><td class="${salesChange >= 0 ? 'positive' : 'negative'}">${salesChange >= 0 ? '+' : ''}${formatMoney(salesChange)} (${salesPercent.toFixed(1)}%)</td></tr>
-                <tr><td>Units Sold</td><td>${cur.total_units_sold || 0}</td><td>${prev.total_units_sold || 0}</td><td class="${unitsChange >= 0 ? 'positive' : 'negative'}">${unitsChange >= 0 ? '+' : ''}${unitsChange} (${unitsPercent.toFixed(1)}%)</td></tr>
-                <tr><td>Orders</td><td>${cur.total_orders || 0}</td><td>${prev.total_orders || 0}</td><td class="${ordersChange >= 0 ? 'positive' : 'negative'}">${ordersChange >= 0 ? '+' : ''}${ordersChange} (${ordersPercent.toFixed(1)}%)</td></tr>
-                </tbody></table>`;
+                let html = `<div style="background:#e8f5e9; padding:15px; border-radius:8px; margin-bottom:20px;">
+                    <strong>📈 Day vs Previous Day</strong><br>${currentDate} vs ${prevDateStr}
+                </div>
+                <table style="width:100%">
+                    <thead><tr><th>Metric</th><th>${currentDate}</th><th>${prevDateStr}</th><th>Change</th></tr></thead>
+                    <tbody>
+                        <tr><td>Total Sales</td><td>${formatMoney(cur.total_sales)}</td><td>${formatMoney(prev.total_sales)}</td><td class="${salesChange >= 0 ? 'positive' : 'negative'}">${salesChange >= 0 ? '+' : ''}${formatMoney(salesChange)} (${salesPercent.toFixed(1)}%)</td></tr>
+                        <tr><td>Units Sold</td><td>${cur.total_units_sold || 0}</td><td>${prev.total_units_sold || 0}</td><td class="${unitsChange >= 0 ? 'positive' : 'negative'}">${unitsChange >= 0 ? '+' : ''}${unitsChange} (${unitsPercent.toFixed(1)}%)</td></tr>
+                        <tr><td>Orders</td><td>${cur.total_orders || 0}</td><td>${prev.total_orders || 0}</td><td class="${ordersChange >= 0 ? 'positive' : 'negative'}">${ordersChange >= 0 ? '+' : ''}${ordersChange} (${ordersPercent.toFixed(1)}%)</td></tr>
+                    </tbody>
+                </table>`;
                 
                 if (current.teams && current.teams.length) {
                     const best = current.teams.sort((a,b)=>b.total_sales - a.total_sales)[0];
                     const worst = current.teams.sort((a,b)=>a.total_sales - b.total_sales)[0];
-                    html += `<div style="margin-top:20px;"><div class="summary-box">🏆 Best Team: ${best.team_name} - ${formatMoney(best.total_sales)}</div>
-                    <div class="summary-box" style="background:#fff3cd;">⚠️ Needs Improvement: ${worst.team_name} - ${formatMoney(worst.total_sales)}</div></div>`;
+                    html += `<div style="margin-top:20px;">
+                        <div style="background:#e8f5e9; padding:15px; border-radius:8px; margin-bottom:10px;">🏆 Best Team: ${best.team_name} - ${formatMoney(best.total_sales)}</div>
+                        <div style="background:#fff3cd; padding:15px; border-radius:8px;">⚠️ Needs Improvement: ${worst.team_name} - ${formatMoney(worst.total_sales)}</div>
+                    </div>`;
                 }
                 
                 container.innerHTML = html;
@@ -315,6 +310,15 @@
 
         if (!authToken) window.location.href = 'login.html';
         else loadAllData();
+
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('Service Worker registered:', reg))
+                    .catch(err => console.error('Service Worker registration failed:', err));
+            });
+        }
     </script>
 </body>
 </html>
