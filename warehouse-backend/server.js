@@ -17,9 +17,6 @@ app.use(express.json());
 // ============================================================
 // SERVE STATIC FILES (FLEXIBLE PATH - FIXES 404 ERROR)
 // ============================================================
-// ============================================================
-// SERVE STATIC FILES (FLEXIBLE PATH - FIXES 404 ERROR)
-// ============================================================
 // Try multiple possible paths for frontend directory
 const possiblePaths = [
     path.join(__dirname, 'frontend'),                           // Same directory
