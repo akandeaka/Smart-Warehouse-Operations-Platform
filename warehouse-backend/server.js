@@ -11,9 +11,87 @@ const app = express();
 // Serve static files from the 'frontend' directory
 app.use(express.static('frontend'));
 
-// Or if the path is absolute:
-app.use(express.static('/opt/render/project/src/frontend'));
+const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// ============================================================
+// SERVE STATIC FILES (FLEXIBLE PATH - FIXES 404 ERROR)
+// ============================================================
+// Try multiple possible paths for frontend directory
+const possiblePaths = [
+    path.join(__dirname, 'frontend'),
+    path.join(__dirname, '../frontend'),
+    path.join(process.cwd(), 'frontend'),
+    path.join(process.cwd(), 'warehouse-backend', 'frontend'),
+    '/opt/render/project/src/frontend',
+    '/opt/render/project/src/warehouse-backend/frontend'
+];
+
+let frontendPath = null;
+for (const testPath of possiblePaths) {
+    try {
+        if (fs.existsSync(testPath)) {
+            frontendPath = testPath;
+            console.log(`✅ Found frontend at: ${frontendPath}`);
+            break;
+        }
+    } catch (err) {
+        // Ignore errors and continue
+    }
+}
+
+// If still not found, try to find it by searching common locations
+if (!frontendPath) {
+    const searchPaths = [
+        '/opt/render/project/src',
+        process.cwd(),
+        __dirname
+    ];
+    
+    for (const basePath of searchPaths) {
+        try {
+            const files = fs.readdirSync(basePath);
+            if (files.includes('frontend')) {
+                frontendPath = path.join(basePath, 'frontend');
+                console.log(`✅ Found frontend by searching at: ${frontendPath}`);
+                break;
+            }
+            // Also check if files are directly in the base path (no frontend folder)
+            if (files.includes('login.html') || files.includes('index.html')) {
+                frontendPath = basePath;
+                console.log(`✅ Found HTML files directly at: ${frontendPath}`);
+                break;
+            }
+        } catch (err) {
+            // Ignore errors
+        }
+    }
+}
+
+// THIS IS WHERE THE STATIC MIDDLEWARE SHOULD BE - AFTER path detection
+if (frontendPath) {
+    app.use(express.static(frontendPath));  // ✅ CORRECT PLACEMENT
+    console.log(`✅ Static files being served from: ${frontendPath}`);
+    
+    // List what files are available (for debugging)
+    try {
+        const files = fs.readdirSync(frontendPath);
+        console.log(`📁 Files in frontend directory: ${files.join(', ')}`);
+    } catch (err) {
+        console.log(`Could not list files: ${err.message}`);
+    }
+} else {
+    console.error('❌ ERROR: Could not find frontend directory');
+    console.log('Searched paths:', possiblePaths);
+}
+
+// Root route - serves your login page
+app.get('/', (req, res) => {
+    // ... rest of your code stays the same
 
 // Middleware
 app.use(cors());
