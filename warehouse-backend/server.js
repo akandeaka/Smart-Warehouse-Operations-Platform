@@ -3,13 +3,9 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const path = require('path');
-const fs = require('fs');  // ADDED - needed for file system checks
+const fs = require('fs');
 
 const { pool, testConnection } = require('./database');
-
-const app = express();
-// Serve static files from the 'frontend' directory
-app.use(express.static('frontend'));
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -72,85 +68,7 @@ if (!frontendPath) {
     }
 }
 
-// THIS IS WHERE THE STATIC MIDDLEWARE SHOULD BE - AFTER path detection
-if (frontendPath) {
-    app.use(express.static(frontendPath));  // ✅ CORRECT PLACEMENT
-    console.log(`✅ Static files being served from: ${frontendPath}`);
-    
-    // List what files are available (for debugging)
-    try {
-        const files = fs.readdirSync(frontendPath);
-        console.log(`📁 Files in frontend directory: ${files.join(', ')}`);
-    } catch (err) {
-        console.log(`Could not list files: ${err.message}`);
-    }
-} else {
-    console.error('❌ ERROR: Could not find frontend directory');
-    console.log('Searched paths:', possiblePaths);
-}
-
-// Root route - serves your login page
-app.get('/', (req, res) => {
-    // ... rest of your code stays the same
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// ============================================================
-// SERVE STATIC FILES (FLEXIBLE PATH - FIXES 404 ERROR)
-// ============================================================
-// Try multiple possible paths for frontend directory
-const possiblePaths = [
-    path.join(__dirname, 'frontend'),                           // Same directory
-    path.join(__dirname, '../frontend'),                        // Parent directory
-    path.join(process.cwd(), 'frontend'),                       // Working directory
-    path.join(process.cwd(), 'warehouse-backend', 'frontend'),  // Old incorrect path
-    '/opt/render/project/src/frontend',                         // Direct Render path
-    '/opt/render/project/src/warehouse-backend/frontend'        // Render fallback
-];
-
-let frontendPath = null;
-for (const testPath of possiblePaths) {
-    try {
-        if (fs.existsSync(testPath)) {
-            frontendPath = testPath;
-            console.log(`✅ Found frontend at: ${frontendPath}`);
-            break;
-        }
-    } catch (err) {
-        // Ignore errors and continue
-    }
-}
-
-// If still not found, try to find it by searching common locations
-if (!frontendPath) {
-    const searchPaths = [
-        '/opt/render/project/src',
-        process.cwd(),
-        __dirname
-    ];
-    
-    for (const basePath of searchPaths) {
-        try {
-            const files = fs.readdirSync(basePath);
-            if (files.includes('frontend')) {
-                frontendPath = path.join(basePath, 'frontend');
-                console.log(`✅ Found frontend by searching at: ${frontendPath}`);
-                break;
-            }
-            // Also check if files are directly in the base path (no frontend folder)
-            if (files.includes('login.html') || files.includes('index.html')) {
-                frontendPath = basePath;
-                console.log(`✅ Found HTML files directly at: ${frontendPath}`);
-                break;
-            }
-        } catch (err) {
-            // Ignore errors
-        }
-    }
-}
-
+// Serve static files from the found frontend path
 if (frontendPath) {
     app.use(express.static(frontendPath));
     console.log(`✅ Static files being served from: ${frontendPath}`);
@@ -192,6 +110,7 @@ app.get('/', (req, res) => {
         res.status(500).send('Frontend directory not configured. Please contact administrator.');
     }
 });
+
 // ============================================================
 // AUTHENTICATION MIDDLEWARE
 // ============================================================
@@ -245,13 +164,11 @@ app.get('/api/version', (req, res) => {
 // ============================================================
 // LOGIN - With attempt limiting
 // ============================================================
-// Store failed attempts (in memory - resets when server restarts)
 const failedAttempts = new Map();
 
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { username, password } = req.body;
-        const ip = req.ip || req.connection.remoteAddress;
         
         // Check if account is locked
         const attempt = failedAttempts.get(username);
@@ -269,12 +186,11 @@ app.post('/api/auth/login', async (req, res) => {
         );
         
         if (users.length === 0 || password !== 'password123') {
-            // Record failed attempt
             const currentAttempt = failedAttempts.get(username) || { count: 0, lockUntil: null };
             currentAttempt.count = (currentAttempt.count || 0) + 1;
             
             if (currentAttempt.count >= 5) {
-                currentAttempt.lockUntil = Date.now() + (15 * 60 * 1000); // Lock for 15 minutes
+                currentAttempt.lockUntil = Date.now() + (15 * 60 * 1000);
                 failedAttempts.set(username, currentAttempt);
                 return res.status(403).json({ 
                     success: false, 
@@ -286,7 +202,6 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
         
-        // Reset failed attempts on successful login
         failedAttempts.delete(username);
         
         const user = users[0];
@@ -650,7 +565,6 @@ app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
         connection = await pool.getConnection();
         await connection.beginTransaction();
         
-        // Get remaining goods (unsold)
         const [remainingGoods] = await connection.query(
             `SELECT a.id, a.product_id, 
                     (a.allocated_qty - a.sold_qty - a.returned_qty) as remaining_qty
@@ -666,7 +580,6 @@ app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
             totalRemaining += goods.remaining_qty;
         }
         
-        // If goods remain, ask what to do
         if (hasRemaining && move_remaining_goods === undefined) {
             await connection.rollback();
             return res.json({ 
@@ -677,17 +590,13 @@ app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
             });
         }
         
-        // Mark sales orders as submitted for review
         await connection.query(
             'UPDATE sales_orders SET submitted_for_review = 1 WHERE team_id = ? AND sales_date = ?',
             [team_id, sales_date]
         );
         
-        // If user chose to move goods to warehouse (pending manager approval)
         if (move_remaining_goods === true) {
             for (const goods of remainingGoods) {
-                // Record returned quantity (pending manager approval)
-                // DO NOT update warehouse stock yet - wait for manager to accept
                 await connection.query(
                     'UPDATE sales_team_allocations SET returned_qty = returned_qty + ? WHERE id = ?',
                     [goods.remaining_qty, goods.id]
@@ -700,7 +609,6 @@ app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
                 pending_approval: true
             });
         } else {
-            // Keep goods for continued selling - no changes
             await connection.commit();
             res.json({ 
                 success: true, 
@@ -719,7 +627,7 @@ app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-// PENDING RETURNS - Shows ONLY unsold goods waiting for manager approval
+// PENDING RETURNS
 // ============================================================
 app.get('/api/sales/pending-submissions', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
@@ -750,7 +658,7 @@ app.get('/api/sales/pending-submissions', authMiddleware, requireRole(['warehous
 });
 
 // ============================================================
-// CONFIRM RETURN - Manager accepts or rejects returned goods
+// CONFIRM RETURN
 // ============================================================
 app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     let connection;
@@ -760,7 +668,6 @@ app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_ma
         connection = await pool.getConnection();
         await connection.beginTransaction();
         
-        // Get the allocation record
         const [allocation] = await connection.query(
             `SELECT a.id, a.product_id, a.returned_qty, a.team_id, a.allocated_date, p.unit_cost
              FROM sales_team_allocations a
@@ -777,19 +684,16 @@ app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_ma
         const item = allocation[0];
         
         if (action === 'accept') {
-            // ACCEPT: Add goods to warehouse stock NOW (manager confirmed physically)
             await connection.query(
                 'UPDATE products SET current_qty = current_qty + ? WHERE id = ?',
                 [item.returned_qty, item.product_id]
             );
             
-            // Mark as closed
             await connection.query(
                 'UPDATE sales_team_allocations SET status = ? WHERE id = ?',
                 ['closed', item_id]
             );
             
-            // Record transaction
             await connection.query(
                 `INSERT INTO stock_transactions 
                  (transaction_type, product_id, quantity_change, unit_cost_at_time, reference_type, created_by, notes)
@@ -804,19 +708,16 @@ app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_ma
             });
             
         } else if (action === 'reject') {
-            // REJECT: Goods go back to sales team, remove from pending returns
             await connection.query(
                 'UPDATE sales_team_allocations SET returned_qty = 0 WHERE id = ?',
                 [item_id]
             );
             
-            // Keep status active so sales team can see the goods again
             await connection.query(
                 'UPDATE sales_team_allocations SET status = ? WHERE id = ?',
                 ['active', item_id]
             );
             
-            // Allow sales team to resubmit
             await connection.query(
                 `UPDATE sales_orders SET submitted_for_review = 0, manager_confirmed = 0 
                  WHERE team_id = ? AND sales_date = ?`,
@@ -868,7 +769,7 @@ app.get('/api/reports/daily', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-// MANAGER DASHBOARD SUMMARY (for top 3 cards)
+// MANAGER DASHBOARD SUMMARY
 // ============================================================
 app.get('/api/manager/dashboard-summary', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
@@ -965,8 +866,9 @@ async function startServer() {
     }
     
     app.listen(PORT, '0.0.0.0', () => {
-        console.log('Server running on port ' + PORT);
-        console.log('Health: http://localhost:' + PORT + '/health');
+        console.log(`✅ Server running on port ${PORT}`);
+        console.log(`📱 App URL: http://localhost:${PORT}`);
+        console.log(`💚 Health check: http://localhost:${PORT}/health`);
     });
 }
 
