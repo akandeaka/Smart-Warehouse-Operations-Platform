@@ -8,6 +8,11 @@ const fs = require('fs');  // ADDED - needed for file system checks
 const { pool, testConnection } = require('./database');
 
 const app = express();
+// Serve static files from the 'frontend' directory
+app.use(express.static('frontend'));
+
+// Or if the path is absolute:
+app.use(express.static('/opt/render/project/src/frontend'));
 const PORT = process.env.PORT || 3000;
 
 // Middleware
