@@ -3,17 +3,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const path = require('path');
-
-const { pool, testConnection } = require('./database');
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-// server.js - Complete Backend with Working Return System
-const express = require('express');
-const cors = require('cors');
-require('dotenv').config();
-const path = require('path');
-const fs = require('fs');
+const fs = require('fs');  // ADDED - needed for file system checks
 
 const { pool, testConnection } = require('./database');
 
@@ -25,7 +15,7 @@ app.use(cors());
 app.use(express.json());
 
 // ============================================================
-// SERVE STATIC FILES (FIXES THE 404 ERROR - FLEXIBLE PATH)
+// SERVE STATIC FILES (FLEXIBLE PATH - FIXES 404 ERROR)
 // ============================================================
 // Try multiple possible paths for frontend directory
 const possiblePaths = [
@@ -65,24 +55,6 @@ app.get('/', (req, res) => {
     } else {
         res.status(500).send('Frontend directory not configured');
     }
-});
-
-// ============================================================
-// AUTHENTICATION MIDDLEWARE
-// ============================================================
-// ... (rest of your existing code continues here)
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// ============================================================
-// SERVE STATIC FILES (FIXES THE 404 ERROR)
-// ============================================================
-app.use(express.static(path.join(__dirname, 'frontend')));
-
-// Root route - serves your login page
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'frontend', 'login.html'));
 });
 
 // ============================================================
