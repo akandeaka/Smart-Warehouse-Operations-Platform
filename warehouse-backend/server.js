@@ -8,7 +8,69 @@ const { pool, testConnection } = require('./database');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+// server.js - Complete Backend with Working Return System
+const express = require('express');
+const cors = require('cors');
+require('dotenv').config();
+const path = require('path');
+const fs = require('fs');
 
+const { pool, testConnection } = require('./database');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// ============================================================
+// SERVE STATIC FILES (FIXES THE 404 ERROR - FLEXIBLE PATH)
+// ============================================================
+// Try multiple possible paths for frontend directory
+const possiblePaths = [
+    path.join(__dirname, 'frontend'),
+    path.join(__dirname, 'warehouse-backend', 'frontend'),
+    path.join(process.cwd(), 'frontend'),
+    path.join(process.cwd(), 'warehouse-backend', 'frontend')
+];
+
+let frontendPath = null;
+for (const testPath of possiblePaths) {
+    if (fs.existsSync(testPath)) {
+        frontendPath = testPath;
+        console.log(`✅ Found frontend at: ${frontendPath}`);
+        break;
+    }
+}
+
+if (frontendPath) {
+    app.use(express.static(frontendPath));
+    console.log(`✅ Static files being served from: ${frontendPath}`);
+} else {
+    console.error('❌ ERROR: Could not find frontend directory');
+    console.log('Searched paths:', possiblePaths);
+}
+
+// Root route - serves your login page
+app.get('/', (req, res) => {
+    if (frontendPath) {
+        const loginPath = path.join(frontendPath, 'login.html');
+        if (fs.existsSync(loginPath)) {
+            res.sendFile(loginPath);
+        } else {
+            console.error(`❌ login.html not found at: ${loginPath}`);
+            res.status(404).send('login.html not found');
+        }
+    } else {
+        res.status(500).send('Frontend directory not configured');
+    }
+});
+
+// ============================================================
+// AUTHENTICATION MIDDLEWARE
+// ============================================================
+// ... (rest of your existing code continues here)
 // Middleware
 app.use(cors());
 app.use(express.json());
