@@ -2,6 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
+const path = require('path');
 
 const { pool, testConnection } = require('./database');
 
@@ -11,17 +12,10 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Middleware
-app.use(cors());
-app.use(express.json());
 
 // ============================================================
-// SERVE STATIC FILES (ADD THIS - FIXES THE 404 ERROR)
+// SERVE STATIC FILES (FIXES THE 404 ERROR)
 // ============================================================
-const path = require('path');
 app.use(express.static(path.join(__dirname, 'frontend')));
 
 // Root route - serves your login page
