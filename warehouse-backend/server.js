@@ -17,26 +17,71 @@ app.use(express.json());
 // ============================================================
 // SERVE STATIC FILES (FLEXIBLE PATH - FIXES 404 ERROR)
 // ============================================================
+// ============================================================
+// SERVE STATIC FILES (FLEXIBLE PATH - FIXES 404 ERROR)
+// ============================================================
 // Try multiple possible paths for frontend directory
 const possiblePaths = [
-    path.join(__dirname, 'frontend'),
-    path.join(__dirname, 'warehouse-backend', 'frontend'),
-    path.join(process.cwd(), 'frontend'),
-    path.join(process.cwd(), 'warehouse-backend', 'frontend')
+    path.join(__dirname, 'frontend'),                           // Same directory
+    path.join(__dirname, '../frontend'),                        // Parent directory
+    path.join(process.cwd(), 'frontend'),                       // Working directory
+    path.join(process.cwd(), 'warehouse-backend', 'frontend'),  // Old incorrect path
+    '/opt/render/project/src/frontend',                         // Direct Render path
+    '/opt/render/project/src/warehouse-backend/frontend'        // Render fallback
 ];
 
 let frontendPath = null;
 for (const testPath of possiblePaths) {
-    if (fs.existsSync(testPath)) {
-        frontendPath = testPath;
-        console.log(`✅ Found frontend at: ${frontendPath}`);
-        break;
+    try {
+        if (fs.existsSync(testPath)) {
+            frontendPath = testPath;
+            console.log(`✅ Found frontend at: ${frontendPath}`);
+            break;
+        }
+    } catch (err) {
+        // Ignore errors and continue
+    }
+}
+
+// If still not found, try to find it by searching common locations
+if (!frontendPath) {
+    const searchPaths = [
+        '/opt/render/project/src',
+        process.cwd(),
+        __dirname
+    ];
+    
+    for (const basePath of searchPaths) {
+        try {
+            const files = fs.readdirSync(basePath);
+            if (files.includes('frontend')) {
+                frontendPath = path.join(basePath, 'frontend');
+                console.log(`✅ Found frontend by searching at: ${frontendPath}`);
+                break;
+            }
+            // Also check if files are directly in the base path (no frontend folder)
+            if (files.includes('login.html') || files.includes('index.html')) {
+                frontendPath = basePath;
+                console.log(`✅ Found HTML files directly at: ${frontendPath}`);
+                break;
+            }
+        } catch (err) {
+            // Ignore errors
+        }
     }
 }
 
 if (frontendPath) {
     app.use(express.static(frontendPath));
     console.log(`✅ Static files being served from: ${frontendPath}`);
+    
+    // List what files are available (for debugging)
+    try {
+        const files = fs.readdirSync(frontendPath);
+        console.log(`📁 Files in frontend directory: ${files.join(', ')}`);
+    } catch (err) {
+        console.log(`Could not list files: ${err.message}`);
+    }
 } else {
     console.error('❌ ERROR: Could not find frontend directory');
     console.log('Searched paths:', possiblePaths);
@@ -45,18 +90,28 @@ if (frontendPath) {
 // Root route - serves your login page
 app.get('/', (req, res) => {
     if (frontendPath) {
-        const loginPath = path.join(frontendPath, 'login.html');
-        if (fs.existsSync(loginPath)) {
-            res.sendFile(loginPath);
+        // Try multiple possible HTML files
+        const possibleHtmlFiles = ['login.html', 'index.html', 'manager-dashboard.html'];
+        let foundFile = null;
+        
+        for (const htmlFile of possibleHtmlFiles) {
+            const testPath = path.join(frontendPath, htmlFile);
+            if (fs.existsSync(testPath)) {
+                foundFile = testPath;
+                break;
+            }
+        }
+        
+        if (foundFile) {
+            res.sendFile(foundFile);
         } else {
-            console.error(`❌ login.html not found at: ${loginPath}`);
-            res.status(404).send('login.html not found');
+            console.error(`❌ No HTML file found in: ${frontendPath}`);
+            res.status(404).send('No login page found. Please check deployment.');
         }
     } else {
-        res.status(500).send('Frontend directory not configured');
+        res.status(500).send('Frontend directory not configured. Please contact administrator.');
     }
 });
-
 // ============================================================
 // AUTHENTICATION MIDDLEWARE
 // ============================================================
