@@ -1,58 +1,42 @@
-// sw.js - Service Worker for PWA
-const CACHE_NAME = 'wms-v1';  // Keep your original version
+// sw.js - Clean version with force update
+const CACHE_NAME = 'wms-v3';  // Changed version number
+
 const urlsToCache = [
-  '/',
-  '/index.html',              // ADDED
   '/login.html',
   '/manager-dashboard.html',
   '/sales-dashboard.html',
-  '/manager-performance.html',
-  '/config.js',               // ADDED
-  '/manifest.json'            // ADDED
+  '/manager-performance.html'
 ];
 
+// Install - Clear old caches first
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-  );
-});
-
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request).then(response => {
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
-          }
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, responseToCache);
-          });
-          return response;
-        });
-      })
-  );
-});
-
-self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
-  event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
-            return caches.delete(cacheName);
-          }
+    event.waitUntil(
+        caches.keys().then(cacheNames => {
+            return Promise.all(
+                cacheNames.map(cacheName => {
+                    return caches.delete(cacheName);
+                })
+            );
+        }).then(() => {
+            return caches.open(CACHE_NAME);
+        }).then(cache => {
+            return cache.addAll(urlsToCache);
         })
-      );
-    })
-  );
+    );
+    self.skipWaiting(); // Force activate immediately
+});
+
+// Fetch - Network first, fallback to cache
+self.addEventListener('fetch', event => {
+    event.respondWith(
+        fetch(event.request)
+            .catch(() => {
+                return caches.match(event.request);
+            })
+    );
+});
+
+// Activate - Take control immediately
+self.addEventListener('activate', event => {
+    event.waitUntil(clients.claim());
 });
