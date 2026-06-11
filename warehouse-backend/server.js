@@ -577,6 +577,9 @@ app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
         const hasRemaining = remainingGoods.length > 0;
         let totalRemaining = 0;
         for (const goods of remainingGoods) {
+            app.get('/', (req, res) => {
+    res.sendFile(path.join(frontendPath, 'login.html')); // Force login.html
+});
             totalRemaining += goods.remaining_qty;
         }
         
