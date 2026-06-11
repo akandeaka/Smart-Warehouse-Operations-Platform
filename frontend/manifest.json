@@ -1,8 +1,8 @@
 {
-  "name": "Warehouse Stock Management System",
+  "name": "Warehouse Stock System",
   "short_name": "WMS",
   "description": "Manage warehouse stock, sales, and returns",
-  "start_url": "/",
+  "start_url": "/login.html",
   "display": "standalone",
   "theme_color": "#667eea",
   "background_color": "#ffffff",
@@ -12,8 +12,7 @@
     {
       "src": "/icons/icon-72.png",
       "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
       "src": "/icons/icon-96.png",
