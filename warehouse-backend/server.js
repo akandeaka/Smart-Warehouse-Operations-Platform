@@ -17,7 +17,6 @@ app.use(express.json());
 // ============================================================
 // SERVE STATIC FILES (FLEXIBLE PATH - FIXES 404 ERROR)
 // ============================================================
-// Try multiple possible paths for frontend directory
 const possiblePaths = [
     path.join(__dirname, 'frontend'),
     path.join(__dirname, '../frontend'),
@@ -40,7 +39,6 @@ for (const testPath of possiblePaths) {
     }
 }
 
-// If still not found, try to find it by searching common locations
 if (!frontendPath) {
     const searchPaths = [
         '/opt/render/project/src',
@@ -56,7 +54,6 @@ if (!frontendPath) {
                 console.log(`✅ Found frontend by searching at: ${frontendPath}`);
                 break;
             }
-            // Also check if files are directly in the base path (no frontend folder)
             if (files.includes('login.html') || files.includes('index.html')) {
                 frontendPath = basePath;
                 console.log(`✅ Found HTML files directly at: ${frontendPath}`);
@@ -68,12 +65,10 @@ if (!frontendPath) {
     }
 }
 
-// Serve static files from the found frontend path
 if (frontendPath) {
     app.use(express.static(frontendPath));
     console.log(`✅ Static files being served from: ${frontendPath}`);
     
-    // List what files are available (for debugging)
     try {
         const files = fs.readdirSync(frontendPath);
         console.log(`📁 Files in frontend directory: ${files.join(', ')}`);
@@ -82,32 +77,21 @@ if (frontendPath) {
     }
 } else {
     console.error('❌ ERROR: Could not find frontend directory');
-    console.log('Searched paths:', possiblePaths);
 }
 
-// Root route - serves your login page
+// ============================================================
+// ROOT ROUTE - FIXED: Directly serves login.html
+// ============================================================
 app.get('/', (req, res) => {
     if (frontendPath) {
-        // Try multiple possible HTML files
-        const possibleHtmlFiles = ['login.html', 'index.html', 'manager-dashboard.html'];
-        let foundFile = null;
-        
-        for (const htmlFile of possibleHtmlFiles) {
-            const testPath = path.join(frontendPath, htmlFile);
-            if (fs.existsSync(testPath)) {
-                foundFile = testPath;
-                break;
-            }
-        }
-        
-        if (foundFile) {
-            res.sendFile(foundFile);
+        const loginPath = path.join(frontendPath, 'login.html');
+        if (fs.existsSync(loginPath)) {
+            res.sendFile(loginPath);
         } else {
-            console.error(`❌ No HTML file found in: ${frontendPath}`);
-            res.status(404).send('No login page found. Please check deployment.');
+            res.status(404).send('login.html not found');
         }
     } else {
-        res.status(500).send('Frontend directory not configured. Please contact administrator.');
+        res.status(500).send('Frontend directory not configured');
     }
 });
 
@@ -162,7 +146,7 @@ app.get('/api/version', (req, res) => {
 });
 
 // ============================================================
-// LOGIN - With attempt limiting
+// LOGIN
 // ============================================================
 const failedAttempts = new Map();
 
@@ -170,7 +154,6 @@ app.post('/api/auth/login', async (req, res) => {
     try {
         const { username, password } = req.body;
         
-        // Check if account is locked
         const attempt = failedAttempts.get(username);
         if (attempt && attempt.lockUntil && Date.now() < attempt.lockUntil) {
             const minutesLeft = Math.ceil((attempt.lockUntil - Date.now()) / 60000);
@@ -555,7 +538,7 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
 });
 
 // ============================================================
-// SUBMIT DAY SALES - Records unsold goods (NO stock change yet)
+// SUBMIT DAY SALES
 // ============================================================
 app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
     let connection;
@@ -577,9 +560,6 @@ app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
         const hasRemaining = remainingGoods.length > 0;
         let totalRemaining = 0;
         for (const goods of remainingGoods) {
-            app.get('/', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'login.html')); // Force login.html
-});
             totalRemaining += goods.remaining_qty;
         }
         
