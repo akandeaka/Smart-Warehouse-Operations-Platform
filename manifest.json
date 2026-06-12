@@ -4,7 +4,7 @@
   "description": "Manage warehouse stock, sales, and returns",
   "start_url": "/login.html",
   "display": "standalone",
-  "theme_color": "#F40009",
+  "theme_color": "#667eea",
   "background_color": "#ffffff",
   "orientation": "portrait",
   "scope": "/"
