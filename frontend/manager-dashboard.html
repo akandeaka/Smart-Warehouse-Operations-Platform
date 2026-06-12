@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="WMS">
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
-    <meta name="theme-color" content="#F40009">
+    <meta name="theme-color" content="#667eea">
     
     <style>
         * {
@@ -27,7 +27,7 @@
         }
 
         .header {
-            background: linear-gradient(135deg, #F40009 0%, #CC0000 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 20px 40px;
             display: flex;
@@ -71,7 +71,7 @@
 
         .logout-btn:hover {
             background-color: white;
-            color: #F40009;
+            color: #667eea;
         }
 
         .container {
@@ -102,7 +102,7 @@
         .stat-card .value {
             font-size: 28px;
             font-weight: bold;
-            color: #F40009;
+            color: #667eea;
         }
 
         .tabs {
@@ -126,12 +126,12 @@
         }
 
         .tab:hover {
-            color: #F40009;
+            color: #667eea;
         }
 
         .tab.active {
-            color: #F40009;
-            border-bottom-color: #F40009;
+            color: #667eea;
+            border-bottom-color: #667eea;
         }
 
         .tab-content {
@@ -187,7 +187,7 @@
         }
 
         .btn-allocate {
-            background-color: #F40009;
+            background-color: #28a745;
             color: white;
             padding: 10px 24px;
             border: none;
@@ -199,11 +199,11 @@
         }
 
         .btn-allocate:hover {
-            background-color: #CC0000;
+            background-color: #218838;
         }
 
         .btn-approve {
-            background-color: #F40009;
+            background-color: #28a745;
             color: white;
             padding: 6px 12px;
             border: none;
@@ -211,10 +211,6 @@
             cursor: pointer;
             font-size: 12px;
             margin-right: 5px;
-        }
-
-        .btn-approve:hover {
-            background-color: #CC0000;
         }
 
         .btn-reject {
@@ -363,17 +359,45 @@
             }
             .btn-allocate, .btn-approve, .btn-reject, .close-day-btn, .submit-btn, .confirm-btn {
                 width: 100%;
-                margin-bottom: 5px;
+                padding: 10px;
+                font-size: 14px;
             }
             td button {
                 display: block;
                 width: 100%;
                 margin: 3px 0;
             }
+            .product-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            .card {
+                padding: 12px;
+                margin: 10px;
+            }
+            .tab-buttons {
+                flex-wrap: wrap;
+            }
+            .tab-btn {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+        }
+        
+        @media screen and (min-width: 769px) and (max-width: 1024px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .form-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .product-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
         
         @media (hover: none) and (pointer: coarse) {
-            button, .tab, .btn-allocate, .btn-approve, .btn-reject, .logout-btn {
+            button, .tab, .btn-allocate, .btn-approve, .btn-reject, .logout-btn, .refresh-btn, .confirm-btn, .submit-btn {
                 min-height: 44px;
                 min-width: 44px;
             }
@@ -386,7 +410,7 @@
 </head>
 <body>
     <header class="header">
-        <div class="header-title">🏭 Warehouse Manager Dashboard</div>
+        <div class="header-title">🏬 Warehouse Manager Dashboard</div>
         <nav class="header-nav">
             <a href="manager-dashboard.html"><i class="fas fa-home"></i> Dashboard</a>
             <a href="manager-performance.html"><i class="fas fa-chart-bar"></i> Performance</a>
@@ -824,7 +848,7 @@
         function setupWarningTimer() {
             clearTimeout(warningTimer);
             warningTimer = setTimeout(() => {
-                showMessage('⚠️ Warning: You will be logged out in 1 minute due to inactivity.');
+                showMessage('⚠️ Warning: You will be logged out in 1 minute due to inactivity.', false, true);
             }, WARNING_TIME);
         }
 
