@@ -11,65 +11,30 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="WMS">
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
-    <meta name="theme-color" content="#F40009">
+    <meta name="theme-color" content="#28a745">
     
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
-        
-        .header { 
-            background: linear-gradient(135deg, #F40009 0%, #CC0000 100%); 
-            color: white; 
-            padding: 20px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            flex-wrap: wrap; 
-        }
-        
+        .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; padding: 20px; }
         .stat-card { background: white; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .stat-card .label { font-size: 12px; color: #666; margin-bottom: 5px; }
-        .stat-card .value { font-size: 22px; font-weight: bold; color: #F40009; }
+        .stat-card .value { font-size: 22px; font-weight: bold; color: #28a745; }
         .stat-card .credit-value { font-size: 22px; font-weight: bold; color: #dc3545; }
         .card { background: white; padding: 20px; margin: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .card h3 { margin-bottom: 15px; color: #333; border-left: 4px solid #F40009; padding-left: 12px; }
+        .card h3 { margin-bottom: 15px; color: #333; border-left: 4px solid #28a745; padding-left: 12px; }
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px; }
         .product-item { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fafafa; }
         .product-item h4 { color: #333; margin-bottom: 10px; }
-        .product-item .price { color: #F40009; font-weight: bold; font-size: 20px; }
+        .product-item .price { color: #28a745; font-weight: bold; font-size: 20px; }
         .product-item .stock { color: #666; font-size: 14px; margin: 5px 0; }
-        .product-item .total-value { color: #F40009; font-weight: bold; margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; }
-        
-        .confirm-btn { 
-            background: #F40009; 
-            color: white; 
-            border: none; 
-            padding: 20px; 
-            border-radius: 10px; 
-            cursor: pointer; 
-            font-size: 20px; 
-            font-weight: bold; 
-            width: 100%; 
-            margin-top: 15px; 
-        }
-        .confirm-btn:hover { background: #CC0000; }
-        
+        .product-item .total-value { color: #667eea; font-weight: bold; margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; }
+        .confirm-btn { background: #28a745; color: white; border: none; padding: 20px; border-radius: 10px; cursor: pointer; font-size: 20px; font-weight: bold; width: 100%; margin-top: 15px; }
+        .confirm-btn:hover { background: #218838; }
         .submit-btn { background: #ffc107; color: #333; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; width: calc(100% - 40px); margin: 0 20px 20px 20px; }
-        
-        .sell-btn { 
-            background: #F40009; 
-            color: white; 
-            border: none; 
-            padding: 12px; 
-            border-radius: 5px; 
-            cursor: pointer; 
-            width: 100%; 
-            font-size: 16px; 
-        }
-        .sell-btn:hover { background: #CC0000; }
+        .sell-btn { background: #28a745; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
         .sell-btn:disabled { background: #ccc; cursor: not-allowed; }
-        
         .logout-btn, .refresh-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; margin-left: 10px; border: none; color: white; }
         .download-btn { background: #17a2b8; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; margin: 10px; }
         .form-group { margin-bottom: 15px; }
@@ -87,18 +52,19 @@
         th { background: #f8f9fa; }
         .loading { text-align: center; padding: 40px; color: #666; }
         .allocation-summary { background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-        .total-goods-value { font-size: 24px; font-weight: bold; color: #F40009; }
+        .total-goods-value { font-size: 24px; font-weight: bold; color: #28a745; }
         .status-confirmed { color: #28a745; font-weight: bold; }
         .status-pending { color: #dc3545; font-weight: bold; }
         .credit-amount { color: #dc3545; font-weight: bold; }
         .tab-buttons { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #ddd; }
         .tab-btn { background: none; border: none; padding: 10px 20px; cursor: pointer; font-size: 16px; color: #666; }
-        .tab-btn.active { color: #F40009; border-bottom: 2px solid #F40009; }
+        .tab-btn.active { color: #28a745; border-bottom: 2px solid #28a745; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .zero-state { text-align: center; padding: 40px; color: #F40009; font-size: 18px; }
-        .history-item { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 3px solid #F40009; }
-        .history-date { font-weight: bold; color: #F40009; margin-bottom: 10px; }
+        .zero-state { text-align: center; padding: 40px; color: #28a745; font-size: 18px; }
+        .history-item { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 3px solid #28a745; }
+        .history-date { font-weight: bold; color: #28a745; margin-bottom: 10px; }
+        @keyframes pulse { 0% { transform: scale(1); background-color: #28a745; } 50% { transform: scale(1.02); background-color: #34ce57; } 100% { transform: scale(1); background-color: #28a745; } }
 
         /* Mobile Responsive */
         @media screen and (max-width: 768px) {
@@ -106,18 +72,28 @@
             .stats-container { grid-template-columns: 1fr; gap: 10px; padding: 10px; }
             .stat-card { padding: 12px; }
             .stat-card .value { font-size: 20px; }
+            .tabs { gap: 5px; padding: 0 10px; }
+            .tab { padding: 8px 12px; font-size: 12px; }
             .card { padding: 12px; margin: 10px; }
             .product-grid { grid-template-columns: 1fr; gap: 10px; }
             .product-item { padding: 10px; }
+            .form-row { grid-template-columns: 1fr; gap: 10px; }
             table { display: block; overflow-x: auto; white-space: nowrap; font-size: 12px; }
             th, td { padding: 8px; min-width: 80px; }
-            .confirm-btn, .submit-btn { width: 100%; padding: 10px; font-size: 14px; }
+            .btn-allocate, .btn-approve, .btn-reject, .close-day-btn, .submit-btn, .confirm-btn { width: 100%; padding: 10px; font-size: 14px; }
+            td button { display: block; width: 100%; margin: 3px 0; }
             .tab-buttons { flex-wrap: wrap; }
             .tab-btn { padding: 6px 12px; font-size: 12px; }
         }
         
+        @media screen and (min-width: 769px) and (max-width: 1024px) {
+            .stats-container { grid-template-columns: repeat(2, 1fr); }
+            .product-grid { grid-template-columns: repeat(2, 1fr); }
+            .form-row { grid-template-columns: repeat(2, 1fr); }
+        }
+        
         @media (hover: none) and (pointer: coarse) {
-            button, .tab-btn, .logout-btn, .refresh-btn, .confirm-btn, .submit-btn, .sell-btn {
+            button, .tab, .btn-allocate, .btn-approve, .btn-reject, .logout-btn, .refresh-btn, .confirm-btn, .submit-btn {
                 min-height: 44px;
                 min-width: 44px;
             }
@@ -127,7 +103,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>🏭 <span id="teamName">Sales Team</span> Dashboard</h1>
+        <h1>💰 <span id="teamName">Sales Team</span> Dashboard</h1>
         <div>
             <span id="dateDisplay" style="margin-right: 15px; font-size: 14px;"></span>
             <button class="refresh-btn" onclick="refreshData()">🔄 Refresh</button>
@@ -190,7 +166,7 @@
             <table id="todayTable" style="display: none;">
                 <thead><tr><th>Time</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Status</th></tr></thead>
                 <tbody id="todayTransactionsBody"></tbody>
-            </table>
+            </tr>
             <div id="noTodayTransactions" class="zero-state" style="display: none;">📭 No transactions recorded today.</div>
         </div>
         
@@ -588,7 +564,7 @@
                         <td>${req.due_date ? new Date(req.due_date).toLocaleDateString() : '-'}</td>
                     </tr>`;
                 }
-                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests</td></tr>';
+                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests<\/td></td>';
                 document.getElementById('creditLoading').style.display = 'none';
                 document.getElementById('creditTable').style.display = 'table';
             }
