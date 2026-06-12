@@ -2,14 +2,13 @@ require('dotenv').config();
 const nodemailer = require('nodemailer');
 
 async function testEmail() {
-    console.log('📧 Testing email...');
-    
     const transporter = nodemailer.createTransport({
-        host: process.env.EMAIL_HOST,
-        port: process.env.EMAIL_PORT,
+        host: "smtp.gmail.com",
+        port: 587,
+        secure: false,
         auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
+            user: "your-email@gmail.com",  // Your full email
+            pass: "your-16-char-app-password-no-spaces"  // No spaces!
         }
     });
 
@@ -17,14 +16,14 @@ async function testEmail() {
         await transporter.verify();
         console.log('✅ Email config is correct!');
         
-        await transporter.sendMail({
-            from: process.env.EMAIL_USER,
-            to: process.env.ALERT_EMAIL,
-            subject: 'Test Email - Warehouse System',
-            html: '<h2 style="color:#F40009;">✅ Email working!</h2>'
+        const result = await transporter.sendMail({
+            from: "your-email@gmail.com",
+            to: "your-email@gmail.com",
+            subject: "Test Email - Warehouse System",
+            html: "<h2>✅ Email working!</h2>"
         });
         
-        console.log('✅ Test email sent! Check your inbox.');
+        console.log('✅ Test email sent!');
     } catch (error) {
         console.error('❌ Error:', error.message);
     }
