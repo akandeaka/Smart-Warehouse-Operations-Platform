@@ -1,11 +1,11 @@
 {
-  "name": "Coca-Cola Warehouse Stock System",
-  "short_name": "Coca-Cola WMS",
-  "description": "Manage Coca-Cola warehouse stock, sales, and returns",
+  "name": "Warehouse Stock System",
+  "short_name": "WMS",
+  "description": "Manage warehouse stock, sales, and returns",
   "start_url": "/login.html",
   "display": "standalone",
   "theme_color": "#F40009",
-  "background_color": "#FFFFFF",
+  "background_color": "#ffffff",
   "orientation": "portrait",
   "scope": "/"
 }
