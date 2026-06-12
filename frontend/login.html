@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Warehouse Stock System</title>
+    <title>Warehouse Stock System</title>
     
     <!-- PWA Support -->
     <link rel="manifest" href="/manifest.json">
@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="WMS">
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
-    <meta name="theme-color" content="#667eea">
+    <meta name="theme-color" content="#F40009">
     
     <style>
         * {
@@ -21,7 +21,7 @@
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #F40009 0%, #CC0000 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
@@ -31,15 +31,23 @@
             background: white;
             padding: 40px;
             border-radius: 10px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
             width: 100%;
             max-width: 400px;
             margin: 20px;
+            border-top: 5px solid #F40009;
         }
         .login-container h1 {
             text-align: center;
+            margin-bottom: 10px;
+            color: #1A1A1A;
+            font-size: 24px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
             margin-bottom: 30px;
-            color: #333;
+            font-size: 14px;
         }
         .form-group {
             margin-bottom: 20px;
@@ -48,7 +56,7 @@
             display: block;
             margin-bottom: 5px;
             font-weight: 500;
-            color: #555;
+            color: #333;
         }
         input {
             width: 100%;
@@ -60,7 +68,7 @@
         button {
             width: 100%;
             padding: 12px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #F40009 0%, #CC0000 100%);
             color: white;
             border: none;
             border-radius: 5px;
@@ -71,6 +79,7 @@
         }
         button:hover {
             opacity: 0.9;
+            background: linear-gradient(135deg, #CC0000 0%, #990000 100%);
         }
         .error-msg {
             background: #f8d7da;
@@ -82,15 +91,16 @@
         }
         .logo {
             text-align: center;
-            font-size: 48px;
+            font-size: 64px;
             margin-bottom: 20px;
         }
     </style>
 </head>
 <body>
     <div class="login-container">
-        <div class="logo">🏬</div>
-        <h1>Warehouse Stock System</h1>
+        <div class="logo">🏭</div>
+        <h1>Warehouse <span style="color:#F40009">Stock System</span></h1>
+        <div class="subtitle">Inventory Management Portal</div>
         <div id="errorMsg" class="error-msg"></div>
         <form id="loginForm">
             <div class="form-group">
