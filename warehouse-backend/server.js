@@ -1104,5 +1104,194 @@ async function startServer() {
         console.log(`💚 Health check: http://localhost:${PORT}/health`);
     });
 }
+// ============================================================
+// 2FA AND PORTAL-SPECIFIC LOGIN
+// ============================================================
+
+// Track 2FA pending logins (temporary)
+const twofaPending = new Map();
+
+// Step 1: Initial login - checks credentials and role against requested portal
+app.post('/api/auth/login-portal', async (req, res) => {
+    try {
+        const { username, password, portal } = req.body;
+        
+        // portal can be: 'super-admin', 'manager', 'sales'
+        
+        const [users] = await pool.query(
+            'SELECT id, username, full_name, email, role, team_id, is_active, twofa_secret FROM users WHERE username = ? AND is_active = 1',
+            [username]
+        );
+        
+        if (users.length === 0 || password !== 'password123') {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+        
+        const user = users[0];
+        
+        // Check if role matches the portal requested
+        let roleMatch = false;
+        let redirectUrl = '';
+        
+        switch(portal) {
+            case 'super-admin':
+                roleMatch = (user.role === 'super_admin');
+                redirectUrl = '/super-admin.html';
+                break;
+            case 'manager':
+                roleMatch = (user.role === 'warehouse_manager');
+                redirectUrl = '/manager-dashboard.html';
+                break;
+            case 'sales':
+                roleMatch = (user.role === 'sales_rep');
+                redirectUrl = '/sales-dashboard.html';
+                break;
+            default:
+                return res.status(400).json({ success: false, message: 'Invalid portal' });
+        }
+        
+        if (!roleMatch) {
+            return res.status(403).json({ 
+                success: false, 
+                message: `Access denied. You are not authorized to access this portal. Your role: ${user.role}`
+            });
+        }
+        
+        // For super_admin, require 2FA
+        if (user.role === 'super_admin' && user.twofa_secret) {
+            // Generate a temporary session ID for 2FA
+            const sessionId = Math.random().toString(36).substring(2, 15);
+            twofaPending.set(sessionId, {
+                userId: user.id,
+                username: user.username,
+                role: user.role,
+                redirectUrl: redirectUrl,
+                expiresAt: Date.now() + (5 * 60 * 1000) // 5 minute expiry
+            });
+            
+            return res.json({
+                success: true,
+                requiresTwoFA: true,
+                sessionId: sessionId,
+                message: '2FA required. Enter your secret code.'
+            });
+        }
+        
+        // No 2FA required - create token directly
+        const token = Buffer.from(`${user.username}:${Date.now()}`).toString('base64');
+        
+        res.json({
+            success: true,
+            token: token,
+            redirectUrl: redirectUrl,
+            user: {
+                id: user.id,
+                username: user.username,
+                full_name: user.full_name,
+                role: user.role,
+                team_id: user.team_id
+            }
+        });
+        
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Step 2: Verify 2FA code for super_admin
+app.post('/api/auth/verify-2fa', async (req, res) => {
+    try {
+        const { sessionId, secretCode } = req.body;
+        
+        const pending = twofaPending.get(sessionId);
+        if (!pending) {
+            return res.status(401).json({ success: false, message: 'Session expired. Please login again.' });
+        }
+        
+        if (Date.now() > pending.expiresAt) {
+            twofaPending.delete(sessionId);
+            return res.status(401).json({ success: false, message: 'Session expired. Please login again.' });
+        }
+        
+        // Verify secret code
+        const [users] = await pool.query(
+            'SELECT twofa_secret FROM users WHERE id = ?',
+            [pending.userId]
+        );
+        
+        if (users.length === 0 || users[0].twofa_secret !== secretCode) {
+            return res.status(401).json({ success: false, message: 'Invalid secret code. Access denied.' });
+        }
+        
+        // Code verified - create token
+        const token = Buffer.from(`${pending.username}:${Date.now()}`).toString('base64');
+        
+        twofaPending.delete(sessionId);
+        
+        res.json({
+            success: true,
+            token: token,
+            redirectUrl: pending.redirectUrl,
+            user: {
+                id: pending.userId,
+                username: pending.username,
+                role: pending.role
+            }
+        });
+        
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Validate session for specific portal
+app.get('/api/auth/validate-portal', async (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        const requestedPortal = req.query.portal;
+        
+        if (!token) {
+            return res.json({ valid: false, message: 'No token' });
+        }
+        
+        const decoded = Buffer.from(token, 'base64').toString().split(':');
+        const username = decoded[0];
+        
+        const [users] = await pool.query(
+            'SELECT id, username, role FROM users WHERE username = ? AND is_active = 1',
+            [username]
+        );
+        
+        if (users.length === 0) {
+            return res.json({ valid: false, message: 'User not found' });
+        }
+        
+        const user = users[0];
+        let roleMatch = false;
+        
+        switch(requestedPortal) {
+            case 'super-admin':
+                roleMatch = (user.role === 'super_admin');
+                break;
+            case 'manager':
+                roleMatch = (user.role === 'warehouse_manager');
+                break;
+            case 'sales':
+                roleMatch = (user.role === 'sales_rep');
+                break;
+            default:
+                roleMatch = false;
+        }
+        
+        if (!roleMatch) {
+            return res.json({ valid: false, message: 'Role mismatch' });
+        }
+        
+        res.json({ valid: true, role: user.role });
+        
+    } catch (error) {
+        res.json({ valid: false, message: error.message });
+    }
+});
 
 startServer();
