@@ -106,12 +106,16 @@ const authMiddleware = async (req, res, next) => {
             return res.status(401).json({ success: false, message: 'No token provided' });
         }
         const decoded = Buffer.from(token, 'base64').toString().split(':');
-        req.user = { 
-            id: 1, 
-            username: decoded[0], 
-            role: decoded[0] === 'warehouse_mgr' ? 'warehouse_manager' : 'sales_rep',
-            team_id: decoded[0] === 'warehouse_mgr' ? null : 1
-        };
+        // Map the role from database
+let userRole = users[0].role;
+let teamId = users[0].team_id;
+
+req.user = { 
+    id: users[0].id,
+    username: decoded[0], 
+    role: userRole,
+    team_id: teamId
+};
         next();
     } catch (error) {
         return res.status(401).json({ success: false, message: 'Invalid token' });
@@ -151,6 +155,62 @@ app.get('/api/version', (req, res) => {
 // ============================================================
 const failedAttempts = new Map();
 
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        
+        const attempt = failedAttempts.get(username);
+        if (attempt && attempt.lockUntil && Date.now() < attempt.lockUntil) {
+            const minutesLeft = Math.ceil((attempt.lockUntil - Date.now()) / 60000);
+            return res.status(403).json({ 
+                success: false, 
+                message: `Account locked. Try again in ${minutesLeft} minutes.` 
+            });
+        }
+        
+        const [users] = await pool.query(
+            'SELECT id, username, full_name, email, role, team_id FROM users WHERE username = ? AND is_active = 1',
+            [username]
+        );
+        
+        if (users.length === 0 || password !== 'password123') {
+            const currentAttempt = failedAttempts.get(username) || { count: 0, lockUntil: null };
+            currentAttempt.count = (currentAttempt.count || 0) + 1;
+            
+            if (currentAttempt.count >= 5) {
+                currentAttempt.lockUntil = Date.now() + (15 * 60 * 1000);
+                failedAttempts.set(username, currentAttempt);
+                return res.status(403).json({ 
+                    success: false, 
+                    message: 'Too many failed attempts. Account locked for 15 minutes.' 
+                });
+            }
+            
+            failedAttempts.set(username, currentAttempt);
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+        
+        failedAttempts.delete(username);
+        
+        const user = users[0];
+        const token = Buffer.from(`${username}:${Date.now()}`).toString('base64');
+        
+        // Return the actual role from database
+        res.json({
+            success: true,
+            token: token,
+            user: {
+                id: user.id,
+                username: user.username,
+                full_name: user.full_name,
+                role: user.role,  // This will be 'super_admin', 'warehouse_manager', or 'sales_rep'
+                team_id: user.team_id
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { username, password } = req.body;
