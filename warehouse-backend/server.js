@@ -835,7 +835,254 @@ app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']),
         if (connection) connection.release();
     }
 });
+// ============================================================
+// SUPER ADMIN MIDDLEWARE (Stricter than regular auth)
+// ============================================================
+const superAdminMiddleware = async (req, res, next) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token) {
+            return res.status(401).json({ success: false, message: 'No token provided' });
+        }
+        const decoded = Buffer.from(token, 'base64').toString().split(':');
+        
+        const [users] = await pool.query(
+            'SELECT role FROM users WHERE username = ? AND is_active = 1',
+            [decoded[0]]
+        );
+        
+        if (users.length === 0 || users[0].role !== 'super_admin') {
+            return res.status(403).json({ success: false, message: 'Access denied. Super Admin only.' });
+        }
+        
+        req.user = { username: decoded[0], role: users[0].role };
+        next();
+    } catch (error) {
+        return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+};
 
+// ============================================================
+// ADMIN PRODUCT MANAGEMENT
+// ============================================================
+
+// Get all products
+app.get('/api/admin/products', superAdminMiddleware, async (req, res) => {
+    try {
+        const search = req.query.search || '';
+        let query = 'SELECT id, product_name, current_qty, unit_cost, selling_price, min_stock_level, is_active FROM products WHERE 1=1';
+        let params = [];
+
+        if (search) {
+            query += ' AND product_name LIKE ?';
+            params.push(`%${search}%`);
+        }
+
+        query += ' ORDER BY product_name';
+        
+        const [products] = await pool.query(query, params);
+        res.json({ success: true, data: products });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Add single product
+app.post('/api/admin/product', superAdminMiddleware, async (req, res) => {
+    try {
+        const { product_name, current_qty, unit_cost, selling_price, min_stock_level } = req.body;
+        
+        if (!product_name) {
+            return res.status(400).json({ success: false, message: 'Product name required' });
+        }
+
+        const [result] = await pool.query(
+            `INSERT INTO products (product_name, current_qty, unit_cost, selling_price, min_stock_level, is_active) 
+             VALUES (?, ?, ?, ?, ?, 1)`,
+            [product_name, current_qty || 0, unit_cost || 0, selling_price || 0, min_stock_level || 50]
+        );
+
+        res.json({ success: true, id: result.insertId, message: 'Product added successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Update product
+app.put('/api/admin/product/:id', superAdminMiddleware, async (req, res) => {
+    try {
+        const { product_name, current_qty, unit_cost, selling_price, min_stock_level, is_active } = req.body;
+        
+        await pool.query(
+            `UPDATE products SET 
+                product_name = ?, 
+                current_qty = ?, 
+                unit_cost = ?, 
+                selling_price = ?, 
+                min_stock_level = ?, 
+                is_active = ? 
+             WHERE id = ?`,
+            [product_name, current_qty, unit_cost, selling_price, min_stock_level, is_active, req.params.id]
+        );
+
+        res.json({ success: true, message: 'Product updated successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Delete product
+app.delete('/api/admin/product/:id', superAdminMiddleware, async (req, res) => {
+    try {
+        await pool.query('DELETE FROM products WHERE id = ?', [req.params.id]);
+        res.json({ success: true, message: 'Product deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Bulk delete products
+app.post('/api/admin/products/bulk-delete', superAdminMiddleware, async (req, res) => {
+    try {
+        const { ids } = req.body;
+        if (!ids || ids.length === 0) {
+            return res.status(400).json({ success: false, message: 'No products selected' });
+        }
+        
+        const placeholders = ids.map(() => '?').join(',');
+        await pool.query(`DELETE FROM products WHERE id IN (${placeholders})`, ids);
+        
+        res.json({ success: true, message: `${ids.length} products deleted successfully` });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Adjust stock
+app.post('/api/admin/adjust-stock', superAdminMiddleware, async (req, res) => {
+    let connection;
+    try {
+        const { product_id, adjustment, reason } = req.body;
+        
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+        
+        const [product] = await connection.query('SELECT product_name, current_qty FROM products WHERE id = ?', [product_id]);
+        if (product.length === 0) {
+            throw new Error('Product not found');
+        }
+        
+        const newQuantity = product[0].current_qty + adjustment;
+        if (newQuantity < 0) {
+            throw new Error('Stock cannot be negative');
+        }
+        
+        await connection.query('UPDATE products SET current_qty = ? WHERE id = ?', [newQuantity, product_id]);
+        
+        await connection.query(
+            `INSERT INTO stock_transactions 
+             (transaction_type, product_id, quantity_change, unit_cost_at_time, reference_type, notes, created_by) 
+             VALUES (?, ?, ?, (SELECT unit_cost FROM products WHERE id = ?), ?, ?, ?)`,
+            ['manual_adjustment', product_id, adjustment, product_id, 'admin_adjustment', reason, req.user.username]
+        );
+        
+        await connection.commit();
+        
+        res.json({ 
+            success: true, 
+            message: `Stock adjusted: ${adjustment > 0 ? '+' : ''}${adjustment} units. New quantity: ${newQuantity}` 
+        });
+    } catch (error) {
+        if (connection) await connection.rollback();
+        res.status(500).json({ success: false, message: error.message });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
+// ============================================================
+// ADMIN USER MANAGEMENT
+// ============================================================
+
+// Get all users
+app.get('/api/admin/users', superAdminMiddleware, async (req, res) => {
+    try {
+        const [users] = await pool.query(
+            'SELECT id, username, full_name, email, role, team_id, is_active, created_at FROM users'
+        );
+        res.json({ success: true, data: users });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Create user
+app.post('/api/admin/user', superAdminMiddleware, async (req, res) => {
+    try {
+        const { username, password_hash, full_name, email, role, team_id } = req.body;
+        
+        if (!username || !password_hash) {
+            return res.status(400).json({ success: false, message: 'Username and password required' });
+        }
+        
+        const [result] = await pool.query(
+            `INSERT INTO users (username, password_hash, full_name, email, role, team_id, is_active) 
+             VALUES (?, ?, ?, ?, ?, ?, 1)`,
+            [username, password_hash, full_name || username, email || '', role || 'sales_rep', team_id || null]
+        );
+        
+        res.json({ success: true, id: result.insertId, message: 'User created successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Reset user password
+app.post('/api/admin/user/:id/reset-password', superAdminMiddleware, async (req, res) => {
+    try {
+        await pool.query(
+            'UPDATE users SET password_hash = ? WHERE id = ?',
+            ['password123', req.params.id]
+        );
+        res.json({ success: true, message: 'Password reset to: password123' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Deactivate user
+app.delete('/api/admin/user/:id', superAdminMiddleware, async (req, res) => {
+    try {
+        await pool.query('UPDATE users SET is_active = 0 WHERE id = ?', [req.params.id]);
+        res.json({ success: true, message: 'User deactivated' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================================
+// ADMIN SYSTEM INFO
+// ============================================================
+
+// Get system statistics
+app.get('/api/admin/system-info', superAdminMiddleware, async (req, res) => {
+    try {
+        const [productCount] = await pool.query('SELECT COUNT(*) as count FROM products');
+        const [userCount] = await pool.query('SELECT COUNT(*) as count FROM users');
+        const [orderCount] = await pool.query('SELECT COUNT(*) as count FROM sales_orders');
+        
+        res.json({
+            success: true,
+            data: {
+                total_products: productCount[0].count,
+                total_users: userCount[0].count,
+                total_orders: orderCount[0].count
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 // ============================================================
 // START SERVER
 // ============================================================
