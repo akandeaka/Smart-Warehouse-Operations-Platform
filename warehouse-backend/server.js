@@ -133,7 +133,36 @@ const requireRole = (roles) => {
         next();
     };
 };
-
+const authMiddleware = async (req, res, next) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token) {
+            return res.status(401).json({ success: false, message: 'No token provided' });
+        }
+        const decoded = Buffer.from(token, 'base64').toString().split(':');
+        const username = decoded[0];
+        
+        // Get user from database to get actual role
+        const [users] = await pool.query(
+            'SELECT id, role, team_id FROM users WHERE username = ? AND is_active = 1',
+            [username]
+        );
+        
+        if (users.length === 0) {
+            return res.status(401).json({ success: false, message: 'User not found' });
+        }
+        
+        req.user = { 
+            id: users[0].id,
+            username: username, 
+            role: users[0].role,
+            team_id: users[0].team_id
+        };
+        next();
+    } catch (error) {
+        return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+};
 // ============================================================
 // HEALTH CHECK
 // ============================================================
