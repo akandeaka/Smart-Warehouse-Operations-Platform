@@ -5,6 +5,8 @@ require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
 
+// const emailService = require('./emailService'); // DISABLED - email service not configured yet
+
 const { pool, testConnection } = require('./database');
 
 const app = express();
