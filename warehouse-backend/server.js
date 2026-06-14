@@ -5,7 +5,6 @@ require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
 
-const emailService = require('./emailService');
 const { pool, testConnection } = require('./database');
 
 const app = express();
@@ -81,7 +80,7 @@ if (frontendPath) {
 }
 
 // ============================================================
-// ROOT ROUTE - FIXED: Directly serves login.html
+// ROOT ROUTE - Directly serves login.html
 // ============================================================
 app.get('/', (req, res) => {
     if (frontendPath) {
@@ -97,42 +96,8 @@ app.get('/', (req, res) => {
 });
 
 // ============================================================
-// AUTHENTICATION MIDDLEWARE
+// AUTHENTICATION MIDDLEWARE (Single, correct version)
 // ============================================================
-const authMiddleware = async (req, res, next) => {
-    try {
-        const token = req.headers.authorization?.split(' ')[1];
-        if (!token) {
-            return res.status(401).json({ success: false, message: 'No token provided' });
-        }
-        const decoded = Buffer.from(token, 'base64').toString().split(':');
-        // Map the role from database
-let userRole = users[0].role;
-let teamId = users[0].team_id;
-
-req.user = { 
-    id: users[0].id,
-    username: decoded[0], 
-    role: userRole,
-    team_id: teamId
-};
-        next();
-    } catch (error) {
-        return res.status(401).json({ success: false, message: 'Invalid token' });
-    }
-};
-
-const requireRole = (roles) => {
-    return (req, res, next) => {
-        if (!req.user) {
-            return res.status(401).json({ success: false, message: 'Not authenticated' });
-        }
-        if (!roles.includes(req.user.role)) {
-            return res.status(403).json({ success: false, message: 'Access denied. Requires role: ' + roles.join(' or ') });
-        }
-        next();
-    };
-};
 const authMiddleware = async (req, res, next) => {
     try {
         const token = req.headers.authorization?.split(' ')[1];
@@ -163,6 +128,19 @@ const authMiddleware = async (req, res, next) => {
         return res.status(401).json({ success: false, message: 'Invalid token' });
     }
 };
+
+const requireRole = (roles) => {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ success: false, message: 'Not authenticated' });
+        }
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({ success: false, message: 'Access denied. Requires role: ' + roles.join(' or ') });
+        }
+        next();
+    };
+};
+
 // ============================================================
 // HEALTH CHECK
 // ============================================================
@@ -180,7 +158,7 @@ app.get('/api/version', (req, res) => {
 });
 
 // ============================================================
-// LOGIN
+// LOGIN (Single, correct version)
 // ============================================================
 const failedAttempts = new Map();
 
@@ -225,61 +203,6 @@ app.post('/api/auth/login', async (req, res) => {
         const token = Buffer.from(`${username}:${Date.now()}`).toString('base64');
         
         // Return the actual role from database
-        res.json({
-            success: true,
-            token: token,
-            user: {
-                id: user.id,
-                username: user.username,
-                full_name: user.full_name,
-                role: user.role,  // This will be 'super_admin', 'warehouse_manager', or 'sales_rep'
-                team_id: user.team_id
-            }
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-app.post('/api/auth/login', async (req, res) => {
-    try {
-        const { username, password } = req.body;
-        
-        const attempt = failedAttempts.get(username);
-        if (attempt && attempt.lockUntil && Date.now() < attempt.lockUntil) {
-            const minutesLeft = Math.ceil((attempt.lockUntil - Date.now()) / 60000);
-            return res.status(403).json({ 
-                success: false, 
-                message: `Account locked. Try again in ${minutesLeft} minutes.` 
-            });
-        }
-        
-        const [users] = await pool.query(
-            'SELECT id, username, full_name, email, role, team_id FROM users WHERE username = ? AND is_active = 1',
-            [username]
-        );
-        
-        if (users.length === 0 || password !== 'password123') {
-            const currentAttempt = failedAttempts.get(username) || { count: 0, lockUntil: null };
-            currentAttempt.count = (currentAttempt.count || 0) + 1;
-            
-            if (currentAttempt.count >= 5) {
-                currentAttempt.lockUntil = Date.now() + (15 * 60 * 1000);
-                failedAttempts.set(username, currentAttempt);
-                return res.status(403).json({ 
-                    success: false, 
-                    message: 'Too many failed attempts. Account locked for 15 minutes.' 
-                });
-            }
-            
-            failedAttempts.set(username, currentAttempt);
-            return res.status(401).json({ success: false, message: 'Invalid credentials' });
-        }
-        
-        failedAttempts.delete(username);
-        
-        const user = users[0];
-        const token = Buffer.from(`${username}:${Date.now()}`).toString('base64');
-        
         res.json({
             success: true,
             token: token,
@@ -924,8 +847,9 @@ app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']),
         if (connection) connection.release();
     }
 });
+
 // ============================================================
-// SUPER ADMIN MIDDLEWARE (Stricter than regular auth)
+// SUPER ADMIN MIDDLEWARE
 // ============================================================
 const superAdminMiddleware = async (req, res, next) => {
     try {
@@ -954,8 +878,6 @@ const superAdminMiddleware = async (req, res, next) => {
 // ============================================================
 // ADMIN PRODUCT MANAGEMENT
 // ============================================================
-
-// Get all products
 app.get('/api/admin/products', superAdminMiddleware, async (req, res) => {
     try {
         const search = req.query.search || '';
@@ -976,7 +898,6 @@ app.get('/api/admin/products', superAdminMiddleware, async (req, res) => {
     }
 });
 
-// Add single product
 app.post('/api/admin/product', superAdminMiddleware, async (req, res) => {
     try {
         const { product_name, current_qty, unit_cost, selling_price, min_stock_level } = req.body;
@@ -997,7 +918,6 @@ app.post('/api/admin/product', superAdminMiddleware, async (req, res) => {
     }
 });
 
-// Update product
 app.put('/api/admin/product/:id', superAdminMiddleware, async (req, res) => {
     try {
         const { product_name, current_qty, unit_cost, selling_price, min_stock_level, is_active } = req.body;
@@ -1020,7 +940,6 @@ app.put('/api/admin/product/:id', superAdminMiddleware, async (req, res) => {
     }
 });
 
-// Delete product
 app.delete('/api/admin/product/:id', superAdminMiddleware, async (req, res) => {
     try {
         await pool.query('DELETE FROM products WHERE id = ?', [req.params.id]);
@@ -1030,7 +949,6 @@ app.delete('/api/admin/product/:id', superAdminMiddleware, async (req, res) => {
     }
 });
 
-// Bulk delete products
 app.post('/api/admin/products/bulk-delete', superAdminMiddleware, async (req, res) => {
     try {
         const { ids } = req.body;
@@ -1047,7 +965,6 @@ app.post('/api/admin/products/bulk-delete', superAdminMiddleware, async (req, re
     }
 });
 
-// Adjust stock
 app.post('/api/admin/adjust-stock', superAdminMiddleware, async (req, res) => {
     let connection;
     try {
@@ -1092,8 +1009,6 @@ app.post('/api/admin/adjust-stock', superAdminMiddleware, async (req, res) => {
 // ============================================================
 // ADMIN USER MANAGEMENT
 // ============================================================
-
-// Get all users
 app.get('/api/admin/users', superAdminMiddleware, async (req, res) => {
     try {
         const [users] = await pool.query(
@@ -1105,7 +1020,6 @@ app.get('/api/admin/users', superAdminMiddleware, async (req, res) => {
     }
 });
 
-// Create user
 app.post('/api/admin/user', superAdminMiddleware, async (req, res) => {
     try {
         const { username, password_hash, full_name, email, role, team_id } = req.body;
@@ -1126,7 +1040,6 @@ app.post('/api/admin/user', superAdminMiddleware, async (req, res) => {
     }
 });
 
-// Reset user password
 app.post('/api/admin/user/:id/reset-password', superAdminMiddleware, async (req, res) => {
     try {
         await pool.query(
@@ -1139,7 +1052,6 @@ app.post('/api/admin/user/:id/reset-password', superAdminMiddleware, async (req,
     }
 });
 
-// Deactivate user
 app.delete('/api/admin/user/:id', superAdminMiddleware, async (req, res) => {
     try {
         await pool.query('UPDATE users SET is_active = 0 WHERE id = ?', [req.params.id]);
@@ -1152,8 +1064,6 @@ app.delete('/api/admin/user/:id', superAdminMiddleware, async (req, res) => {
 // ============================================================
 // ADMIN SYSTEM INFO
 // ============================================================
-
-// Get system statistics
 app.get('/api/admin/system-info', superAdminMiddleware, async (req, res) => {
     try {
         const [productCount] = await pool.query('SELECT COUNT(*) as count FROM products');
@@ -1172,6 +1082,7 @@ app.get('/api/admin/system-info', superAdminMiddleware, async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
+
 // ============================================================
 // START SERVER
 // ============================================================
