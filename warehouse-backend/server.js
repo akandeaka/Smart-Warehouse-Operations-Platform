@@ -1,11 +1,11 @@
-// server.js - Complete Backend with Working Return System
+// server.js - Complete Backend with RBAC, 2FA, and PWA Support
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
-
-// const emailService = require('./emailService'); // DISABLED - email service not configured yet
+const multer = require('multer');
+const xlsx = require('xlsx');
 
 const { pool, testConnection } = require('./database');
 
@@ -16,8 +16,11 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+// Configure multer for file uploads
+const upload = multer({ dest: 'uploads/' });
+
 // ============================================================
-// SERVE STATIC FILES (FLEXIBLE PATH - FIXES 404 ERROR)
+// SERVE STATIC FILES
 // ============================================================
 const possiblePaths = [
     path.join(__dirname, 'frontend'),
@@ -37,28 +40,21 @@ for (const testPath of possiblePaths) {
             break;
         }
     } catch (err) {
-        // Ignore errors and continue
+        // Ignore errors
     }
 }
 
 if (!frontendPath) {
-    const searchPaths = [
-        '/opt/render/project/src',
-        process.cwd(),
-        __dirname
-    ];
-    
+    const searchPaths = ['/opt/render/project/src', process.cwd(), __dirname];
     for (const basePath of searchPaths) {
         try {
             const files = fs.readdirSync(basePath);
             if (files.includes('frontend')) {
                 frontendPath = path.join(basePath, 'frontend');
-                console.log(`✅ Found frontend by searching at: ${frontendPath}`);
                 break;
             }
-            if (files.includes('login.html') || files.includes('index.html')) {
+            if (files.includes('login.html')) {
                 frontendPath = basePath;
-                console.log(`✅ Found HTML files directly at: ${frontendPath}`);
                 break;
             }
         } catch (err) {
@@ -69,21 +65,12 @@ if (!frontendPath) {
 
 if (frontendPath) {
     app.use(express.static(frontendPath));
-    console.log(`✅ Static files being served from: ${frontendPath}`);
-    
-    try {
-        const files = fs.readdirSync(frontendPath);
-        console.log(`📁 Files in frontend directory: ${files.join(', ')}`);
-    } catch (err) {
-        console.log(`Could not list files: ${err.message}`);
-    }
+    console.log(`✅ Static files served from: ${frontendPath}`);
 } else {
-    console.error('❌ ERROR: Could not find frontend directory');
+    console.error('❌ Frontend directory not found');
 }
 
-// ============================================================
-// ROOT ROUTE - Directly serves login.html
-// ============================================================
+// Root route
 app.get('/', (req, res) => {
     if (frontendPath) {
         const loginPath = path.join(frontendPath, 'login.html');
@@ -98,7 +85,7 @@ app.get('/', (req, res) => {
 });
 
 // ============================================================
-// AUTHENTICATION MIDDLEWARE (Single, correct version)
+// AUTHENTICATION MIDDLEWARE
 // ============================================================
 const authMiddleware = async (req, res, next) => {
     try {
@@ -109,7 +96,6 @@ const authMiddleware = async (req, res, next) => {
         const decoded = Buffer.from(token, 'base64').toString().split(':');
         const username = decoded[0];
         
-        // Get user from database to get actual role
         const [users] = await pool.query(
             'SELECT id, role, team_id FROM users WHERE username = ? AND is_active = 1',
             [username]
@@ -119,9 +105,9 @@ const authMiddleware = async (req, res, next) => {
             return res.status(401).json({ success: false, message: 'User not found' });
         }
         
-        req.user = { 
+        req.user = {
             id: users[0].id,
-            username: username, 
+            username: username,
             role: users[0].role,
             team_id: users[0].team_id
         };
@@ -137,11 +123,195 @@ const requireRole = (roles) => {
             return res.status(401).json({ success: false, message: 'Not authenticated' });
         }
         if (!roles.includes(req.user.role)) {
-            return res.status(403).json({ success: false, message: 'Access denied. Requires role: ' + roles.join(' or ') });
+            return res.status(403).json({ success: false, message: 'Access denied' });
         }
         next();
     };
 };
+
+// ============================================================
+// SUPER ADMIN MIDDLEWARE
+// ============================================================
+const superAdminMiddleware = async (req, res, next) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token) {
+            return res.status(401).json({ success: false, message: 'No token provided' });
+        }
+        const decoded = Buffer.from(token, 'base64').toString().split(':');
+        
+        const [users] = await pool.query(
+            'SELECT role FROM users WHERE username = ? AND is_active = 1',
+            [decoded[0]]
+        );
+        
+        if (users.length === 0 || users[0].role !== 'super_admin') {
+            return res.status(403).json({ success: false, message: 'Access denied. Super Admin only.' });
+        }
+        
+        req.user = { username: decoded[0], role: users[0].role };
+        next();
+    } catch (error) {
+        return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+};
+
+// ============================================================
+// 2FA AND PORTAL-SPECIFIC LOGIN
+// ============================================================
+const twofaPending = new Map();
+
+app.post('/api/auth/login-portal', async (req, res) => {
+    try {
+        const { username, password, portal } = req.body;
+        
+        const [users] = await pool.query(
+            'SELECT id, username, full_name, email, role, team_id, is_active, twofa_secret FROM users WHERE username = ? AND is_active = 1',
+            [username]
+        );
+        
+        if (users.length === 0 || password !== 'password123') {
+            return res.status(401).json({ success: false, message: 'Invalid credentials' });
+        }
+        
+        const user = users[0];
+        let roleMatch = false;
+        let redirectUrl = '';
+        
+        switch(portal) {
+            case 'super-admin':
+                roleMatch = (user.role === 'super_admin');
+                redirectUrl = '/super-admin.html';
+                break;
+            case 'manager':
+                roleMatch = (user.role === 'warehouse_manager');
+                redirectUrl = '/manager-dashboard.html';
+                break;
+            case 'sales':
+                roleMatch = (user.role === 'sales_rep');
+                redirectUrl = '/sales-dashboard.html';
+                break;
+            default:
+                return res.status(400).json({ success: false, message: 'Invalid portal' });
+        }
+        
+        if (!roleMatch) {
+            return res.status(403).json({
+                success: false,
+                message: `Access denied. Your role: ${user.role}`
+            });
+        }
+        
+        if (user.role === 'super_admin' && user.twofa_secret) {
+            const sessionId = Math.random().toString(36).substring(2, 15);
+            twofaPending.set(sessionId, {
+                userId: user.id,
+                username: user.username,
+                role: user.role,
+                redirectUrl: redirectUrl,
+                expiresAt: Date.now() + (5 * 60 * 1000)
+            });
+            
+            return res.json({
+                success: true,
+                requiresTwoFA: true,
+                sessionId: sessionId,
+                message: '2FA required. Enter your secret code.'
+            });
+        }
+        
+        const token = Buffer.from(`${user.username}:${Date.now()}`).toString('base64');
+        
+        res.json({
+            success: true,
+            token: token,
+            redirectUrl: redirectUrl,
+            user: {
+                id: user.id,
+                username: user.username,
+                full_name: user.full_name,
+                role: user.role,
+                team_id: user.team_id
+            }
+        });
+        
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.post('/api/auth/verify-2fa', async (req, res) => {
+    try {
+        const { sessionId, secretCode } = req.body;
+        
+        const pending = twofaPending.get(sessionId);
+        if (!pending || Date.now() > pending.expiresAt) {
+            twofaPending.delete(sessionId);
+            return res.status(401).json({ success: false, message: 'Session expired. Please login again.' });
+        }
+        
+        const [users] = await pool.query('SELECT twofa_secret FROM users WHERE id = ?', [pending.userId]);
+        
+        if (users.length === 0 || users[0].twofa_secret !== secretCode) {
+            return res.status(401).json({ success: false, message: 'Invalid secret code. Access denied.' });
+        }
+        
+        const token = Buffer.from(`${pending.username}:${Date.now()}`).toString('base64');
+        twofaPending.delete(sessionId);
+        
+        res.json({
+            success: true,
+            token: token,
+            redirectUrl: pending.redirectUrl,
+            user: { id: pending.userId, username: pending.username, role: pending.role }
+        });
+        
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.get('/api/auth/validate-portal', async (req, res) => {
+    try {
+        const token = req.headers.authorization?.split(' ')[1];
+        const requestedPortal = req.query.portal;
+        
+        if (!token) {
+            return res.json({ valid: false, message: 'No token' });
+        }
+        
+        const decoded = Buffer.from(token, 'base64').toString().split(':');
+        const username = decoded[0];
+        
+        const [users] = await pool.query(
+            'SELECT role FROM users WHERE username = ? AND is_active = 1',
+            [username]
+        );
+        
+        if (users.length === 0) {
+            return res.json({ valid: false, message: 'User not found' });
+        }
+        
+        const user = users[0];
+        let roleMatch = false;
+        
+        switch(requestedPortal) {
+            case 'super-admin': roleMatch = (user.role === 'super_admin'); break;
+            case 'manager': roleMatch = (user.role === 'warehouse_manager'); break;
+            case 'sales': roleMatch = (user.role === 'sales_rep'); break;
+            default: roleMatch = false;
+        }
+        
+        res.json({ valid: roleMatch, role: user.role });
+        
+    } catch (error) {
+        res.json({ valid: false, message: error.message });
+    }
+});
+
+app.get('/api/admin/validate', superAdminMiddleware, async (req, res) => {
+    res.json({ valid: true, role: req.user.role });
+});
 
 // ============================================================
 // HEALTH CHECK
@@ -152,72 +322,6 @@ app.get('/health', async (req, res) => {
         res.json({ status: 'healthy', database: 'connected' });
     } catch (error) {
         res.json({ status: 'healthy', database: 'error' });
-    }
-});
-
-app.get('/api/version', (req, res) => {
-    res.json({ version: 'FINAL_V9', features: 'returns_working' });
-});
-
-// ============================================================
-// LOGIN (Single, correct version)
-// ============================================================
-const failedAttempts = new Map();
-
-app.post('/api/auth/login', async (req, res) => {
-    try {
-        const { username, password } = req.body;
-        
-        const attempt = failedAttempts.get(username);
-        if (attempt && attempt.lockUntil && Date.now() < attempt.lockUntil) {
-            const minutesLeft = Math.ceil((attempt.lockUntil - Date.now()) / 60000);
-            return res.status(403).json({ 
-                success: false, 
-                message: `Account locked. Try again in ${minutesLeft} minutes.` 
-            });
-        }
-        
-        const [users] = await pool.query(
-            'SELECT id, username, full_name, email, role, team_id FROM users WHERE username = ? AND is_active = 1',
-            [username]
-        );
-        
-        if (users.length === 0 || password !== 'password123') {
-            const currentAttempt = failedAttempts.get(username) || { count: 0, lockUntil: null };
-            currentAttempt.count = (currentAttempt.count || 0) + 1;
-            
-            if (currentAttempt.count >= 5) {
-                currentAttempt.lockUntil = Date.now() + (15 * 60 * 1000);
-                failedAttempts.set(username, currentAttempt);
-                return res.status(403).json({ 
-                    success: false, 
-                    message: 'Too many failed attempts. Account locked for 15 minutes.' 
-                });
-            }
-            
-            failedAttempts.set(username, currentAttempt);
-            return res.status(401).json({ success: false, message: 'Invalid credentials' });
-        }
-        
-        failedAttempts.delete(username);
-        
-        const user = users[0];
-        const token = Buffer.from(`${username}:${Date.now()}`).toString('base64');
-        
-        // Return the actual role from database
-        res.json({
-            success: true,
-            token: token,
-            user: {
-                id: user.id,
-                username: user.username,
-                full_name: user.full_name,
-                role: user.role,
-                team_id: user.team_id
-            }
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
     }
 });
 
@@ -851,33 +955,6 @@ app.post('/api/daily/close', authMiddleware, requireRole(['warehouse_manager']),
 });
 
 // ============================================================
-// SUPER ADMIN MIDDLEWARE
-// ============================================================
-const superAdminMiddleware = async (req, res, next) => {
-    try {
-        const token = req.headers.authorization?.split(' ')[1];
-        if (!token) {
-            return res.status(401).json({ success: false, message: 'No token provided' });
-        }
-        const decoded = Buffer.from(token, 'base64').toString().split(':');
-        
-        const [users] = await pool.query(
-            'SELECT role FROM users WHERE username = ? AND is_active = 1',
-            [decoded[0]]
-        );
-        
-        if (users.length === 0 || users[0].role !== 'super_admin') {
-            return res.status(403).json({ success: false, message: 'Access denied. Super Admin only.' });
-        }
-        
-        req.user = { username: decoded[0], role: users[0].role };
-        next();
-    } catch (error) {
-        return res.status(401).json({ success: false, message: 'Invalid token' });
-    }
-};
-
-// ============================================================
 // ADMIN PRODUCT MANAGEMENT
 // ============================================================
 app.get('/api/admin/products', superAdminMiddleware, async (req, res) => {
@@ -1008,6 +1085,78 @@ app.post('/api/admin/adjust-stock', superAdminMiddleware, async (req, res) => {
     }
 });
 
+app.post('/api/admin/upload-products', superAdminMiddleware, upload.single('file'), async (req, res) => {
+    let connection;
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'No file uploaded' });
+        }
+
+        const workbook = xlsx.readFile(req.file.path);
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const data = xlsx.utils.sheet_to_json(worksheet);
+
+        if (data.length === 0) {
+            return res.status(400).json({ success: false, message: 'Excel file is empty' });
+        }
+
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        let added = 0, updated = 0, errors = [];
+
+        for (const row of data) {
+            try {
+                const productName = row.product_name || row.Product_Name || row.name;
+                const quantity = parseInt(row.current_qty || row.Quantity || row.qty) || 0;
+                const unitCost = parseFloat(row.unit_cost || row.Cost || row.cost) || 0;
+                const sellingPrice = parseFloat(row.selling_price || row.Price || row.price) || 0;
+                const minStock = parseInt(row.min_stock_level || row.MinStock) || 50;
+
+                if (!productName) {
+                    errors.push(`Missing product name in row: ${JSON.stringify(row)}`);
+                    continue;
+                }
+
+                const [existing] = await connection.query('SELECT id FROM products WHERE product_name = ?', [productName]);
+
+                if (existing.length > 0) {
+                    await connection.query(
+                        `UPDATE products SET current_qty = ?, unit_cost = ?, selling_price = ?, min_stock_level = ? WHERE id = ?`,
+                        [quantity, unitCost, sellingPrice, minStock, existing[0].id]
+                    );
+                    updated++;
+                } else {
+                    await connection.query(
+                        `INSERT INTO products (product_name, current_qty, unit_cost, selling_price, min_stock_level, is_active) VALUES (?, ?, ?, ?, ?, 1)`,
+                        [productName, quantity, unitCost, sellingPrice, minStock]
+                    );
+                    added++;
+                }
+            } catch (rowError) {
+                errors.push(`Error processing row: ${rowError.message}`);
+            }
+        }
+
+        await connection.commit();
+        fs.unlinkSync(req.file.path);
+
+        res.json({
+            success: true,
+            message: `Upload complete: ${added} new, ${updated} updated`,
+            errors: errors.length > 0 ? errors : null
+        });
+
+    } catch (error) {
+        if (connection) await connection.rollback();
+        console.error('Upload error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    } finally {
+        if (connection) connection.release();
+    }
+});
+
 // ============================================================
 // ADMIN USER MANAGEMENT
 // ============================================================
@@ -1044,10 +1193,7 @@ app.post('/api/admin/user', superAdminMiddleware, async (req, res) => {
 
 app.post('/api/admin/user/:id/reset-password', superAdminMiddleware, async (req, res) => {
     try {
-        await pool.query(
-            'UPDATE users SET password_hash = ? WHERE id = ?',
-            ['password123', req.params.id]
-        );
+        await pool.query('UPDATE users SET password_hash = ? WHERE id = ?', ['password123', req.params.id]);
         res.json({ success: true, message: 'Password reset to: password123' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -1104,194 +1250,5 @@ async function startServer() {
         console.log(`💚 Health check: http://localhost:${PORT}/health`);
     });
 }
-// ============================================================
-// 2FA AND PORTAL-SPECIFIC LOGIN
-// ============================================================
-
-// Track 2FA pending logins (temporary)
-const twofaPending = new Map();
-
-// Step 1: Initial login - checks credentials and role against requested portal
-app.post('/api/auth/login-portal', async (req, res) => {
-    try {
-        const { username, password, portal } = req.body;
-        
-        // portal can be: 'super-admin', 'manager', 'sales'
-        
-        const [users] = await pool.query(
-            'SELECT id, username, full_name, email, role, team_id, is_active, twofa_secret FROM users WHERE username = ? AND is_active = 1',
-            [username]
-        );
-        
-        if (users.length === 0 || password !== 'password123') {
-            return res.status(401).json({ success: false, message: 'Invalid credentials' });
-        }
-        
-        const user = users[0];
-        
-        // Check if role matches the portal requested
-        let roleMatch = false;
-        let redirectUrl = '';
-        
-        switch(portal) {
-            case 'super-admin':
-                roleMatch = (user.role === 'super_admin');
-                redirectUrl = '/super-admin.html';
-                break;
-            case 'manager':
-                roleMatch = (user.role === 'warehouse_manager');
-                redirectUrl = '/manager-dashboard.html';
-                break;
-            case 'sales':
-                roleMatch = (user.role === 'sales_rep');
-                redirectUrl = '/sales-dashboard.html';
-                break;
-            default:
-                return res.status(400).json({ success: false, message: 'Invalid portal' });
-        }
-        
-        if (!roleMatch) {
-            return res.status(403).json({ 
-                success: false, 
-                message: `Access denied. You are not authorized to access this portal. Your role: ${user.role}`
-            });
-        }
-        
-        // For super_admin, require 2FA
-        if (user.role === 'super_admin' && user.twofa_secret) {
-            // Generate a temporary session ID for 2FA
-            const sessionId = Math.random().toString(36).substring(2, 15);
-            twofaPending.set(sessionId, {
-                userId: user.id,
-                username: user.username,
-                role: user.role,
-                redirectUrl: redirectUrl,
-                expiresAt: Date.now() + (5 * 60 * 1000) // 5 minute expiry
-            });
-            
-            return res.json({
-                success: true,
-                requiresTwoFA: true,
-                sessionId: sessionId,
-                message: '2FA required. Enter your secret code.'
-            });
-        }
-        
-        // No 2FA required - create token directly
-        const token = Buffer.from(`${user.username}:${Date.now()}`).toString('base64');
-        
-        res.json({
-            success: true,
-            token: token,
-            redirectUrl: redirectUrl,
-            user: {
-                id: user.id,
-                username: user.username,
-                full_name: user.full_name,
-                role: user.role,
-                team_id: user.team_id
-            }
-        });
-        
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// Step 2: Verify 2FA code for super_admin
-app.post('/api/auth/verify-2fa', async (req, res) => {
-    try {
-        const { sessionId, secretCode } = req.body;
-        
-        const pending = twofaPending.get(sessionId);
-        if (!pending) {
-            return res.status(401).json({ success: false, message: 'Session expired. Please login again.' });
-        }
-        
-        if (Date.now() > pending.expiresAt) {
-            twofaPending.delete(sessionId);
-            return res.status(401).json({ success: false, message: 'Session expired. Please login again.' });
-        }
-        
-        // Verify secret code
-        const [users] = await pool.query(
-            'SELECT twofa_secret FROM users WHERE id = ?',
-            [pending.userId]
-        );
-        
-        if (users.length === 0 || users[0].twofa_secret !== secretCode) {
-            return res.status(401).json({ success: false, message: 'Invalid secret code. Access denied.' });
-        }
-        
-        // Code verified - create token
-        const token = Buffer.from(`${pending.username}:${Date.now()}`).toString('base64');
-        
-        twofaPending.delete(sessionId);
-        
-        res.json({
-            success: true,
-            token: token,
-            redirectUrl: pending.redirectUrl,
-            user: {
-                id: pending.userId,
-                username: pending.username,
-                role: pending.role
-            }
-        });
-        
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// Validate session for specific portal
-app.get('/api/auth/validate-portal', async (req, res) => {
-    try {
-        const token = req.headers.authorization?.split(' ')[1];
-        const requestedPortal = req.query.portal;
-        
-        if (!token) {
-            return res.json({ valid: false, message: 'No token' });
-        }
-        
-        const decoded = Buffer.from(token, 'base64').toString().split(':');
-        const username = decoded[0];
-        
-        const [users] = await pool.query(
-            'SELECT id, username, role FROM users WHERE username = ? AND is_active = 1',
-            [username]
-        );
-        
-        if (users.length === 0) {
-            return res.json({ valid: false, message: 'User not found' });
-        }
-        
-        const user = users[0];
-        let roleMatch = false;
-        
-        switch(requestedPortal) {
-            case 'super-admin':
-                roleMatch = (user.role === 'super_admin');
-                break;
-            case 'manager':
-                roleMatch = (user.role === 'warehouse_manager');
-                break;
-            case 'sales':
-                roleMatch = (user.role === 'sales_rep');
-                break;
-            default:
-                roleMatch = false;
-        }
-        
-        if (!roleMatch) {
-            return res.json({ valid: false, message: 'Role mismatch' });
-        }
-        
-        res.json({ valid: true, role: user.role });
-        
-    } catch (error) {
-        res.json({ valid: false, message: error.message });
-    }
-});
 
 startServer();
