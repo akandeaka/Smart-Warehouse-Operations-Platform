@@ -2,13 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Login - Warehouse Stock System</title>
     
+    <!-- PWA Support -->
     <link rel="manifest" href="/manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="WMS">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
     <meta name="theme-color" content="#F40009">
     
     <style>
@@ -93,6 +95,10 @@
         button:hover {
             opacity: 0.9;
         }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
         .error-msg {
             background: #f8d7da;
             color: #721c24;
@@ -116,6 +122,18 @@
         }
         .twofa-group {
             display: none;
+        }
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 25px;
+                margin: 15px;
+            }
+            .logo {
+                font-size: 48px;
+            }
+            h1 {
+                font-size: 20px;
+            }
         }
     </style>
 </head>
@@ -148,11 +166,11 @@
     <script>
         const API_URL = 'https://warehouse-backend-new-u9rq.onrender.com/api';
         
-        // Determine which portal we are trying to access based on where we came from
-        let redirectPortal = 'sales'; // default
+        let redirectPortal = 'sales';
         let twofaSessionId = null;
+        let isTwoFAMode = false;
         
-        // Check URL parameters for redirect info
+        // Determine which portal we are trying to access
         const urlParams = new URLSearchParams(window.location.search);
         const redirectParam = urlParams.get('redirect');
         
@@ -161,7 +179,6 @@
         } else if (redirectParam === 'manager-dashboard') {
             redirectPortal = 'manager';
         } else {
-            // Check referrer to determine portal
             const referrer = document.referrer;
             if (referrer.includes('super-admin')) {
                 redirectPortal = 'super-admin';
@@ -195,6 +212,7 @@
         
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const twofaCode = document.getElementById('twofaCode').value;
@@ -205,7 +223,50 @@
             errorDiv.style.display = 'none';
             infoDiv.style.display = 'none';
             
-            // Step 1: Initial login
+            // If we're in 2FA mode, handle 2FA verification
+            if (isTwoFAMode) {
+                if (!twofaCode) {
+                    errorDiv.textContent = 'Please enter your 2FA secret code';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                try {
+                    loginBtn.disabled = true;
+                    loginBtn.textContent = 'Verifying 2FA...';
+                    
+                    const response = await fetch(`${API_URL}/auth/verify-2fa`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sessionId: twofaSessionId, secretCode: twofaCode })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (!data.success) {
+                        errorDiv.textContent = data.message || '2FA verification failed';
+                        errorDiv.style.display = 'block';
+                        loginBtn.disabled = false;
+                        loginBtn.textContent = 'Verify 2FA Code';
+                        return;
+                    }
+                    
+                    if (data.token) {
+                        localStorage.setItem('token', data.token);
+                        localStorage.setItem('user', JSON.stringify(data.user));
+                        window.location.href = data.redirectUrl;
+                    }
+                    
+                } catch (error) {
+                    errorDiv.textContent = 'Network error. Please try again.';
+                    errorDiv.style.display = 'block';
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Verify 2FA Code';
+                }
+                return;
+            }
+            
+            // Normal login flow
             try {
                 loginBtn.disabled = true;
                 loginBtn.textContent = 'Verifying...';
@@ -218,7 +279,7 @@
 
                 const data = await response.json();
 
-                if (data.success === false) {
+                if (!data.success) {
                     errorDiv.textContent = data.message || 'Login failed';
                     errorDiv.style.display = 'block';
                     loginBtn.disabled = false;
@@ -228,6 +289,7 @@
                 
                 // Check if 2FA is required
                 if (data.requiresTwoFA && data.sessionId) {
+                    isTwoFAMode = true;
                     twofaSessionId = data.sessionId;
                     document.getElementById('twofaGroup').style.display = 'block';
                     infoDiv.textContent = data.message || '2FA required. Enter your secret code.';
@@ -249,66 +311,6 @@
                 errorDiv.style.display = 'block';
                 loginBtn.disabled = false;
                 loginBtn.textContent = 'Login';
-            }
-        });
-        
-        // Handle 2FA verification separately if we're in 2FA mode
-        // This is triggered when the button is clicked again after 2FA is shown
-        async function verifyTwoFA() {
-            const twofaCode = document.getElementById('twofaCode').value;
-            const errorDiv = document.getElementById('errorMsg');
-            const loginBtn = document.getElementById('loginBtn');
-            
-            if (!twofaCode) {
-                errorDiv.textContent = 'Please enter your 2FA secret code';
-                errorDiv.style.display = 'block';
-                return;
-            }
-            
-            try {
-                loginBtn.disabled = true;
-                loginBtn.textContent = 'Verifying 2FA...';
-                
-                const response = await fetch(`${API_URL}/auth/verify-2fa`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sessionId: twofaSessionId, secretCode: twofaCode })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success === false) {
-                    errorDiv.textContent = data.message || '2FA verification failed';
-                    errorDiv.style.display = 'block';
-                    loginBtn.disabled = false;
-                    loginBtn.textContent = 'Verify 2FA Code';
-                    return;
-                }
-                
-                if (data.token) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    window.location.href = data.redirectUrl;
-                }
-                
-            } catch (error) {
-                errorDiv.textContent = 'Network error. Please try again.';
-                errorDiv.style.display = 'block';
-                loginBtn.disabled = false;
-                loginBtn.textContent = 'Verify 2FA Code';
-            }
-        }
-        
-        // Override form submit for 2FA case
-        const originalSubmit = document.getElementById('loginForm').onsubmit;
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (twofaSessionId) {
-                await verifyTwoFA();
-            } else {
-                // Let the original handler run
-                const event = new Event('submit');
-                // This will be handled by the main listener
             }
         });
         
