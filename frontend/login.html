@@ -11,7 +11,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="WMS">
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
-    <meta name="theme-color" content="#F40009">
+    <meta name="theme-color" content="#667eea">
     
     <style>
         * {
@@ -20,29 +20,26 @@
             box-sizing: border-box;
         }
         body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-}
-        
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
         .login-container {
             background: white;
             padding: 40px;
             border-radius: 10px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             width: 100%;
             max-width: 400px;
             margin: 20px;
-            border-top: 5px solid #F40009;
         }
         .login-container h1 {
             text-align: center;
-            margin-bottom: 10px;
-            color: #1A1A1A;
-            font-size: 24px;
+            margin-bottom: 30px;
+            color: #333;
         }
         .portal-badge {
             text-align: center;
@@ -53,10 +50,7 @@
             font-size: 14px;
             font-weight: bold;
         }
-        .portal-badge i {
-            margin-right: 8px;
-        }
-        .portal-super-admin { background: #F40009; color: white; }
+        .portal-super-admin { background: #dc3545; color: white; }
         .portal-manager { background: #ffc107; color: #333; }
         .portal-sales { background: #28a745; color: white; }
         .subtitle {
@@ -72,7 +66,7 @@
             display: block;
             margin-bottom: 5px;
             font-weight: 500;
-            color: #333;
+            color: #555;
         }
         input {
             width: 100%;
@@ -84,7 +78,7 @@
         button {
             width: 100%;
             padding: 12px;
-            background: linear-gradient(135deg, #F40009 0%, #CC0000 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
             border-radius: 5px;
@@ -118,7 +112,7 @@
         }
         .logo {
             text-align: center;
-            font-size: 64px;
+            font-size: 48px;
             margin-bottom: 20px;
         }
         .twofa-group {
@@ -142,8 +136,8 @@
     <div class="login-container">
         <div class="logo">🏭</div>
         <div class="portal-badge" id="portalBadge">Loading...</div>
-        <h1>Warehouse <span style="color:#F40009">Stock System</span></h1>
-        <div class="subtitle" id="portalSubtitle">Login to continue</div>
+        <h1>Warehouse Stock System</h1>
+        <div class="subtitle" id="portalSubtitle">Enter your credentials</div>
         <div id="errorMsg" class="error-msg"></div>
         <div id="infoMsg" class="info-msg"></div>
         
@@ -196,17 +190,17 @@
         
         switch(redirectPortal) {
             case 'super-admin':
-                portalBadge.innerHTML = '<i class="fas fa-shield-alt"></i> SUPER ADMIN PORTAL';
+                portalBadge.innerHTML = '🔐 SUPER ADMIN PORTAL';
                 portalBadge.className = 'portal-badge portal-super-admin';
-                portalSubtitle.innerHTML = 'Enter your credentials and 2FA code';
+                portalSubtitle.innerHTML = 'Enter your credentials';
                 break;
             case 'manager':
-                portalBadge.innerHTML = '<i class="fas fa-chart-line"></i> WAREHOUSE MANAGER PORTAL';
+                portalBadge.innerHTML = '📊 WAREHOUSE MANAGER PORTAL';
                 portalBadge.className = 'portal-badge portal-manager';
                 portalSubtitle.innerHTML = 'Enter your credentials';
                 break;
             default:
-                portalBadge.innerHTML = '<i class="fas fa-users"></i> SALES TEAM PORTAL';
+                portalBadge.innerHTML = '💰 SALES TEAM PORTAL';
                 portalBadge.className = 'portal-badge portal-sales';
                 portalSubtitle.innerHTML = 'Enter your credentials';
         }
@@ -288,12 +282,12 @@
                     return;
                 }
                 
-                // Check if 2FA is required
+                // Check if 2FA is required (ONLY for super_admin)
                 if (data.requiresTwoFA && data.sessionId) {
                     isTwoFAMode = true;
                     twofaSessionId = data.sessionId;
                     document.getElementById('twofaGroup').style.display = 'block';
-                    infoDiv.textContent = data.message || '2FA required. Enter your secret code.';
+                    infoDiv.textContent = data.message || 'Enter your 2FA secret code to continue.';
                     infoDiv.style.display = 'block';
                     loginBtn.textContent = 'Verify 2FA Code';
                     loginBtn.disabled = false;
