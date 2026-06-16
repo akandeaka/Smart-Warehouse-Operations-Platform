@@ -1,10 +1,10 @@
 {
   "name": "Warehouse Stock System",
   "short_name": "WMS",
-  "description": "Warehouse Stock Management System for Coca-Cola",
+  "description": "Warehouse Stock Management System",
   "start_url": "/login.html",
   "display": "standalone",
-  "theme_color": "#F40009",
+  "theme_color": "#1a1a2e",
   "background_color": "#ffffff",
   "orientation": "portrait",
   "scope": "/",
