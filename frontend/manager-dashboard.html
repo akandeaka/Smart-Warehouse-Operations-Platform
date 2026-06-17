@@ -665,6 +665,9 @@
             }
         }
 
+        // ============================================================
+        // FIXED: loadPendingReturns() - Handles 'Unsold Goods' type
+        // ============================================================
         async function loadPendingReturns() {
             const data = await fetchAPI('/sales/pending-submissions');
             if (data && data.success) {
@@ -673,6 +676,18 @@
                     html = '<tr><td colspan="7" class="no-data-text">No pending returns</td></tr>';
                 } else {
                     for (let item of data.data) {
+                        // Determine the type display
+                        let typeDisplay = '';
+                        if (item.type === 'Unsold Goods') {
+                            typeDisplay = '📦 Unsold Goods';
+                        } else if (item.type === 'credit') {
+                            typeDisplay = '📝 Credit';
+                        } else if (item.type === 'cash') {
+                            typeDisplay = '💵 Cash';
+                        } else {
+                            typeDisplay = '🏦 Transfer';
+                        }
+                        
                         const isCredit = item.type === 'credit';
                         html += `<tr>
                             <td>${item.team_name}</td>
@@ -680,7 +695,7 @@
                             <td>${item.product_name}</td>
                             <td>${item.quantity}</td>
                             <td class="${isCredit ? 'credit-amount' : ''}">${isCredit ? formatCreditMoney(item.amount) : formatMoney(item.amount)}</td>
-                            <td>${isCredit ? '📝 Credit' : (item.type === 'cash' ? '💵 Cash' : '🏦 Transfer')}</td>
+                            <td>${typeDisplay}</td>
                             <td><button class="btn-approve" onclick="confirmReturn(${item.return_id}, 'accept')">✅ Accept</button>
                             <button class="btn-reject" onclick="confirmReturn(${item.return_id}, 'reject')">🔄 Return to Team</button></td>
                         </tr>`;
@@ -848,7 +863,7 @@
         function setupWarningTimer() {
             clearTimeout(warningTimer);
             warningTimer = setTimeout(() => {
-                showMessage('⚠️ Warning: You will be logged out in 1 minute due to inactivity.', false, true);
+                showMessage('⚠️ Warning: You will be logged out in 1 minute due to inactivity.');
             }, WARNING_TIME);
         }
 
