@@ -70,6 +70,20 @@ if (frontendPath) {
     console.error('❌ Frontend directory not found');
 }
 
+// ============================================================
+// SERVE MANIFEST.JSON FROM ROOT
+// ============================================================
+app.get('/manifest.json', (req, res) => {
+    const manifestPath = path.join(__dirname, 'manifest.json');
+    if (fs.existsSync(manifestPath)) {
+        res.sendFile(manifestPath);
+        console.log('✅ Serving manifest.json');
+    } else {
+        console.log('❌ manifest.json not found at:', manifestPath);
+        res.status(404).json({ error: 'manifest.json not found' });
+    }
+});
+
 // Root route
 app.get('/', (req, res) => {
     if (frontendPath) {
@@ -571,7 +585,7 @@ app.get('/api/sales/check-submitted/:teamId/:date', authMiddleware, async (req, 
 });
 
 // ============================================================
-// CREDIT APPROVALS
+// CREDIT APPROVALS - CORRECTED
 // ============================================================
 app.get('/api/approvals/pending', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
@@ -581,7 +595,7 @@ app.get('/api/approvals/pending', authMiddleware, requireRole(['warehouse_manage
              FROM credit_approvals c
              JOIN sales_orders o ON c.order_id = o.id
              JOIN users u ON c.requested_by = u.id
-             WHERE c.approved = 0 AND c.rejected = 0`
+             WHERE c.status = 'pending'`
         );
         res.json({ success: true, data: approvals });
     } catch (error) {
@@ -593,7 +607,7 @@ app.get('/api/approvals/my-requests', authMiddleware, async (req, res) => {
     try {
         const [requests] = await pool.query(
             `SELECT c.id, o.order_number, o.customer_name, o.total_amount, 
-                    c.approved, c.rejected, c.requested_at, c.due_date
+                    c.status, c.requested_at, c.due_date
              FROM credit_approvals c
              JOIN sales_orders o ON c.order_id = o.id
              WHERE o.created_by = ?
@@ -606,6 +620,9 @@ app.get('/api/approvals/my-requests', authMiddleware, async (req, res) => {
     }
 });
 
+// ============================================================
+// APPROVE CREDIT - CORRECTED
+// ============================================================
 app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     let connection;
     try {
@@ -620,7 +637,8 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
             await connection.query('UPDATE sales_orders SET total_amount = ? WHERE id = ?', [approved_amount, approval[0].order_id]);
         }
         
-        await connection.query('UPDATE credit_approvals SET approved = 1, approved_by = ?, approved_at = NOW() WHERE id = ?', [req.user.id, approval_id]);
+        // ✅ CORRECTED: Use 'status' column instead of 'approved'
+        await connection.query('UPDATE credit_approvals SET status = "approved", approved_by = ?, approved_at = NOW() WHERE id = ?', [req.user.id, approval_id]);
         await connection.query('UPDATE sales_orders SET approval_status = "approved", payment_status = "pending" WHERE id = ?', [approval[0].order_id]);
         
         await connection.commit();
@@ -633,6 +651,9 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
     }
 });
 
+// ============================================================
+// REJECT CREDIT - CORRECTED
+// ============================================================
 app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     let connection;
     try {
@@ -643,7 +664,8 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
         const [approval] = await connection.query('SELECT order_id FROM credit_approvals WHERE id = ?', [approval_id]);
         if (approval.length === 0) throw new Error('Approval not found');
         
-        await connection.query('UPDATE credit_approvals SET rejected = 1, approved_by = ?, approved_at = NOW() WHERE id = ?', [req.user.id, approval_id]);
+        // ✅ CORRECTED: Use 'status' column instead of 'rejected'
+        await connection.query('UPDATE credit_approvals SET status = "rejected", approved_by = ?, approved_at = NOW() WHERE id = ?', [req.user.id, approval_id]);
         await connection.query('UPDATE sales_orders SET approval_status = "rejected" WHERE id = ?', [approval[0].order_id]);
         
         await connection.commit();
