@@ -69,7 +69,19 @@ if (frontendPath) {
 } else {
     console.error('❌ Frontend directory not found');
 }
-
+// ============================================================
+// SERVE MANIFEST.JSON FROM ROOT
+// ============================================================
+app.get('/manifest.json', (req, res) => {
+    const manifestPath = path.join(__dirname, 'manifest.json');
+    if (fs.existsSync(manifestPath)) {
+        res.sendFile(manifestPath);
+        console.log('✅ Serving manifest.json');
+    } else {
+        console.log('❌ manifest.json not found at:', manifestPath);
+        res.status(404).json({ error: 'manifest.json not found' });
+    }
+});
 // Root route
 app.get('/', (req, res) => {
     if (frontendPath) {
