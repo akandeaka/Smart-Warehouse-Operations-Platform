@@ -741,7 +741,7 @@ app.get('/api/sales/pending-submissions', authMiddleware, requireRole(['warehous
                 p.product_name,
                 a.returned_qty as quantity,
                 (a.returned_qty * p.unit_cost) as amount,
-                'return' as type,
+                'Unsold Goods' as type,           // <--- CHANGED HERE
                 a.allocated_date,
                 a.status
              FROM sales_team_allocations a
@@ -758,7 +758,6 @@ app.get('/api/sales/pending-submissions', authMiddleware, requireRole(['warehous
         res.status(500).json({ success: false, message: error.message }); 
     }
 });
-
 // ============================================================
 // CONFIRM RETURN
 // ============================================================
