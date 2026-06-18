@@ -494,6 +494,23 @@ app.post('/api/sales', authMiddleware, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
         }
         
+        // Check if customer has outstanding credit
+        if (payment_method === 'credit') {
+            const [outstandingCredit] = await pool.query(
+                `SELECT COUNT(*) as count FROM credit_approvals c 
+                 JOIN sales_orders o ON c.order_id = o.id 
+                 WHERE o.customer_name = ? AND c.is_paid = 0 AND c.status = 'approved'`,
+                [customer_name]
+            );
+            
+            if (outstandingCredit[0].count > 0) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Customer has outstanding credit. Please settle before new credit.' 
+                });
+            }
+        }
+        
         let total_amount = 0;
         for (const item of items) total_amount += item.quantity * item.unit_price;
         
@@ -530,8 +547,8 @@ app.post('/api/sales', authMiddleware, async (req, res) => {
         
         if (payment_method === 'credit') {
             await connection.query(
-                `INSERT INTO credit_approvals (order_id, requested_by, approved, rejected, amount_due, due_date)
-                 VALUES (?, ?, 0, 0, ?, ?)`,
+                `INSERT INTO credit_approvals (order_id, requested_by, status, amount_due, due_date, is_paid)
+                 VALUES (?, ?, 'pending', ?, ?, 0)`,
                 [order_id, req.user.id, total_amount, credit_due_date || null]
             );
         }
@@ -607,7 +624,7 @@ app.get('/api/approvals/my-requests', authMiddleware, async (req, res) => {
     try {
         const [requests] = await pool.query(
             `SELECT c.id, o.order_number, o.customer_name, o.total_amount, 
-                    c.status, c.requested_at, c.due_date
+                    c.status, c.is_paid, c.due_date
              FROM credit_approvals c
              JOIN sales_orders o ON c.order_id = o.id
              WHERE o.created_by = ?
@@ -630,14 +647,12 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
         connection = await pool.getConnection();
         await connection.beginTransaction();
 
-        // Get the order_id from the approval
         const [approval] = await connection.query(
             'SELECT order_id FROM credit_approvals WHERE id = ?',
             [approval_id]
         );
         if (approval.length === 0) throw new Error('Approval not found');
 
-        // Update order amount if modified
         if (approved_amount && approved_amount > 0) {
             await connection.query(
                 'UPDATE sales_orders SET total_amount = ? WHERE id = ?',
@@ -645,7 +660,6 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
             );
         }
 
-        // ✅ THE FIX: Use single quotes for ENUM values
         await connection.query(
             "UPDATE credit_approvals SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE id = ?",
             [req.user.id, approval_id]
@@ -665,6 +679,7 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
         if (connection) connection.release();
     }
 });
+
 // ============================================================
 // REJECT CREDIT - CORRECTED
 // ============================================================
@@ -675,14 +690,12 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
         connection = await pool.getConnection();
         await connection.beginTransaction();
 
-        // Get the order_id from the approval
         const [approval] = await connection.query(
             'SELECT order_id FROM credit_approvals WHERE id = ?',
             [approval_id]
         );
         if (approval.length === 0) throw new Error('Approval not found');
 
-        // ✅ THE FIX: Use single quotes for ENUM values
         await connection.query(
             "UPDATE credit_approvals SET status = 'rejected', approved_by = ?, approved_at = NOW() WHERE id = ?",
             [req.user.id, approval_id]
@@ -702,22 +715,48 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
         if (connection) connection.release();
     }
 });
-app.get('/api/approvals/pending', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+
+// ============================================================
+// MARK CREDIT AS PAID (SALES TEAM CLICKS PAYMENT RECEIVED)
+// ============================================================
+app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
+    let connection;
     try {
-        const [approvals] = await pool.query(
-            `SELECT c.id, o.order_number, o.customer_name, o.total_amount, o.payment_method, 
-                    u.full_name as requested_by, c.requested_at, c.due_date
-             FROM credit_approvals c
-             JOIN sales_orders o ON c.order_id = o.id
-             JOIN users u ON c.requested_by = u.id
-             WHERE c.status = 'pending'`
+        const { credit_id } = req.body;
+        
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+        
+        const [credit] = await connection.query(
+            'SELECT id, order_id, status FROM credit_approvals WHERE id = ? AND status = "approved" AND is_paid = 0',
+            [credit_id]
         );
-        res.json({ success: true, data: approvals });
+        
+        if (credit.length === 0) {
+            throw new Error('Credit not found or already paid');
+        }
+        
+        await connection.query(
+            'UPDATE credit_approvals SET is_paid = 1, payment_received_at = NOW(), status = "paid" WHERE id = ?',
+            [credit_id]
+        );
+        
+        await connection.query(
+            'UPDATE sales_orders SET payment_status = "paid" WHERE id = ?',
+            [credit[0].order_id]
+        );
+        
+        await connection.commit();
+        res.json({ success: true, message: 'Payment recorded successfully! Customer credit is now settled.' });
     } catch (error) {
-        console.error('Get pending approvals error:', error);
+        if (connection) await connection.rollback();
+        console.error('Mark paid error:', error);
         res.status(500).json({ success: false, message: error.message });
+    } finally {
+        if (connection) connection.release();
     }
 });
+
 // ============================================================
 // SUBMIT DAY SALES
 // ============================================================
