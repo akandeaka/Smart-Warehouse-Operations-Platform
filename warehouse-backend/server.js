@@ -454,10 +454,16 @@ app.post('/api/allocations/confirm', authMiddleware, async (req, res) => {
     try {
         const { team_id, allocated_date } = req.body;
         
-        await pool.query(
+        // Only confirm allocations that are NOT already confirmed
+        const [result] = await pool.query(
             'UPDATE sales_team_allocations SET confirmed = 1 WHERE team_id = ? AND allocated_date = ? AND confirmed = 0',
             [team_id, allocated_date]
         );
+        
+        // Check if any rows were updated
+        if (result.affectedRows === 0) {
+            return res.json({ success: true, message: 'All goods already confirmed' });
+        }
         
         res.json({ success: true, message: 'Allocation confirmed successfully' });
     } catch (error) {
@@ -465,19 +471,27 @@ app.post('/api/allocations/confirm', authMiddleware, async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
-
 app.get('/api/allocations/confirmation-status/:teamId/:date', authMiddleware, async (req, res) => {
     try {
         const { teamId, date } = req.params;
         
-        const [result] = await pool.query(
-            'SELECT confirmed FROM sales_team_allocations WHERE team_id = ? AND allocated_date = ? LIMIT 1',
+        // Get ALL allocations for this team on this date
+        const [results] = await pool.query(
+            'SELECT confirmed FROM sales_team_allocations WHERE team_id = ? AND allocated_date = ?',
             [teamId, date]
         );
         
-        const isConfirmed = result.length > 0 && result[0].confirmed === 1;
-        res.json({ success: true, confirmed: isConfirmed });
+        // If no allocations, return false
+        if (results.length === 0) {
+            return res.json({ success: true, confirmed: false });
+        }
+        
+        // Check if ALL allocations are confirmed
+        const allConfirmed = results.every(row => row.confirmed === 1);
+        
+        res.json({ success: true, confirmed: allConfirmed });
     } catch (error) {
+        console.error('Confirmation status error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });
