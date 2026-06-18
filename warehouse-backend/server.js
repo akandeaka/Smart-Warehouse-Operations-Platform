@@ -954,7 +954,7 @@ app.get('/api/reports/daily', authMiddleware, async (req, res) => {
         const [report] = await pool.query(
             `SELECT t.team_name,
                     COUNT(DISTINCT o.id) as num_orders,
-                    COALESCE(SUM(o.total_amount), 0) as total_sales,
+                    COALESCE(SUM(CASE WHEN o.payment_method IN ('cash', 'bank_transfer') THEN o.total_amount ELSE 0 END), 0) as total_sales,
                     COALESCE(SUM(CASE WHEN o.payment_method = 'cash' THEN o.total_amount ELSE 0 END), 0) as cash_sales,
                     COALESCE(SUM(CASE WHEN o.payment_method = 'bank_transfer' THEN o.total_amount ELSE 0 END), 0) as transfer_sales,
                     COALESCE(SUM(CASE WHEN o.payment_method = 'credit' THEN o.total_amount ELSE 0 END), 0) as credit_sales
@@ -970,7 +970,6 @@ app.get('/api/reports/daily', authMiddleware, async (req, res) => {
         res.json({ success: true, date: new Date().toISOString().split('T')[0], teams: [] });
     }
 });
-
 // ============================================================
 // MANAGER DASHBOARD SUMMARY
 // ============================================================
