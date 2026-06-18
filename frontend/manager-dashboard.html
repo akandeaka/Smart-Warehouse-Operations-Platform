@@ -105,6 +105,18 @@
             color: #667eea;
         }
 
+        .stat-card .value.return-rate-high {
+            color: #dc3545;
+        }
+
+        .stat-card .value.return-rate-medium {
+            color: #ffc107;
+        }
+
+        .stat-card .value.return-rate-low {
+            color: #28a745;
+        }
+
         .tabs {
             display: flex;
             gap: 10px;
@@ -304,7 +316,129 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
-        
+
+        /* ============================================================
+           RETURNS TRACKING CARD STYLES
+           ============================================================ */
+        .returns-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .returns-card h3 {
+            margin-bottom: 20px;
+            color: #333;
+            border-left: 4px solid #dc3545;
+            padding-left: 12px;
+        }
+
+        .returns-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .returns-stat {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .returns-stat .label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .returns-stat .value {
+            font-size: 22px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .returns-stat .value.high {
+            color: #dc3545;
+        }
+
+        .returns-stat .value.medium {
+            color: #ffc107;
+        }
+
+        .returns-stat .value.low {
+            color: #28a745;
+        }
+
+        .return-rate-bar {
+            width: 100%;
+            height: 8px;
+            background: #e9ecef;
+            border-radius: 4px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .return-rate-bar .fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s;
+        }
+
+        .return-rate-bar .fill.high {
+            background: #dc3545;
+        }
+
+        .return-rate-bar .fill.medium {
+            background: #ffc107;
+        }
+
+        .return-rate-bar .fill.low {
+            background: #28a745;
+        }
+
+        .return-rate-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .return-rate-badge.high {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .return-rate-badge.medium {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .return-rate-badge.low {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .team-return-row {
+            border-left: 3px solid transparent;
+        }
+
+        .team-return-row.high {
+            border-left-color: #dc3545;
+        }
+
+        .team-return-row.medium {
+            border-left-color: #ffc107;
+        }
+
+        .team-return-row.low {
+            border-left-color: #28a745;
+        }
+
         /* Mobile Responsive Styles */
         @media screen and (max-width: 768px) {
             .header {
@@ -443,6 +577,7 @@
             <button class="tab" onclick="switchTab('approvals', this)">✅ Credit Approvals</button>
             <button class="tab" onclick="switchTab('returns', this)">🔄 Pending Returns</button>
             <button class="tab" onclick="switchTab('reports', this)">📈 Daily Reports</button>
+            <button class="tab" onclick="switchTab('returntracking', this)">📊 Returns Tracking</button>
         </div>
 
         <div id="allocate" class="tab-content active">
@@ -507,6 +642,87 @@
                 <tbody id="reportsTable"><tr><td colspan="6" class="loading-text">Loading report...</td></tr></tbody>
             </table>
         </div>
+
+        <!-- ============================================================
+        RETURNS TRACKING TAB
+        ============================================================ -->
+        <div id="returntracking" class="tab-content">
+            <h2>📊 Returns Tracking</h2>
+            
+            <!-- Summary Cards -->
+            <div class="returns-stats-grid">
+                <div class="returns-stat">
+                    <div class="label">Total Allocated</div>
+                    <div class="value" id="rtTotalAllocated">0</div>
+                </div>
+                <div class="returns-stat">
+                    <div class="label">Total Sold</div>
+                    <div class="value" id="rtTotalSold">0</div>
+                </div>
+                <div class="returns-stat">
+                    <div class="label">Total Returns</div>
+                    <div class="value high" id="rtTotalReturns">0</div>
+                </div>
+                <div class="returns-stat">
+                    <div class="label">Overall Return Rate</div>
+                    <div class="value" id="rtOverallRate">0%</div>
+                </div>
+            </div>
+
+            <!-- Date Selector -->
+            <div style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label style="font-weight: 600;">Select Date:</label>
+                    <input type="date" id="rtDate" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 5px;">
+                    <button class="btn btn-primary" onclick="loadReturnsTracking()" style="padding: 8px 20px;">
+                        <i class="fas fa-search"></i> View
+                    </button>
+                    <button class="btn btn-warning" onclick="setTodayDate()" style="padding: 8px 20px;">
+                        <i class="fas fa-calendar-day"></i> Today
+                    </button>
+                </div>
+            </div>
+
+            <!-- Team Returns Table -->
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Team</th>
+                            <th>Allocated</th>
+                            <th>Sold</th>
+                            <th>Returns</th>
+                            <th>Return Rate</th>
+                            <th>Status</th>
+                            <th>Top Returned Product</th>
+                        </tr>
+                    </thead>
+                    <tbody id="returnsTrackingTable">
+                        <tr><td colspan="7" class="loading-text">Loading returns data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Detailed Returns List -->
+            <h3 style="margin-top: 25px;">📋 Detailed Returns by Team</h3>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Team</th>
+                            <th>Product</th>
+                            <th>Quantity Returned</th>
+                            <th>Value (₦)</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="returnsDetailTable">
+                        <tr><td colspan="6" class="loading-text">Loading details...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -563,6 +779,7 @@
                 case 'approvals': loadPendingApprovals(); break;
                 case 'returns': loadPendingReturns(); break;
                 case 'reports': loadDailyReport(); break;
+                case 'returntracking': loadReturnsTracking(); break;
             }
         }
 
@@ -588,8 +805,141 @@
                 card3Label.innerHTML = "Today's Sales";
                 loadTodaySalesValue();
             }
+            else if (tabId === 'returntracking') {
+                card3Label.innerHTML = "Today's Returns";
+                loadTodayReturnsCount();
+            }
         }
 
+        async function loadTodayReturnsCount() {
+            const today = new Date().toISOString().split('T')[0];
+            const data = await fetchAPI(`/sales/team-returns?date=${today}`);
+            if (data && data.success) {
+                const totalReturns = data.data.reduce((sum, t) => sum + t.returned_qty, 0);
+                document.getElementById('pendingApprovals').innerHTML = totalReturns;
+            }
+        }
+
+        // ============================================================
+        // LOAD RETURNS TRACKING
+        // ============================================================
+        async function loadReturnsTracking() {
+            const dateInput = document.getElementById('rtDate');
+            const date = dateInput.value || new Date().toISOString().split('T')[0];
+            if (!dateInput.value) dateInput.value = date;
+
+            const data = await fetchAPI(`/sales/team-returns?date=${date}`);
+            if (data && data.success) {
+                displayReturnsTracking(data.data, date);
+            } else {
+                document.getElementById('returnsTrackingTable').innerHTML = '<tr><td colspan="7" class="no-data-text">No returns data available</td></tr>';
+                document.getElementById('returnsDetailTable').innerHTML = '<tr><td colspan="6" class="no-data-text">No returns details available</td></tr>';
+            }
+        }
+
+        function displayReturnsTracking(teams, date) {
+            let totalAllocated = 0;
+            let totalSold = 0;
+            let totalReturns = 0;
+            let html = '';
+
+            for (let t of teams) {
+                totalAllocated += t.allocated_qty || 0;
+                totalSold += t.sold_qty || 0;
+                totalReturns += t.returned_qty || 0;
+
+                const returnRate = t.allocated_qty > 0 ? (t.returned_qty / t.allocated_qty) * 100 : 0;
+                let statusClass = '';
+                let statusText = '';
+                let barClass = '';
+
+                if (returnRate > 30) {
+                    statusClass = 'high';
+                    statusText = '🔴 High Returns';
+                    barClass = 'high';
+                } else if (returnRate > 15) {
+                    statusClass = 'medium';
+                    statusText = '🟡 Medium Returns';
+                    barClass = 'medium';
+                } else {
+                    statusClass = 'low';
+                    statusText = '🟢 Low Returns';
+                    barClass = 'low';
+                }
+
+                const rateClass = returnRate > 30 ? 'high' : (returnRate > 15 ? 'medium' : 'low');
+
+                html += `<tr class="team-return-row ${statusClass}">
+                    <td><strong>${t.team_name || 'Unknown Team'}</strong></td>
+                    <td>${t.allocated_qty || 0}</td>
+                    <td>${t.sold_qty || 0}</td>
+                    <td><strong>${t.returned_qty || 0}</strong></td>
+                    <td>
+                        ${returnRate.toFixed(1)}%
+                        <div class="return-rate-bar">
+                            <div class="fill ${barClass}" style="width: ${Math.min(returnRate, 100)}%;"></div>
+                        </div>
+                    </td>
+                    <td><span class="return-rate-badge ${statusClass}">${statusText}</span></td>
+                    <td>${t.top_returned_product || 'N/A'}</td>
+                </tr>`;
+            }
+
+            document.getElementById('returnsTrackingTable').innerHTML = html || '<tr><td colspan="7" class="no-data-text">No team returns data</td></tr>';
+
+            // Update summary cards
+            document.getElementById('rtTotalAllocated').innerHTML = totalAllocated;
+            document.getElementById('rtTotalSold').innerHTML = totalSold;
+            document.getElementById('rtTotalReturns').innerHTML = totalReturns;
+            
+            const overallRate = totalAllocated > 0 ? (totalReturns / totalAllocated) * 100 : 0;
+            const rateElement = document.getElementById('rtOverallRate');
+            rateElement.innerHTML = overallRate.toFixed(1) + '%';
+            
+            if (overallRate > 30) {
+                rateElement.className = 'value high';
+            } else if (overallRate > 15) {
+                rateElement.className = 'value medium';
+            } else {
+                rateElement.className = 'value low';
+            }
+
+            // Load detailed returns for the selected date
+            loadReturnsDetails(date);
+        }
+
+        // ============================================================
+        // LOAD RETURNS DETAILS
+        // ============================================================
+        async function loadReturnsDetails(date) {
+            const data = await fetchAPI(`/sales/returns-details?date=${date}`);
+            if (data && data.success) {
+                let html = '';
+                for (let item of data.data) {
+                    html += `<tr>
+                        <td>${item.team_name || 'Unknown'}</td>
+                        <td>${item.product_name}</td>
+                        <td><strong>${item.returned_qty}</strong></td>
+                        <td>${formatMoney(item.amount || 0)}</td>
+                        <td>${item.allocated_date || date}</td>
+                        <td><span class="status-active">✅ Returned</span></td>
+                    </tr>`;
+                }
+                document.getElementById('returnsDetailTable').innerHTML = html || '<tr><td colspan="6" class="no-data-text">No returns details found</td></tr>';
+            } else {
+                document.getElementById('returnsDetailTable').innerHTML = '<tr><td colspan="6" class="no-data-text">No returns details available</td></tr>';
+            }
+        }
+
+        function setTodayDate() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('rtDate').value = today;
+            loadReturnsTracking();
+        }
+
+        // ============================================================
+        // EXISTING FUNCTIONS (Keep all your existing functions here)
+        // ============================================================
         async function loadTeams() {
             const data = await fetchAPI('/teams');
             if (data && data.success) {
@@ -665,9 +1015,6 @@
             }
         }
 
-        // ============================================================
-        // FIXED: loadPendingReturns() - Handles 'Unsold Goods' type
-        // ============================================================
         async function loadPendingReturns() {
             const data = await fetchAPI('/sales/pending-submissions');
             if (data && data.success) {
@@ -704,9 +1051,6 @@
             }
         }
 
-        // ============================================================
-        // FIXED: loadDailyReport() - Credit is NOT included in Total
-        // ============================================================
         async function loadDailyReport() {
             const data = await fetchAPI('/reports/daily');
             if (data && data.success) {
@@ -897,6 +1241,8 @@
             loadProductsForAllocation();
             loadPendingApprovalsCount();
             loadProducts();
+            // Set today's date for returns tracking
+            setTodayDate();
         }
 
         // Register Service Worker for PWA
