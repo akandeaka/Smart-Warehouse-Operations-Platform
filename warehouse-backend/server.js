@@ -1390,7 +1390,62 @@ app.get('/api/admin/system-info', superAdminMiddleware, async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
+// ============================================================
+// MANAGER PERFORMANCE - TEAM PERFORMANCE
+// ============================================================
+app.get('/api/manager/team-performance', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const date = req.query.date || new Date().toISOString().split('T')[0];
+        
+        const [results] = await pool.query(
+            `SELECT 
+                st.team_name,
+                COUNT(DISTINCT o.id) as orders,
+                COALESCE(SUM(oi.quantity), 0) as total_units,
+                COALESCE(SUM(o.total_amount), 0) as total_sales
+             FROM sales_teams st
+             LEFT JOIN sales_orders o ON st.id = o.team_id AND o.sales_date = ?
+             LEFT JOIN sales_order_items oi ON o.id = oi.order_id
+             GROUP BY st.id, st.team_name
+             ORDER BY total_sales DESC`,
+            [date]
+        );
+        
+        res.json({ success: true, data: results });
+    } catch (error) {
+        console.error('Team performance error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
+// ============================================================
+// MANAGER PERFORMANCE - PRODUCT PERFORMANCE
+// ============================================================
+app.get('/api/manager/product-performance', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const date = req.query.date || new Date().toISOString().split('T')[0];
+        
+        const [results] = await pool.query(
+            `SELECT 
+                p.product_name,
+                COALESCE(SUM(oi.quantity), 0) as total_sold,
+                COALESCE(SUM(oi.quantity * oi.unit_price), 0) as total_revenue
+             FROM products p
+             LEFT JOIN sales_order_items oi ON p.id = oi.product_id
+             LEFT JOIN sales_orders o ON oi.order_id = o.id AND o.sales_date = ?
+             GROUP BY p.id, p.product_name
+             HAVING total_sold > 0
+             ORDER BY total_sold DESC
+             LIMIT 20`,
+            [date]
+        );
+        
+        res.json({ success: true, data: results });
+    } catch (error) {
+        console.error('Product performance error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 // ============================================================
 // START SERVER
 // ============================================================
