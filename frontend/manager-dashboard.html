@@ -676,7 +676,6 @@
                     html = '<tr><td colspan="7" class="no-data-text">No pending returns</td></tr>';
                 } else {
                     for (let item of data.data) {
-                        // Determine the type display
                         let typeDisplay = '';
                         if (item.type === 'Unsold Goods') {
                             typeDisplay = '📦 Unsold Goods';
@@ -705,6 +704,9 @@
             }
         }
 
+        // ============================================================
+        // FIXED: loadDailyReport() - Credit is NOT included in Total
+        // ============================================================
         async function loadDailyReport() {
             const data = await fetchAPI('/reports/daily');
             if (data && data.success) {
