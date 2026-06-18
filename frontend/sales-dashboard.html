@@ -308,7 +308,6 @@
         document.getElementById('teamName').innerText = currentUser.full_name ? currentUser.full_name.split(' ')[0] : 'Sales';
         const teamBadge = document.getElementById('teamBadge');
         if (currentUser.team_id) {
-            // Fetch team name
             fetchAPI('/teams').then(data => {
                 if (data && data.success) {
                     const team = data.data.find(t => t.id === currentUser.team_id);
@@ -365,97 +364,70 @@
         // CHECK IF TODAY'S SALES HAVE BEEN SUBMITTED (TEAM-SPECIFIC)
         // ============================================================
         async function checkSubmissionStatus() {
-    try {
-        const response = await fetchAPI(`/sales/check-submitted/${currentUser.team_id}/${today}`);
-        if (response && response.success) {
-            isSalesSubmitted = response.submitted === true;
-            
-            // Update Submit button
-            const submitBtn = document.getElementById('submitDayBtn');
-            if (submitBtn) {
-                submitBtn.disabled = isSalesSubmitted;
-                submitBtn.innerHTML = isSalesSubmitted ? '✅ Sales Already Submitted for Today' : 'Submit Final Sales for the Day';
-                submitBtn.style.background = isSalesSubmitted ? '#6c757d' : '#ffc107';
-            }
-            
-            // Check if there are new allocations available
-            const allocationsData = await fetchAPI('/sales/team/' + currentUser.team_id + '/allocations');
-            let hasNewAllocations = false;
-            let hasUnconfirmedAllocations = false;
-            
-            if (allocationsData && allocationsData.success) {
-                const availableProducts = allocationsData.data.filter(p => p.remaining_qty > 0);
-                hasNewAllocations = availableProducts.length > 0;
-                
-                // Check if any new allocation is unconfirmed
-                const unconfirmed = availableProducts.filter(p => p.confirmed === 0 || p.confirmed === false);
-                hasUnconfirmedAllocations = unconfirmed.length > 0;
-            }
-            
-            // Determine Sell button state
-            const sellBtn = document.getElementById('sellBtn');
-            const submittedWarning = document.getElementById('saleSubmittedWarning');
-            const confirmWarning = document.getElementById('saleDisabledWarning');
-            
-            if (isSalesSubmitted) {
-                // Sales are submitted - check if there are new allocations
-                if (hasNewAllocations) {
-                    // ✅ New goods available - enable selling
-                    if (sellBtn) {
-                        // Only enable if goods are confirmed OR no confirmation needed for new goods
-                        if (hasUnconfirmedAllocations) {
-                            // Need to confirm first
-                            sellBtn.disabled = true;
-                            if (confirmWarning) {
-                                confirmWarning.style.display = 'block';
-                                confirmWarning.innerHTML = '⚠️ Please confirm new goods before selling.';
-                            }
-                            if (submittedWarning) submittedWarning.style.display = 'none';
-                        } else {
-                            // Goods already confirmed, enable selling
-                            sellBtn.disabled = false;
-                            if (submittedWarning) {
-                                submittedWarning.style.display = 'block';
-                                submittedWarning.innerHTML = '📦 New goods available! You can sell new allocations.';
-                            }
-                            if (confirmWarning) confirmWarning.style.display = 'none';
-                        }
-                    }
-                } else {
-                    // ❌ No new goods, keep disabled
-                    if (sellBtn) sellBtn.disabled = true;
-                    if (submittedWarning) {
-                        submittedWarning.style.display = 'block';
-                        submittedWarning.innerHTML = '⚠️ Sales for today have been submitted. Please wait for new allocation.';
-                    }
-                    if (confirmWarning) confirmWarning.style.display = 'none';
-                }
-            } else {
-                // Sales NOT submitted - normal flow
-                if (submittedWarning) submittedWarning.style.display = 'none';
-                if (sellBtn && isConfirmed === true) {
-                    sellBtn.disabled = false;
-                }
-            }
-        }
-    } catch (error) {
-        console.error('Error checking submission status:', error);
-    }
-}
+            try {
+                const response = await fetchAPI(`/sales/check-submitted/${currentUser.team_id}/${today}`);
+                if (response && response.success) {
+                    isSalesSubmitted = response.submitted === true;
                     
-                    // Disable Sell Now button if sales are submitted
+                    const submitBtn = document.getElementById('submitDayBtn');
+                    if (submitBtn) {
+                        submitBtn.disabled = isSalesSubmitted;
+                        submitBtn.innerHTML = isSalesSubmitted ? '✅ Sales Already Submitted for Today' : 'Submit Final Sales for the Day';
+                        submitBtn.style.background = isSalesSubmitted ? '#6c757d' : '#ffc107';
+                        submitBtn.style.color = isSalesSubmitted ? 'white' : '#333';
+                        submitBtn.style.cursor = isSalesSubmitted ? 'not-allowed' : 'pointer';
+                    }
+                    
                     const sellBtn = document.getElementById('sellBtn');
                     const submittedWarning = document.getElementById('saleSubmittedWarning');
+                    const confirmWarning = document.getElementById('saleDisabledWarning');
                     
                     if (isSalesSubmitted) {
-                        if (sellBtn) sellBtn.disabled = true;
-                        if (submittedWarning) {
-                            submittedWarning.style.display = 'block';
-                            submittedWarning.innerHTML = '⚠️ Sales for today have been submitted. Please wait for new allocation.';
+                        // Check if there are new allocations available
+                        const allocationsData = await fetchAPI('/sales/team/' + currentUser.team_id + '/allocations');
+                        let hasNewAllocations = false;
+                        let hasUnconfirmedAllocations = false;
+                        
+                        if (allocationsData && allocationsData.success) {
+                            const availableProducts = allocationsData.data.filter(p => p.remaining_qty > 0);
+                            hasNewAllocations = availableProducts.length > 0;
+                            const unconfirmed = availableProducts.filter(p => p.confirmed === 0 || p.confirmed === false);
+                            hasUnconfirmedAllocations = unconfirmed.length > 0;
                         }
-                        const confirmWarning = document.getElementById('saleDisabledWarning');
-                        if (confirmWarning) confirmWarning.style.display = 'none';
+                        
+                        if (sellBtn) {
+                            if (hasNewAllocations && !hasUnconfirmedAllocations) {
+                                // New goods available and confirmed
+                                sellBtn.disabled = false;
+                                if (submittedWarning) {
+                                    submittedWarning.style.display = 'block';
+                                    submittedWarning.innerHTML = '📦 New goods available! You can sell new allocations.';
+                                    submittedWarning.style.background = '#d4edda';
+                                    submittedWarning.style.color = '#155724';
+                                }
+                                if (confirmWarning) confirmWarning.style.display = 'none';
+                            } else if (hasNewAllocations && hasUnconfirmedAllocations) {
+                                // New goods but not confirmed
+                                sellBtn.disabled = true;
+                                if (confirmWarning) {
+                                    confirmWarning.style.display = 'block';
+                                    confirmWarning.innerHTML = '⚠️ Please confirm new goods before selling.';
+                                }
+                                if (submittedWarning) submittedWarning.style.display = 'none';
+                            } else {
+                                // No new goods
+                                sellBtn.disabled = true;
+                                if (submittedWarning) {
+                                    submittedWarning.style.display = 'block';
+                                    submittedWarning.innerHTML = '⚠️ Sales for today have been submitted. Please wait for new allocation.';
+                                    submittedWarning.style.background = '#fff3cd';
+                                    submittedWarning.style.color = '#856404';
+                                }
+                                if (confirmWarning) confirmWarning.style.display = 'none';
+                            }
+                        }
                     } else {
+                        // Sales NOT submitted - normal flow
                         if (submittedWarning) submittedWarning.style.display = 'none';
                         if (sellBtn && isConfirmed === true) {
                             sellBtn.disabled = false;
@@ -485,7 +457,6 @@
                 const confirmationData = await fetchAPI('/allocations/confirmation-status/' + currentUser.team_id + '/' + today);
                 isConfirmed = confirmationData && confirmationData.success && confirmationData.confirmed === true;
                 
-                // Check submission status for this team
                 await checkSubmissionStatus();
                 
                 if (allocatedProducts.length === 0) {
@@ -550,7 +521,6 @@
             const sellBtn = document.getElementById('sellBtn');
             const warningDiv = document.getElementById('saleDisabledWarning');
             
-            // Check if sales are already submitted for this team
             if (isSalesSubmitted) {
                 if (sellBtn) sellBtn.disabled = true;
                 const submittedWarning = document.getElementById('saleSubmittedWarning');
@@ -584,6 +554,7 @@
                     showMessage('✅ Goods confirmed! You can now sell.');
                     await loadAllocatedStock();
                     await loadTodayTransactions();
+                    await checkSubmissionStatus(); // ✅ ADDED THIS LINE
                 } else {
                     showMessage('Confirmation failed: ' + (result?.message || 'Unknown'), true);
                 }
@@ -872,7 +843,7 @@
         }
 
         // ============================================================
-        // SUBMIT DAY SALES - WITH BUTTON DISABLE (WORKS FOR ALL TEAMS)
+        // SUBMIT DAY SALES
         // ============================================================
         async function submitDaySales() {
             const todayDate = new Date().toISOString().split('T')[0];
