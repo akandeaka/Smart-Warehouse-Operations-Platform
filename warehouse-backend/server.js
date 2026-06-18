@@ -943,7 +943,67 @@ app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_ma
         if (connection) connection.release();
     }
 });
+// ============================================================
+// RETURNS TRACKING - GET TEAM RETURNS BY DATE
+// ============================================================
+app.get('/api/sales/team-returns', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const date = req.query.date || new Date().toISOString().split('T')[0];
+        
+        const [results] = await pool.query(
+            `SELECT 
+                st.team_name,
+                SUM(a.allocated_qty) as allocated_qty,
+                SUM(a.sold_qty) as sold_qty,
+                SUM(a.returned_qty) as returned_qty,
+                (SELECT p.product_name FROM sales_team_allocations a2 
+                 JOIN products p ON a2.product_id = p.id 
+                 WHERE a2.team_id = a.team_id AND a2.allocated_date = ? 
+                 ORDER BY a2.returned_qty DESC LIMIT 1) as top_returned_product
+             FROM sales_team_allocations a
+             JOIN sales_teams st ON a.team_id = st.id
+             WHERE a.allocated_date = ?
+             GROUP BY a.team_id, st.team_name
+             ORDER BY st.team_name`,
+            [date, date]
+        );
+        
+        res.json({ success: true, data: results });
+    } catch (error) {
+        console.error('Team returns error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
+// ============================================================
+// RETURNS TRACKING - GET RETURNS DETAILS BY DATE
+// ============================================================
+app.get('/api/sales/returns-details', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const date = req.query.date || new Date().toISOString().split('T')[0];
+        
+        const [results] = await pool.query(
+            `SELECT 
+                st.team_name,
+                p.product_name,
+                a.returned_qty,
+                (a.returned_qty * p.unit_cost) as amount,
+                a.allocated_date
+             FROM sales_team_allocations a
+             JOIN sales_teams st ON a.team_id = st.id
+             JOIN products p ON a.product_id = p.id
+             WHERE a.allocated_date = ?
+               AND a.returned_qty > 0
+             ORDER BY st.team_name, p.product_name`,
+            [date]
+        );
+        
+        res.json({ success: true, data: results });
+    } catch (error) {
+        console.error('Returns details error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 // ============================================================
 // REPORTS
 // ============================================================
