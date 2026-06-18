@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>Sales Team Dashboard</title>
     
     <!-- PWA Support -->
@@ -11,29 +11,29 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="WMS">
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
-    <meta name="theme-color" content="#28a745">
+    <meta name="theme-color" content="#667eea">
     
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
-        .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; padding: 20px; }
         .stat-card { background: white; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .stat-card .label { font-size: 12px; color: #666; margin-bottom: 5px; }
-        .stat-card .value { font-size: 22px; font-weight: bold; color: #28a745; }
+        .stat-card .value { font-size: 22px; font-weight: bold; color: #667eea; }
         .stat-card .credit-value { font-size: 22px; font-weight: bold; color: #dc3545; }
         .card { background: white; padding: 20px; margin: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .card h3 { margin-bottom: 15px; color: #333; border-left: 4px solid #28a745; padding-left: 12px; }
+        .card h3 { margin-bottom: 15px; color: #333; border-left: 4px solid #667eea; padding-left: 12px; }
         .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px; }
         .product-item { border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fafafa; }
         .product-item h4 { color: #333; margin-bottom: 10px; }
-        .product-item .price { color: #28a745; font-weight: bold; font-size: 20px; }
+        .product-item .price { color: #667eea; font-weight: bold; font-size: 20px; }
         .product-item .stock { color: #666; font-size: 14px; margin: 5px 0; }
         .product-item .total-value { color: #667eea; font-weight: bold; margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; }
         .confirm-btn { background: #28a745; color: white; border: none; padding: 20px; border-radius: 10px; cursor: pointer; font-size: 20px; font-weight: bold; width: 100%; margin-top: 15px; }
         .confirm-btn:hover { background: #218838; }
         .submit-btn { background: #ffc107; color: #333; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; width: calc(100% - 40px); margin: 0 20px 20px 20px; }
-        .sell-btn { background: #28a745; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
+        .sell-btn { background: #667eea; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
         .sell-btn:disabled { background: #ccc; cursor: not-allowed; }
         .logout-btn, .refresh-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; margin-left: 10px; border: none; color: white; }
         .download-btn { background: #17a2b8; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; margin: 10px; }
@@ -52,21 +52,81 @@
         th { background: #f8f9fa; }
         .loading { text-align: center; padding: 40px; color: #666; }
         .allocation-summary { background: #e8f5e9; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-        .total-goods-value { font-size: 24px; font-weight: bold; color: #28a745; }
+        .total-goods-value { font-size: 24px; font-weight: bold; color: #667eea; }
         .status-confirmed { color: #28a745; font-weight: bold; }
         .status-pending { color: #dc3545; font-weight: bold; }
         .credit-amount { color: #dc3545; font-weight: bold; }
         .tab-buttons { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #ddd; }
         .tab-btn { background: none; border: none; padding: 10px 20px; cursor: pointer; font-size: 16px; color: #666; }
-        .tab-btn.active { color: #28a745; border-bottom: 2px solid #28a745; }
+        .tab-btn.active { color: #667eea; border-bottom: 2px solid #667eea; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .zero-state { text-align: center; padding: 40px; color: #28a745; font-size: 18px; }
-        .history-item { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 3px solid #28a745; }
-        .history-date { font-weight: bold; color: #28a745; margin-bottom: 10px; }
-        @keyframes pulse { 0% { transform: scale(1); background-color: #28a745; } 50% { transform: scale(1.02); background-color: #34ce57; } 100% { transform: scale(1); background-color: #28a745; } }
+        .zero-state { text-align: center; padding: 40px; color: #667eea; font-size: 18px; }
+        .history-item { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 8px; border-left: 3px solid #667eea; }
+        .history-date { font-weight: bold; color: #667eea; margin-bottom: 10px; }
+        
+        /* Credit Status Styles */
+        .status-pending { background-color: #fff3cd; }
+        .status-approved { background-color: #d4edda; }
+        .status-due { 
+            background-color: #f8d7da; 
+            animation: blink 1s infinite;
+        }
+        .status-rejected { 
+            background-color: #e9ecef; 
+            color: #6c757d;
+            opacity: 0.7;
+        }
+        .status-paid { background-color: #cce5ff; }
+        
+        @keyframes blink {
+            0% { background-color: #f8d7da; }
+            50% { background-color: #ffcccc; }
+            100% { background-color: #f8d7da; }
+        }
+        
+        .credit-amount {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .credit-amount::before {
+            content: "- ";
+        }
+        
+        .credit-amount.paid {
+            color: #28a745;
+        }
+        
+        .credit-amount.paid::before {
+            content: "✅ ";
+        }
+        
+        .btn-pay {
+            animation: blink 1s infinite;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            color: white;
+            background: #F40009;
+        }
+        
+        .btn-pay:hover {
+            background: #cc0000;
+        }
 
-        /* Mobile Responsive */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .credit-amount.pending {
+            color: #ffc107;
+        }
+        
         @media screen and (max-width: 768px) {
             .header { flex-direction: column; text-align: center; gap: 15px; padding: 15px; }
             .stats-container { grid-template-columns: 1fr; gap: 10px; padding: 10px; }
@@ -166,7 +226,7 @@
             <table id="todayTable" style="display: none;">
                 <thead><tr><th>Time</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Status</th></tr></thead>
                 <tbody id="todayTransactionsBody"></tbody>
-            </tr>
+            </table>
             <div id="noTodayTransactions" class="zero-state" style="display: none;">📭 No transactions recorded today.</div>
         </div>
         
@@ -180,7 +240,7 @@
         <div id="tab-credit" class="tab-content">
             <div id="creditLoading" class="loading">Loading credit requests...</div>
             <table id="creditTable" style="display: none;">
-                <thead><tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Status</th><th>Due Date</th></tr></thead>
+                <thead><tr><th>Order #</th><th>Customer</th><th>Amount</th><th>Status</th><th>Due Date</th><th>Action</th></tr></thead>
                 <tbody id="creditTableBody"></tbody>
             </table>
         </div>
@@ -244,6 +304,7 @@
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`tab-${tabName}`).classList.add('active');
             event.target.classList.add('active');
+            if (tabName === 'credit') loadCreditRequests();
         }
 
         async function loadAllocatedStock() {
@@ -550,23 +611,90 @@
             showMessage('Download started!');
         }
 
+        // ============================================================
+        // LOAD CREDIT REQUESTS WITH PAYMENT STATUS
+        // ============================================================
         async function loadCreditRequests() {
             const data = await fetchAPI('/approvals/my-requests');
             if (data && data.success) {
                 let html = '';
+                const todayDate = new Date().toISOString().split('T')[0];
+                let hasDueToday = false;
+                
                 for (let req of data.data) {
-                    let status = req.approved === 1 ? 'Approved' : (req.rejected === 1 ? 'Declined' : 'Pending');
-                    html += `<tr>
+                    let statusText = '';
+                    let statusClass = '';
+                    let actionButton = '';
+                    
+                    if (req.status === 'pending') {
+                        statusText = '🟡 Pending Approval';
+                        statusClass = 'status-pending';
+                        actionButton = '';
+                    } else if (req.status === 'approved' && req.is_paid === 0) {
+                        const dueDate = new Date(req.due_date).toISOString().split('T')[0];
+                        const isDueToday = (dueDate === todayDate);
+                        
+                        if (isDueToday) {
+                            statusText = '🔴 PAYMENT DUE TODAY!';
+                            statusClass = 'status-due';
+                            hasDueToday = true;
+                            actionButton = `<button class="btn-pay" onclick="markCreditPaid(${req.id})">💰 Mark as Paid</button>`;
+                        } else {
+                            statusText = `🟢 Approved (Due: ${new Date(req.due_date).toLocaleDateString()})`;
+                            statusClass = 'status-approved';
+                            actionButton = '';
+                        }
+                    } else if (req.status === 'approved' && req.is_paid === 1) {
+                        statusText = '✅ Paid';
+                        statusClass = 'status-paid';
+                        actionButton = '';
+                    } else if (req.status === 'rejected') {
+                        statusText = '❌ Credit Declined';
+                        statusClass = 'status-rejected';
+                        actionButton = '';
+                    }
+                    
+                    const isCredit = req.status === 'approved' && req.is_paid === 0;
+                    const isPaid = req.is_paid === 1;
+                    
+                    html += `<tr class="${statusClass}">
                         <td>${req.order_number}</td>
                         <td>${req.customer_name}</td>
-                        <td class="${status === 'Pending' ? 'credit-amount' : ''}">${status === 'Pending' ? formatCreditMoney(req.total_amount) : formatMoney(req.total_amount)}</td>
-                        <td>${status}</td>
+                        <td class="${isCredit ? 'credit-amount' : (isPaid ? 'credit-amount paid' : '')}">${isCredit ? formatCreditMoney(req.total_amount) : (isPaid ? formatMoney(req.total_amount) : formatMoney(req.total_amount))}</td>
+                        <td>${statusText}</td>
                         <td>${req.due_date ? new Date(req.due_date).toLocaleDateString() : '-'}</td>
+                        <td>${actionButton}</td>
                     </tr>`;
                 }
-                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="5">No credit requests<\/td></td>';
+                
+                document.getElementById('creditTableBody').innerHTML = html || '<tr><td colspan="6">No credit requests</td></tr>';
                 document.getElementById('creditLoading').style.display = 'none';
                 document.getElementById('creditTable').style.display = 'table';
+                
+                // Show notification if credit due today
+                if (hasDueToday) {
+                    showMessage('🔴 Payment due today! Please check the Credit Requests tab.', false, false, true);
+                }
+            }
+        }
+
+        // ============================================================
+        // MARK CREDIT AS PAID
+        // ============================================================
+        async function markCreditPaid(creditId) {
+            if (confirm('Confirm payment received from customer?')) {
+                const result = await fetchAPI('/credit/mark-paid', {
+                    method: 'POST',
+                    body: JSON.stringify({ credit_id: creditId })
+                });
+                
+                if (result && result.success) {
+                    showMessage('✅ Payment recorded! Customer credit is now settled.', false, false, true);
+                    await loadCreditRequests();
+                    await loadTodayTransactions();
+                } else {
+                    showMessage('Failed to record payment: ' + (result?.message || 'Unknown error'), true);
+                }
             }
         }
 
