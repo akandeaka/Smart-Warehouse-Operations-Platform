@@ -32,9 +32,28 @@
         .product-item .total-value { color: #667eea; font-weight: bold; margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; }
         .confirm-btn { background: #28a745; color: white; border: none; padding: 20px; border-radius: 10px; cursor: pointer; font-size: 20px; font-weight: bold; width: 100%; margin-top: 15px; }
         .confirm-btn:hover { background: #218838; }
-        .submit-btn { background: #ffc107; color: #333; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; width: calc(100% - 40px); margin: 0 20px 20px 20px; }
+        .confirm-btn:disabled { background: #6c757d; cursor: not-allowed; opacity: 0.7; }
+        .submit-btn { 
+            background: #ffc107; 
+            color: #333; 
+            border: none; 
+            padding: 15px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 18px; 
+            font-weight: bold; 
+            width: calc(100% - 40px); 
+            margin: 0 20px 20px 20px;
+            transition: all 0.3s;
+        }
+        .submit-btn:disabled { 
+            background: #6c757d !important; 
+            color: white !important; 
+            cursor: not-allowed !important; 
+            opacity: 0.7 !important; 
+        }
         .sell-btn { background: #667eea; color: white; border: none; padding: 12px; border-radius: 5px; cursor: pointer; width: 100%; font-size: 16px; }
-        .sell-btn:disabled { background: #ccc; cursor: not-allowed; }
+        .sell-btn:disabled { background: #6c757d; cursor: not-allowed; opacity: 0.7; }
         .logout-btn, .refresh-btn { background: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 5px; cursor: pointer; margin-left: 10px; border: none; color: white; }
         .download-btn { background: #17a2b8; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; margin: 10px; }
         .form-group { margin-bottom: 15px; }
@@ -144,6 +163,7 @@
             td button { display: block; width: 100%; margin: 3px 0; }
             .tab-buttons { flex-wrap: wrap; }
             .tab-btn { padding: 6px 12px; font-size: 12px; }
+            .submit-btn { width: calc(100% - 20px); margin: 0 10px 10px 10px; font-size: 14px; }
         }
         
         @media screen and (min-width: 769px) and (max-width: 1024px) {
@@ -199,6 +219,7 @@
     <div class="card">
         <h3>➕ Record New Sale</h3>
         <div id="saleDisabledWarning" class="warning-msg" style="display: none;">⚠️ You must confirm goods first!</div>
+        <div id="saleSubmittedWarning" class="warning-msg" style="display: none;">⚠️ Sales for today have been submitted. Please wait for new allocation.</div>
         <form id="saleForm" onsubmit="recordSale(event)">
             <div class="form-group"><label>Customer Name *</label><input type="text" id="customerName" required></div>
             <div class="form-group"><label>Customer Phone</label><input type="tel" id="customerPhone"></div>
@@ -256,6 +277,7 @@
         let isConfirmed = false;
         let todayTransactions = [];
         let pastTransactions = [];
+        let isSalesSubmitted = false;
 
         if (currentUser.username === 'alpha_lead' && !currentUser.team_id) {
             currentUser.team_id = 1;
@@ -307,6 +329,51 @@
             if (tabName === 'credit') loadCreditRequests();
         }
 
+        // ============================================================
+        // CHECK IF TODAY'S SALES HAVE BEEN SUBMITTED
+        // ============================================================
+        async function checkSubmissionStatus() {
+            try {
+                const response = await fetchAPI(`/sales/check-submitted/${currentUser.team_id}/${today}`);
+                if (response && response.success) {
+                    isSalesSubmitted = response.submitted === true;
+                    
+                    // Disable Submit Day button
+                    const submitBtn = document.getElementById('submitDayBtn');
+                    if (submitBtn) {
+                        submitBtn.disabled = isSalesSubmitted;
+                        submitBtn.innerHTML = isSalesSubmitted ? '✅ Sales Already Submitted for Today' : 'Submit Final Sales for the Day';
+                        submitBtn.style.background = isSalesSubmitted ? '#6c757d' : '#ffc107';
+                        submitBtn.style.color = isSalesSubmitted ? 'white' : '#333';
+                        submitBtn.style.cursor = isSalesSubmitted ? 'not-allowed' : 'pointer';
+                    }
+                    
+                    // Disable Sell Now button if sales are submitted
+                    const sellBtn = document.getElementById('sellBtn');
+                    const submittedWarning = document.getElementById('saleSubmittedWarning');
+                    
+                    if (isSalesSubmitted) {
+                        sellBtn.disabled = true;
+                        if (submittedWarning) {
+                            submittedWarning.style.display = 'block';
+                            submittedWarning.innerHTML = '⚠️ Sales for today have been submitted. Please wait for new allocation.';
+                        }
+                        // Hide the confirmation warning if showing
+                        const confirmWarning = document.getElementById('saleDisabledWarning');
+                        if (confirmWarning) confirmWarning.style.display = 'none';
+                    } else {
+                        if (submittedWarning) submittedWarning.style.display = 'none';
+                        // Re-enable based on confirmation status
+                        if (isConfirmed === true) {
+                            sellBtn.disabled = false;
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error checking submission status:', error);
+            }
+        }
+
         async function loadAllocatedStock() {
             const loadingDiv = document.getElementById('stockLoading');
             const container = document.getElementById('allocatedStock');
@@ -324,6 +391,9 @@
                 
                 const confirmationData = await fetchAPI('/allocations/confirmation-status/' + currentUser.team_id + '/' + today);
                 isConfirmed = confirmationData && confirmationData.success && confirmationData.confirmed === true;
+                
+                // Check submission status
+                await checkSubmissionStatus();
                 
                 if (allocatedProducts.length === 0) {
                     container.innerHTML = '<div class="zero-state">📭 No stock allocated yet. Waiting for warehouse manager to allocate goods.<br><br>Click Refresh button to check for new allocations.</div>';
@@ -386,6 +456,15 @@
         function enableSelling(enabled) {
             const sellBtn = document.getElementById('sellBtn');
             const warningDiv = document.getElementById('saleDisabledWarning');
+            
+            // Check if sales are already submitted
+            if (isSalesSubmitted) {
+                sellBtn.disabled = true;
+                const submittedWarning = document.getElementById('saleSubmittedWarning');
+                if (submittedWarning) submittedWarning.style.display = 'block';
+                return;
+            }
+            
             if (sellBtn) sellBtn.disabled = !enabled;
             if (warningDiv) warningDiv.style.display = enabled ? 'none' : 'block';
             document.getElementById('customerName').disabled = !enabled;
@@ -421,6 +500,7 @@
         async function recordSale(event) {
             event.preventDefault();
             if (!isConfirmed) { showMessage('⚠️ Please confirm goods first!', true); return; }
+            if (isSalesSubmitted) { showMessage('⚠️ Sales for today have been submitted!', true); return; }
             
             const customerName = document.getElementById('customerName').value;
             if (!customerName) { showMessage('Customer name required', true); return; }
@@ -464,6 +544,7 @@
                 await loadAllocatedStock();
                 await loadTodayTransactions();
                 await loadCreditRequests();
+                await checkSubmissionStatus();
             } else {
                 showMessage('Sale failed: ' + (result?.message), true);
             }
@@ -671,7 +752,6 @@
                 document.getElementById('creditLoading').style.display = 'none';
                 document.getElementById('creditTable').style.display = 'table';
                 
-                // Show notification if credit due today
                 if (hasDueToday) {
                     showMessage('🔴 Payment due today! Please check the Credit Requests tab.', false, false, true);
                 }
@@ -698,14 +778,26 @@
             }
         }
 
+        // ============================================================
+        // SUBMIT DAY SALES - WITH BUTTON DISABLE
+        // ============================================================
         async function submitDaySales() {
             const todayDate = new Date().toISOString().split('T')[0];
+            
+            if (isSalesSubmitted) {
+                showMessage('⚠️ Sales already submitted for today!', true);
+                return;
+            }
             
             if (!confirm('📤 SUBMIT SALES FOR REVIEW\n\nAre you sure you want to submit today\'s sales for manager review?\n\nYou can still accept new allocations and continue selling after submission.\n\nClick OK to submit.')) {
                 return;
             }
             
             try {
+                const submitBtn = document.getElementById('submitDayBtn');
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '⏳ Submitting...';
+                
                 const result = await fetchAPI('/sales/submit-day', { 
                     method: 'POST', 
                     body: JSON.stringify({ team_id: currentUser.team_id, sales_date: todayDate }) 
@@ -713,7 +805,9 @@
                 
                 if (result && result.success) {
                     showMessage('✅ Sales submitted to manager!', false, false, true);
-                    refreshData();
+                    await checkSubmissionStatus();
+                    await loadAllocatedStock();
+                    await loadTodayTransactions();
                     
                 } else if (result && result.requires_action) {
                     const userChoice = confirm(
@@ -739,15 +833,24 @@
                         } else {
                             showMessage(`✅ Sales submitted! ${finalResult.message || 'Goods kept for continued selling.'}`, false, false, true);
                         }
-                        refreshData();
+                        await checkSubmissionStatus();
+                        await loadAllocatedStock();
+                        await loadTodayTransactions();
                     } else {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = 'Submit Final Sales for the Day';
                         showMessage('Failed to submit: ' + (finalResult?.message || 'Unknown error'), true);
                     }
                 } else {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Submit Final Sales for the Day';
                     showMessage('Failed to submit sales: ' + (result?.message || 'Unknown error'), true);
                 }
             } catch (error) {
                 console.error('Submit day error:', error);
+                const submitBtn = document.getElementById('submitDayBtn');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Submit Final Sales for the Day';
                 showMessage('Error submitting sales: ' + error.message, true);
             }
         }
@@ -756,6 +859,7 @@
             await loadAllocatedStock(); 
             await loadTodayTransactions(); 
             await loadCreditRequests(); 
+            await checkSubmissionStatus();
             showMessage('Data refreshed', false, false, true); 
         }
         
@@ -818,6 +922,7 @@
             loadAllocatedStock();
             loadTodayTransactions();
             loadCreditRequests();
+            checkSubmissionStatus();
             setInterval(() => loadAllocatedStock(), 30000);
         }
 
