@@ -629,28 +629,42 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
         const { approval_id, approved_amount } = req.body;
         connection = await pool.getConnection();
         await connection.beginTransaction();
-        
-        const [approval] = await connection.query('SELECT order_id FROM credit_approvals WHERE id = ?', [approval_id]);
+
+        // Get the order_id from the approval
+        const [approval] = await connection.query(
+            'SELECT order_id FROM credit_approvals WHERE id = ?',
+            [approval_id]
+        );
         if (approval.length === 0) throw new Error('Approval not found');
-        
+
+        // Update order amount if modified
         if (approved_amount && approved_amount > 0) {
-            await connection.query('UPDATE sales_orders SET total_amount = ? WHERE id = ?', [approved_amount, approval[0].order_id]);
+            await connection.query(
+                'UPDATE sales_orders SET total_amount = ? WHERE id = ?',
+                [approved_amount, approval[0].order_id]
+            );
         }
-        
-        // ✅ CORRECTED: Use 'status' column instead of 'approved'
-        await connection.query('UPDATE credit_approvals SET status = "approved", approved_by = ?, approved_at = NOW() WHERE id = ?', [req.user.id, approval_id]);
-        await connection.query('UPDATE sales_orders SET approval_status = "approved", payment_status = "pending" WHERE id = ?', [approval[0].order_id]);
-        
+
+        // ✅ THE FIX: Use single quotes for ENUM values
+        await connection.query(
+            "UPDATE credit_approvals SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE id = ?",
+            [req.user.id, approval_id]
+        );
+        await connection.query(
+            "UPDATE sales_orders SET approval_status = 'approved', payment_status = 'pending' WHERE id = ?",
+            [approval[0].order_id]
+        );
+
         await connection.commit();
-        res.json({ success: true, message: 'Credit approved' });
+        res.json({ success: true, message: 'Credit approved successfully' });
     } catch (error) {
         if (connection) await connection.rollback();
+        console.error('Approve credit error:', error);
         res.status(500).json({ success: false, message: error.message });
     } finally {
         if (connection) connection.release();
     }
 });
-
 // ============================================================
 // REJECT CREDIT - CORRECTED
 // ============================================================
@@ -660,24 +674,50 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
         const { approval_id } = req.body;
         connection = await pool.getConnection();
         await connection.beginTransaction();
-        
-        const [approval] = await connection.query('SELECT order_id FROM credit_approvals WHERE id = ?', [approval_id]);
+
+        // Get the order_id from the approval
+        const [approval] = await connection.query(
+            'SELECT order_id FROM credit_approvals WHERE id = ?',
+            [approval_id]
+        );
         if (approval.length === 0) throw new Error('Approval not found');
-        
-        // ✅ CORRECTED: Use 'status' column instead of 'rejected'
-        await connection.query('UPDATE credit_approvals SET status = "rejected", approved_by = ?, approved_at = NOW() WHERE id = ?', [req.user.id, approval_id]);
-        await connection.query('UPDATE sales_orders SET approval_status = "rejected" WHERE id = ?', [approval[0].order_id]);
-        
+
+        // ✅ THE FIX: Use single quotes for ENUM values
+        await connection.query(
+            "UPDATE credit_approvals SET status = 'rejected', approved_by = ?, approved_at = NOW() WHERE id = ?",
+            [req.user.id, approval_id]
+        );
+        await connection.query(
+            "UPDATE sales_orders SET approval_status = 'rejected' WHERE id = ?",
+            [approval[0].order_id]
+        );
+
         await connection.commit();
-        res.json({ success: true, message: 'Credit rejected' });
+        res.json({ success: true, message: 'Credit rejected successfully' });
     } catch (error) {
         if (connection) await connection.rollback();
+        console.error('Reject credit error:', error);
         res.status(500).json({ success: false, message: error.message });
     } finally {
         if (connection) connection.release();
     }
 });
-
+app.get('/api/approvals/pending', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const [approvals] = await pool.query(
+            `SELECT c.id, o.order_number, o.customer_name, o.total_amount, o.payment_method, 
+                    u.full_name as requested_by, c.requested_at, c.due_date
+             FROM credit_approvals c
+             JOIN sales_orders o ON c.order_id = o.id
+             JOIN users u ON c.requested_by = u.id
+             WHERE c.status = 'pending'`
+        );
+        res.json({ success: true, data: approvals });
+    } catch (error) {
+        console.error('Get pending approvals error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 // ============================================================
 // SUBMIT DAY SALES
 // ============================================================
