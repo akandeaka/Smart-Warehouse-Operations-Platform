@@ -731,14 +731,13 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
 });
 
 // ============================================================
-// MARK CREDIT AS PAID - WITH PAYMENT METHOD (WITH LOGGING)
+// MARK CREDIT AS PAID - WITH PAYMENT METHOD (FIXED)
 // ============================================================
 app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
     let connection;
     try {
         const { credit_id, payment_method, sales_date } = req.body;
         
-        // ✅ LOGGING: Log the request
         console.log('📝 Credit mark paid request:', { credit_id, payment_method, sales_date });
         
         if (!payment_method) {
@@ -751,7 +750,7 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
         connection = await pool.getConnection();
         await connection.beginTransaction();
         
-        // ✅ LOGGING: Log before query
+        // Get credit details
         console.log('🔍 Querying credit approval for ID:', credit_id);
         
         const [credit] = await connection.query(
@@ -762,7 +761,6 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
             [credit_id]
         );
         
-        // ✅ LOGGING: Log the result
         console.log('📊 Credit found:', credit);
         
         if (credit.length === 0) {
@@ -772,17 +770,18 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
         const saleDate = sales_date || new Date().toISOString().split('T')[0];
         const orderNumber = `PAY-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         
-        // ✅ LOGGING: Log before creating payment
+        // CREATE SALES ORDER FOR THE PAYMENT
         console.log('📝 Creating payment order:', orderNumber);
         
         const [orderResult] = await connection.query(
             `INSERT INTO sales_orders 
-             (order_number, team_id, customer_name, total_amount, payment_method, sales_date, created_by, approval_status, payment_status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             (order_number, team_id, customer_name, customer_phone, total_amount, payment_method, sales_date, created_by, approval_status, payment_status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 orderNumber, 
                 credit[0].team_id, 
                 credit[0].customer_name + ' (Credit Payment)', 
+                '', // customer_phone (empty)
                 credit[0].amount_due, 
                 payment_method, 
                 saleDate, 
@@ -792,20 +791,46 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
             ]
         );
         
-        // ✅ LOGGING: Log successful order creation
         console.log('✅ Payment order created. Order ID:', orderResult.insertId);
         
+        // ADD ORDER ITEM - THIS MAKES IT APPEAR IN TODAY'S TRANSACTIONS
+        await connection.query(
+            `INSERT INTO sales_order_items (order_id, product_id, quantity, unit_price, cost_of_goods)
+             VALUES (?, ?, ?, ?, ?)`,
+            [
+                orderResult.insertId,
+                1, // Default product ID
+                1, // Quantity
+                credit[0].amount_due, // Unit price = total amount
+                0 // Cost of goods (0 for credit payments)
+            ]
+        );
+        
+        // UPDATE TEAM ALLOCATIONS (sold_qty)
+        const [allocations] = await connection.query(
+            `SELECT id FROM sales_team_allocations 
+             WHERE team_id = ? AND allocated_date = ? AND confirmed = 1 AND status = 'active'`,
+            [credit[0].team_id, saleDate]
+        );
+        
+        if (allocations.length > 0) {
+            await connection.query(
+                `UPDATE sales_team_allocations 
+                 SET sold_qty = sold_qty + 1 
+                 WHERE id = ?`,
+                [allocations[0].id]
+            );
+        }
+        
+        // MARK CREDIT AS PAID
         await connection.query(
             'UPDATE credit_approvals SET is_paid = 1, payment_received_at = NOW(), status = "paid" WHERE id = ?',
             [credit_id]
         );
         
-        // ✅ LOGGING: Log successful update
         console.log('✅ Credit marked as paid for ID:', credit_id);
         
         await connection.commit();
-        
-        // ✅ LOGGING: Log success
         console.log('✅ Transaction committed successfully');
         
         res.json({ 
@@ -816,7 +841,6 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
         
     } catch (error) {
         if (connection) await connection.rollback();
-        // ✅ LOGGING: Log the error with full details
         console.error('❌ Mark paid error:', error);
         console.error('❌ Error stack:', error.stack);
         console.error('❌ Error message:', error.message);
