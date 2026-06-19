@@ -74,22 +74,32 @@ The **Warehouse Stock Management System** is a full-featured inventory managemen
 - ✅ Apple and Android support
 - ✅ Home screen icon
 
----
+###Technology Stack Overview 1
+| **Layer**                        | **Technology**                    | **Version**     |
+| -------------------------------- | --------------------------------- | --------------- |
+| **Backend Runtime**              | Node.js                           | v18+            |
+| **Backend Framework**            | Express.js                        | v4.18.2         |
+| **Database**                     | MySQL (Aiven Cloud)               | v8.0            |
+| **Database Driver**              | mysql2                            | v3.6.0          |
+| **File Upload Management**       | Multer                            | v1.4.5          |
+| **Excel File Processing**        | SheetJS (xlsx)                    | v0.18.5         |
+| **Frontend**                     | HTML5, CSS3, Vanilla JavaScript   | Latest          |
+| **Progressive Web App (PWA)**    | Web App Manifest & Service Worker | Latest          |
+| **Cloud Hosting Platform**       | Render.com                        | Managed Service |
+| **Version Control & Repository** | GitHub                            | Latest          |
 
-## 🛠️ Technology Stack
+### Technology Stack Overview
 
-| Layer | Technology | Version |
-|-------|------------|---------|
-| **Backend** | Node.js | v18+ |
-| **Framework** | Express.js | ^4.18.2 |
-| **Database** | MySQL (Aiven Cloud) | 8.0 |
-| **Driver** | mysql2 | ^3.6.0 |
-| **File Upload** | Multer | ^1.4.5-lts.1 |
-| **Excel Processing** | SheetJS (xlsx) | ^0.18.5 |
-| **Frontend** | HTML5, CSS3, Vanilla JS | - |
-| **PWA** | Manifest + Service Worker | - |
-| **Hosting** | Render.com | - |
-| **Version Control** | GitHub | - |
+* **Node.js (v18+)** powers the server-side application and API services.
+* **Express.js (v4.18.2)** provides a lightweight and scalable web application framework.
+* **MySQL (v8.0)** hosted on **Aiven Cloud** serves as the primary relational database.
+* **mysql2 (v3.6.0)** enables efficient communication between Node.js and MySQL.
+* **Multer (v1.4.5)** handles file uploads such as images, documents, and spreadsheets.
+* **SheetJS (xlsx v0.18.5)** processes Excel files for data import and export functionality.
+* **HTML5, CSS3, and Vanilla JavaScript** provide a responsive and lightweight frontend experience.
+* **PWA technologies** (Manifest and Service Worker) enable offline access and app-like functionality.
+* **Render.com** hosts and deploys the application in the cloud.
+* **GitHub** is used for source code management, version control, and collaboration.
 
 ---
 
