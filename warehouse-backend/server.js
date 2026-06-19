@@ -787,7 +787,7 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
                 saleDate, 
                 req.user.id, 
                 'not_required', 
-                'paid'
+                'completed'
             ]
         );
         
