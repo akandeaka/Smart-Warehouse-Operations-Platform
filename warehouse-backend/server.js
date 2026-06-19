@@ -832,7 +832,7 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
         
         // MARK CREDIT AS PAID
         await connection.query(
-            'UPDATE credit_approvals SET is_paid = 1, payment_received_at = NOW(), status = "paid" WHERE id = ?',
+            UPDATE credit_approvals SET is_paid = 1, payment_received_at = NOW(), status = 'paid' WHERE id = ?
             [credit_id]
         );
         
