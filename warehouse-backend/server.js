@@ -731,7 +731,8 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
 });
 
 // ============================================================
-// MARK CREDIT AS PAID - WITH PAYMENT METHOD
+// ============================================================
+// MARK CREDIT AS PAID - WITH PAYMENT METHOD (FIXED)
 // ============================================================
 app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
     let connection;
@@ -748,7 +749,7 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
         connection = await pool.getConnection();
         await connection.beginTransaction();
         
-        // Get credit details
+        // Get credit details - JOIN with sales_orders
         const [credit] = await connection.query(
             `SELECT c.id, c.order_id, c.amount_due, o.team_id, o.customer_name 
              FROM credit_approvals c
@@ -792,7 +793,7 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
         
         res.json({ 
             success: true, 
-            message: `Payment of ₦${credit[0].amount_due.toLocaleString()} recorded via ${payment_method}.`,
+            message: `Payment of ₦${Number(credit[0].amount_due).toLocaleString()} recorded via ${payment_method}.`,
             order_id: orderResult.insertId
         });
         
