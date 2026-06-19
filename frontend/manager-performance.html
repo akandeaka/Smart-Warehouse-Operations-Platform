@@ -7,6 +7,7 @@
     
     <!-- PWA Support -->
     <link rel="manifest" href="/manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="WMS">
@@ -19,7 +20,11 @@
         .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
         .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; padding: 20px; }
         .stat-card { background: white; padding: 15px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .stat-card .value { font-size: 24px; font-weight: bold; color: #28a745; }
+        .stat-card .label { font-size: 12px; color: #666; margin-bottom: 5px; }
+        .stat-card .value { font-size: 24px; font-weight: bold; color: #667eea; }
+        .stat-card .trend { font-size: 12px; margin-top: 5px; }
+        .stat-card .trend.positive { color: #28a745; }
+        .stat-card .trend.negative { color: #dc3545; }
         .card { background: white; padding: 20px; margin: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
@@ -34,8 +39,10 @@
         .download-btn { background: #17a2b8; color: white; border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; margin: 10px; }
         .positive { color: #28a745; }
         .negative { color: #dc3545; }
-        .progress-bar { background: #e0e0e0; border-radius: 10px; height: 8px; width: 100px; overflow: hidden; display: inline-block; }
-        .progress-fill { background: #28a745; height: 100%; border-radius: 10px; }
+        .no-data-text { text-align: center; padding: 20px; color: #999; }
+        .progress-bar { background: #e0e0e0; border-radius: 10px; height: 8px; width: 100px; overflow: hidden; display: inline-block; vertical-align: middle; }
+        .progress-fill { background: #667eea; height: 100%; border-radius: 10px; }
+        .rank-1 { background-color: #fff8e1; }
         @media screen and (max-width: 768px) {
             .stats-container { grid-template-columns: 1fr; }
             table { display: block; overflow-x: auto; white-space: nowrap; font-size: 12px; }
@@ -59,7 +66,7 @@
 
     <div class="card" style="margin-bottom:0;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-            <div style="display: flex; gap: 15px; align-items: center;">
+            <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
                 <span>📅 Select Date:</span>
                 <input type="date" id="dateSelector" value="">
                 <button class="download-btn" onclick="loadAllData()">Load Report</button>
@@ -84,18 +91,22 @@
 
         <div id="tab-team" class="tab-content active">
             <div id="teamLoading" class="loading">Loading team performance...</div>
-            <table id="teamTable" style="display:none; width:100%;">
-                <thead><tr><th>Rank</th><th>Team</th><th>Orders</th><th>Units</th><th>Cash</th><th>Transfer</th><th>Credit</th><th>Total</th><th>%</th></tr></thead>
-                <tbody id="teamTableBody"></tbody>
-            </table>
+            <div id="teamTableWrapper" style="display:none; overflow-x:auto;">
+                <table style="width:100%;">
+                    <thead><tr><th>Rank</th><th>Team</th><th>Orders</th><th>Units</th><th>Total Sales</th><th>%</th></tr></thead>
+                    <tbody id="teamTableBody"></tbody>
+                </table>
+            </div>
         </div>
 
         <div id="tab-product" class="tab-content">
             <div id="productLoading" class="loading">Loading product performance...</div>
-            <table id="productTable" style="display:none; width:100%;">
-                <thead><tr><th>Rank</th><th>Product</th><th>Units Sold</th><th>Total Value</th><th>Orders</th><th>% of Sales</th></tr></thead>
-                <tbody id="productTableBody"></tbody>
-            </table>
+            <div id="productTableWrapper" style="display:none; overflow-x:auto;">
+                <table style="width:100%;">
+                    <thead><tr><th>Rank</th><th>Product</th><th>Units Sold</th><th>Total Revenue</th><th>% of Sales</th></tr></thead>
+                    <tbody id="productTableBody"></tbody>
+                </table>
+            </div>
         </div>
 
         <div id="tab-comparison" class="tab-content">
@@ -111,6 +122,7 @@
         let currentDate = new Date().toISOString().split('T')[0];
         let teamData = [];
         let productData = [];
+        let summaryData = {};
 
         document.getElementById('dateSelector').value = currentDate;
 
@@ -147,103 +159,157 @@
             event.target.classList.add('active');
         }
 
+        // ============================================================
+        // LOAD TEAM PERFORMANCE (FIXED)
+        // ============================================================
         async function loadTeamPerformance() {
             const loadingDiv = document.getElementById('teamLoading');
-            const table = document.getElementById('teamTable');
-            loadingDiv.style.display = 'block';
-            table.style.display = 'none';
+            const tableWrapper = document.getElementById('teamTableWrapper');
             
-            const data = await fetchAPI('/manager/team-performance?date=' + currentDate);
-            if (data && data.success) {
-                teamData = data.teams;
-                const overall = data.overall;
+            loadingDiv.style.display = 'block';
+            tableWrapper.style.display = 'none';
+            
+            try {
+                const data = await fetchAPI('/manager/team-performance?date=' + currentDate);
                 
-                document.getElementById('totalSales').innerHTML = formatMoney(overall.total_sales);
-                document.getElementById('totalUnits').innerHTML = overall.total_units_sold || 0;
-                document.getElementById('totalOrders').innerHTML = overall.total_orders || 0;
-                document.getElementById('avgOrderValue').innerHTML = formatMoney(overall.total_orders > 0 ? overall.total_sales / overall.total_orders : 0);
-                
-                let html = '';
-                for (let i = 0; i < teamData.length; i++) {
-                    let t = teamData[i];
-                    let percent = overall.total_sales > 0 ? (t.total_sales / overall.total_sales * 100) : 0;
-                    html += `<tr class="${i === 0 ? 'rank-1' : ''}">
-                        <td><strong>#${i+1}</strong> ${i === 0 ? '🏆' : ''}</td>
-                        <td><strong>${t.team_name}</strong></td>
-                        <td>${t.num_orders || 0}</td>
-                        <td>${t.total_units_sold || 0}</td>
-                        <td>${formatMoney(t.cash_sales)}</td>
-                        <td>${formatMoney(t.transfer_sales)}</td>
-                        <td>${formatMoney(t.credit_sales)}</td>
-                        <td><strong>${formatMoney(t.total_sales)}</strong></td>
-                        <td><div class="progress-bar"><div class="progress-fill" style="width: ${percent}%;"></div></div> ${percent.toFixed(1)}%</td>
-                    </tr>`;
+                if (data && data.success && data.data && data.data.length > 0) {
+                    teamData = data.data;
+                    
+                    // Calculate totals
+                    let totalSales = 0, totalUnits = 0, totalOrders = 0;
+                    teamData.forEach(t => {
+                        totalSales += parseFloat(t.total_sales) || 0;
+                        totalUnits += parseInt(t.total_units) || 0;
+                        totalOrders += parseInt(t.orders) || 0;
+                    });
+                    
+                    summaryData = { total_sales: totalSales, total_units: totalUnits, total_orders: totalOrders };
+                    
+                    document.getElementById('totalSales').innerHTML = formatMoney(totalSales);
+                    document.getElementById('totalUnits').innerHTML = totalUnits;
+                    document.getElementById('totalOrders').innerHTML = totalOrders;
+                    document.getElementById('avgOrderValue').innerHTML = formatMoney(totalOrders > 0 ? totalSales / totalOrders : 0);
+                    
+                    let html = '';
+                    for (let i = 0; i < teamData.length; i++) {
+                        let t = teamData[i];
+                        let percent = totalSales > 0 ? (t.total_sales / totalSales * 100) : 0;
+                        html += `<tr class="${i === 0 ? 'rank-1' : ''}">
+                            <td><strong>#${i+1}</strong> ${i === 0 ? '🏆' : ''}</td>
+                            <td><strong>${t.team_name || 'Unknown'}</strong></td>
+                            <td>${t.orders || 0}</td>
+                            <td>${t.total_units || 0}</td>
+                            <td><strong>${formatMoney(t.total_sales)}</strong></td>
+                            <td>
+                                <div class="progress-bar"><div class="progress-fill" style="width: ${Math.min(percent, 100)}%;"></div></div>
+                                ${percent.toFixed(1)}%
+                            </td>
+                        </tr>`;
+                    }
+                    document.getElementById('teamTableBody').innerHTML = html;
+                    loadingDiv.style.display = 'none';
+                    tableWrapper.style.display = 'block';
+                } else {
+                    loadingDiv.innerHTML = '<div class="no-data-text">No team performance data available</div>';
                 }
-                document.getElementById('teamTableBody').innerHTML = html;
-                loadingDiv.style.display = 'none';
-                table.style.display = 'table';
-            } else {
-                loadingDiv.innerHTML = 'Failed to load';
+            } catch (error) {
+                console.error('Error loading team performance:', error);
+                loadingDiv.innerHTML = '<div class="error-text">Error loading data</div>';
             }
         }
 
+        // ============================================================
+        // LOAD PRODUCT PERFORMANCE (FIXED)
+        // ============================================================
         async function loadProductPerformance() {
             const loadingDiv = document.getElementById('productLoading');
-            const table = document.getElementById('productTable');
-            loadingDiv.style.display = 'block';
-            table.style.display = 'none';
+            const tableWrapper = document.getElementById('productTableWrapper');
             
-            const data = await fetchAPI('/manager/product-performance?date=' + currentDate);
-            if (data && data.success) {
-                productData = data.products;
-                const totalValue = productData.reduce((s,p) => s + p.total_value, 0);
+            loadingDiv.style.display = 'block';
+            tableWrapper.style.display = 'none';
+            
+            try {
+                const data = await fetchAPI('/manager/product-performance?date=' + currentDate);
                 
-                let html = '';
-                for (let i = 0; i < productData.length; i++) {
-                    let p = productData[i];
-                    let percent = totalValue > 0 ? (p.total_value / totalValue * 100) : 0;
-                    html += `<tr>
-                        <td><strong>#${i+1}</strong> ${i === 0 ? '🏆' : ''}</td>
-                        <td><strong>${p.product_name}</strong></td>
-                        <td>${p.units_sold || 0}</td>
-                        <td>${formatMoney(p.total_value)}</td>
-                        <td>${p.order_count || 0}</td>
-                        <td><div class="progress-bar"><div class="progress-fill" style="width: ${percent}%;"></div></div> ${percent.toFixed(1)}%</td>
-                    </tr>`;
+                if (data && data.success && data.data && data.data.length > 0) {
+                    productData = data.data;
+                    
+                    let totalRevenue = productData.reduce((sum, p) => sum + (parseFloat(p.total_revenue) || 0), 0);
+                    
+                    let html = '';
+                    for (let i = 0; i < productData.length; i++) {
+                        let p = productData[i];
+                        let percent = totalRevenue > 0 ? (p.total_revenue / totalRevenue * 100) : 0;
+                        html += `<tr>
+                            <td><strong>#${i+1}</strong> ${i === 0 ? '🏆' : ''}</td>
+                            <td><strong>${p.product_name || 'Unknown'}</strong></td>
+                            <td>${p.total_sold || 0}</td>
+                            <td>${formatMoney(p.total_revenue)}</td>
+                            <td>
+                                <div class="progress-bar"><div class="progress-fill" style="width: ${Math.min(percent, 100)}%;"></div></div>
+                                ${percent.toFixed(1)}%
+                            </td>
+                        </tr>`;
+                    }
+                    document.getElementById('productTableBody').innerHTML = html;
+                    loadingDiv.style.display = 'none';
+                    tableWrapper.style.display = 'block';
+                } else {
+                    loadingDiv.innerHTML = '<div class="no-data-text">No product performance data available</div>';
                 }
-                document.getElementById('productTableBody').innerHTML = html;
-                loadingDiv.style.display = 'none';
-                table.style.display = 'table';
-            } else {
-                loadingDiv.innerHTML = 'Failed to load';
+            } catch (error) {
+                console.error('Error loading product performance:', error);
+                loadingDiv.innerHTML = '<div class="error-text">Error loading data</div>';
             }
         }
 
+        // ============================================================
+        // LOAD COMPARISON (FIXED)
+        // ============================================================
         async function loadComparisonData() {
             const loadingDiv = document.getElementById('comparisonLoading');
             const container = document.getElementById('comparisonContent');
+            
             loadingDiv.style.display = 'block';
+            container.innerHTML = '';
             
-            const prevDate = new Date(currentDate);
-            prevDate.setDate(prevDate.getDate() - 1);
-            const prevDateStr = prevDate.toISOString().split('T')[0];
-            
-            const [current, previous] = await Promise.all([
-                fetchAPI('/manager/team-performance?date=' + currentDate),
-                fetchAPI('/manager/team-performance?date=' + prevDateStr)
-            ]);
-            
-            if (current && current.success) {
-                const cur = current.overall;
-                const prev = (previous && previous.success) ? previous.overall : { total_sales: 0, total_units_sold: 0, total_orders: 0 };
+            try {
+                const prevDate = new Date(currentDate);
+                prevDate.setDate(prevDate.getDate() - 1);
+                const prevDateStr = prevDate.toISOString().split('T')[0];
                 
-                const salesChange = cur.total_sales - prev.total_sales;
-                const salesPercent = prev.total_sales > 0 ? (salesChange / prev.total_sales * 100) : 0;
-                const unitsChange = cur.total_units_sold - prev.total_units_sold;
-                const unitsPercent = prev.total_units_sold > 0 ? (unitsChange / prev.total_units_sold * 100) : 0;
-                const ordersChange = cur.total_orders - prev.total_orders;
-                const ordersPercent = prev.total_orders > 0 ? (ordersChange / prev.total_orders * 100) : 0;
+                const [current, previous] = await Promise.all([
+                    fetchAPI('/manager/team-performance?date=' + currentDate),
+                    fetchAPI('/manager/team-performance?date=' + prevDateStr)
+                ]);
                 
+                const curTotal = { total_sales: 0, total_units: 0, total_orders: 0 };
+                const prevTotal = { total_sales: 0, total_units: 0, total_orders: 0 };
+                
+                if (current && current.success && current.data) {
+                    current.data.forEach(t => {
+                        curTotal.total_sales += parseFloat(t.total_sales) || 0;
+                        curTotal.total_units += parseInt(t.total_units) || 0;
+                        curTotal.total_orders += parseInt(t.orders) || 0;
+                    });
+                }
+                
+                if (previous && previous.success && previous.data) {
+                    previous.data.forEach(t => {
+                        prevTotal.total_sales += parseFloat(t.total_sales) || 0;
+                        prevTotal.total_units += parseInt(t.total_units) || 0;
+                        prevTotal.total_orders += parseInt(t.orders) || 0;
+                    });
+                }
+                
+                const salesChange = curTotal.total_sales - prevTotal.total_sales;
+                const salesPercent = prevTotal.total_sales > 0 ? (salesChange / prevTotal.total_sales * 100) : 0;
+                const unitsChange = curTotal.total_units - prevTotal.total_units;
+                const unitsPercent = prevTotal.total_units > 0 ? (unitsChange / prevTotal.total_units * 100) : 0;
+                const ordersChange = curTotal.total_orders - prevTotal.total_orders;
+                const ordersPercent = prevTotal.total_orders > 0 ? (ordersChange / prevTotal.total_orders * 100) : 0;
+                
+                // Update trend indicators
                 document.getElementById('totalSalesTrend').innerHTML = `${salesChange >= 0 ? '▲' : '▼'} ${formatMoney(Math.abs(salesChange))} (${salesPercent.toFixed(1)}%)`;
                 document.getElementById('totalSalesTrend').className = `trend ${salesChange >= 0 ? 'positive' : 'negative'}`;
                 document.getElementById('totalUnitsTrend').innerHTML = `${unitsChange >= 0 ? '▲' : '▼'} ${Math.abs(unitsChange)} (${unitsPercent.toFixed(1)}%)`;
@@ -257,15 +323,16 @@
                 <table style="width:100%">
                     <thead><tr><th>Metric</th><th>${currentDate}</th><th>${prevDateStr}</th><th>Change</th></tr></thead>
                     <tbody>
-                        <tr><td>Total Sales</td><td>${formatMoney(cur.total_sales)}</td><td>${formatMoney(prev.total_sales)}</td><td class="${salesChange >= 0 ? 'positive' : 'negative'}">${salesChange >= 0 ? '+' : ''}${formatMoney(salesChange)} (${salesPercent.toFixed(1)}%)</td></tr>
-                        <tr><td>Units Sold</td><td>${cur.total_units_sold || 0}</td><td>${prev.total_units_sold || 0}</td><td class="${unitsChange >= 0 ? 'positive' : 'negative'}">${unitsChange >= 0 ? '+' : ''}${unitsChange} (${unitsPercent.toFixed(1)}%)</td></tr>
-                        <tr><td>Orders</td><td>${cur.total_orders || 0}</td><td>${prev.total_orders || 0}</td><td class="${ordersChange >= 0 ? 'positive' : 'negative'}">${ordersChange >= 0 ? '+' : ''}${ordersChange} (${ordersPercent.toFixed(1)}%)</td></tr>
+                        <tr><td>Total Sales</td><td>${formatMoney(curTotal.total_sales)}</td><td>${formatMoney(prevTotal.total_sales)}</td><td class="${salesChange >= 0 ? 'positive' : 'negative'}">${salesChange >= 0 ? '+' : ''}${formatMoney(salesChange)} (${salesPercent.toFixed(1)}%)</td></tr>
+                        <tr><td>Units Sold</td><td>${curTotal.total_units || 0}</td><td>${prevTotal.total_units || 0}</td><td class="${unitsChange >= 0 ? 'positive' : 'negative'}">${unitsChange >= 0 ? '+' : ''}${unitsChange} (${unitsPercent.toFixed(1)}%)</td></tr>
+                        <tr><td>Orders</td><td>${curTotal.total_orders || 0}</td><td>${prevTotal.total_orders || 0}</td><td class="${ordersChange >= 0 ? 'positive' : 'negative'}">${ordersChange >= 0 ? '+' : ''}${ordersChange} (${ordersPercent.toFixed(1)}%)</td></tr>
                     </tbody>
                 </table>`;
                 
-                if (current.teams && current.teams.length) {
-                    const best = current.teams.sort((a,b)=>b.total_sales - a.total_sales)[0];
-                    const worst = current.teams.sort((a,b)=>a.total_sales - b.total_sales)[0];
+                if (current && current.success && current.data && current.data.length) {
+                    const sorted = [...current.data].sort((a,b) => (b.total_sales || 0) - (a.total_sales || 0));
+                    const best = sorted[0];
+                    const worst = sorted[sorted.length - 1];
                     html += `<div style="margin-top:20px;">
                         <div style="background:#e8f5e9; padding:15px; border-radius:8px; margin-bottom:10px;">🏆 Best Team: ${best.team_name} - ${formatMoney(best.total_sales)}</div>
                         <div style="background:#fff3cd; padding:15px; border-radius:8px;">⚠️ Needs Improvement: ${worst.team_name} - ${formatMoney(worst.total_sales)}</div>
@@ -274,18 +341,19 @@
                 
                 container.innerHTML = html;
                 loadingDiv.style.display = 'none';
-            } else {
-                loadingDiv.innerHTML = 'Failed to load';
+            } catch (error) {
+                console.error('Error loading comparison:', error);
+                loadingDiv.innerHTML = '<div class="error-text">Error loading comparison data</div>';
             }
         }
 
         function downloadReport() {
-            if (!teamData.length && !productData.length) { showMessage('No data', true); return; }
+            if (!teamData.length && !productData.length) { showMessage('No data to download', true); return; }
             let csv = `Performance Report for ${currentDate}\n\n`;
-            csv += `Team,Orders,Units Sold,Cash Sales,Transfer Sales,Credit Sales,Total Sales\n`;
-            teamData.forEach(t => csv += `"${t.team_name}",${t.num_orders || 0},${t.total_units_sold || 0},${t.cash_sales || 0},${t.transfer_sales || 0},${t.credit_sales || 0},${t.total_sales}\n`);
-            csv += `\nProduct,Units Sold,Total Value,Orders\n`;
-            productData.forEach(p => csv += `"${p.product_name}",${p.units_sold || 0},${p.total_value || 0},${p.order_count || 0}\n`);
+            csv += `Team,Orders,Units Sold,Total Sales\n`;
+            teamData.forEach(t => csv += `"${t.team_name}",${t.orders || 0},${t.total_units || 0},${t.total_sales || 0}\n`);
+            csv += `\nProduct,Units Sold,Total Revenue\n`;
+            productData.forEach(p => csv += `"${p.product_name}",${p.total_sold || 0},${p.total_revenue || 0}\n`);
             const blob = new Blob([csv], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -308,6 +376,7 @@
         function goBack() { window.location.href = 'manager-dashboard.html'; }
         function logout() { localStorage.clear(); window.location.href = 'login.html'; }
 
+        // Initialize
         if (!authToken) window.location.href = 'login.html';
         else loadAllData();
 
