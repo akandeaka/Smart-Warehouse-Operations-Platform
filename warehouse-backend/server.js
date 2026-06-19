@@ -967,9 +967,9 @@ app.get('/api/sales/team-returns', authMiddleware, requireRole(['warehouse_manag
         const [results] = await pool.query(
             `SELECT 
                 st.team_name,
-                SUM(a.allocated_qty) as allocated_qty,
-                SUM(a.sold_qty) as sold_qty,
-                SUM(a.returned_qty) as returned_qty,
+                CAST(COALESCE(SUM(a.allocated_qty), 0) AS UNSIGNED) as allocated_qty,
+                CAST(COALESCE(SUM(a.sold_qty), 0) AS UNSIGNED) as sold_qty,
+                CAST(COALESCE(SUM(a.returned_qty), 0) AS UNSIGNED) as returned_qty,
                 (SELECT p.product_name FROM sales_team_allocations a2 
                  JOIN products p ON a2.product_id = p.id 
                  WHERE a2.team_id = a.team_id AND a2.allocated_date = ? 
@@ -1000,8 +1000,8 @@ app.get('/api/sales/returns-details', authMiddleware, requireRole(['warehouse_ma
             `SELECT 
                 st.team_name,
                 p.product_name,
-                a.returned_qty,
-                (a.returned_qty * p.unit_cost) as amount,
+                CAST(a.returned_qty AS UNSIGNED) as returned_qty,
+                CAST((a.returned_qty * p.unit_cost) AS UNSIGNED) as amount,
                 a.allocated_date
              FROM sales_team_allocations a
              JOIN sales_teams st ON a.team_id = st.id
