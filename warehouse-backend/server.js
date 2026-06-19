@@ -454,13 +454,11 @@ app.post('/api/allocations/confirm', authMiddleware, async (req, res) => {
     try {
         const { team_id, allocated_date } = req.body;
         
-        // Only confirm allocations that are NOT already confirmed
         const [result] = await pool.query(
             'UPDATE sales_team_allocations SET confirmed = 1 WHERE team_id = ? AND allocated_date = ? AND confirmed = 0',
             [team_id, allocated_date]
         );
         
-        // Check if any rows were updated
         if (result.affectedRows === 0) {
             return res.json({ success: true, message: 'All goods already confirmed' });
         }
@@ -471,24 +469,21 @@ app.post('/api/allocations/confirm', authMiddleware, async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
+
 app.get('/api/allocations/confirmation-status/:teamId/:date', authMiddleware, async (req, res) => {
     try {
         const { teamId, date } = req.params;
         
-        // Get ALL allocations for this team on this date
         const [results] = await pool.query(
             'SELECT confirmed FROM sales_team_allocations WHERE team_id = ? AND allocated_date = ?',
             [teamId, date]
         );
         
-        // If no allocations, return false
         if (results.length === 0) {
             return res.json({ success: true, confirmed: false });
         }
         
-        // Check if ALL allocations are confirmed
         const allConfirmed = results.every(row => row.confirmed === 1);
-        
         res.json({ success: true, confirmed: allConfirmed });
     } catch (error) {
         console.error('Confirmation status error:', error);
@@ -508,7 +503,6 @@ app.post('/api/sales', authMiddleware, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Missing required fields' });
         }
         
-        // Check if customer has outstanding credit
         if (payment_method === 'credit') {
             const [outstandingCredit] = await pool.query(
                 `SELECT COUNT(*) as count FROM credit_approvals c 
@@ -616,7 +610,7 @@ app.get('/api/sales/check-submitted/:teamId/:date', authMiddleware, async (req, 
 });
 
 // ============================================================
-// CREDIT APPROVALS - CORRECTED
+// CREDIT APPROVALS
 // ============================================================
 app.get('/api/approvals/pending', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
@@ -652,7 +646,7 @@ app.get('/api/approvals/my-requests', authMiddleware, async (req, res) => {
 });
 
 // ============================================================
-// APPROVE CREDIT - CORRECTED
+// APPROVE CREDIT
 // ============================================================
 app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     let connection;
@@ -695,7 +689,7 @@ app.post('/api/approvals/approve', authMiddleware, requireRole(['warehouse_manag
 });
 
 // ============================================================
-// REJECT CREDIT - CORRECTED
+// REJECT CREDIT
 // ============================================================
 app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     let connection;
@@ -731,7 +725,7 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
 });
 
 // ============================================================
-// MARK CREDIT AS PAID - SIMPLIFIED WORKING VERSION
+// MARK CREDIT AS PAID (ONLY ONE COPY - KEEP THIS)
 // ============================================================
 app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
     let connection;
@@ -750,7 +744,6 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
         connection = await pool.getConnection();
         await connection.beginTransaction();
         
-        // Get credit details
         console.log('🔍 Querying credit approval for ID:', credit_id);
         
         const [credit] = await connection.query(
@@ -770,7 +763,6 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
         const saleDate = sales_date || new Date().toISOString().split('T')[0];
         const orderNumber = `PAY-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         
-        // CREATE SALES ORDER FOR THE PAYMENT
         console.log('📝 Creating payment order:', orderNumber);
         
         const [orderResult] = await connection.query(
@@ -781,7 +773,7 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
                 orderNumber, 
                 credit[0].team_id, 
                 credit[0].customer_name + ' (Credit Payment)', 
-                '', // customer_phone (empty)
+                '', 
                 credit[0].amount_due, 
                 payment_method, 
                 saleDate, 
@@ -793,17 +785,12 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
         
         console.log('✅ Payment order created. Order ID:', orderResult.insertId);
         
-        // ============================================================
-        // TRY TO ADD ORDER ITEM (with error handling)
-        // ============================================================
         try {
-            // Check if sales_order_items table exists
             const [tableCheck] = await connection.query(
                 "SHOW TABLES LIKE 'sales_order_items'"
             );
             
             if (tableCheck.length > 0) {
-                // Get a valid product ID from the products table
                 const [product] = await connection.query(
                     'SELECT id FROM products WHERE is_active = 1 LIMIT 1'
                 );
@@ -827,12 +814,10 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
             }
         } catch (itemError) {
             console.log('⚠️ Order item error (non-critical):', itemError.message);
-            // Continue even if order item fails
         }
         
-        // MARK CREDIT AS PAID
         await connection.query(
-            UPDATE credit_approvals SET is_paid = 1, payment_received_at = NOW(), status = 'paid' WHERE id = ?
+            `UPDATE credit_approvals SET is_paid = 1, payment_received_at = NOW(), status = 'paid' WHERE id = ?`,
             [credit_id]
         );
         
@@ -857,6 +842,7 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
         if (connection) connection.release();
     }
 });
+
 // ============================================================
 // PENDING RETURNS
 // ============================================================
@@ -971,8 +957,9 @@ app.post('/api/sales/confirm-return', authMiddleware, requireRole(['warehouse_ma
         if (connection) connection.release();
     }
 });
+
 // ============================================================
-// RETURNS TRACKING - GET TEAM RETURNS BY DATE
+// RETURNS TRACKING
 // ============================================================
 app.get('/api/sales/team-returns', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
@@ -1003,9 +990,6 @@ app.get('/api/sales/team-returns', authMiddleware, requireRole(['warehouse_manag
     }
 });
 
-// ============================================================
-// RETURNS TRACKING - GET RETURNS DETAILS BY DATE
-// ============================================================
 app.get('/api/sales/returns-details', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
         const date = req.query.date || new Date().toISOString().split('T')[0];
@@ -1032,6 +1016,7 @@ app.get('/api/sales/returns-details', authMiddleware, requireRole(['warehouse_ma
         res.status(500).json({ success: false, message: error.message });
     }
 });
+
 // ============================================================
 // REPORTS
 // ============================================================
@@ -1058,6 +1043,7 @@ app.get('/api/reports/daily', authMiddleware, async (req, res) => {
         res.json({ success: true, date: new Date().toISOString().split('T')[0], teams: [] });
     }
 });
+
 // ============================================================
 // MANAGER DASHBOARD SUMMARY
 // ============================================================
@@ -1418,8 +1404,9 @@ app.get('/api/admin/system-info', superAdminMiddleware, async (req, res) => {
         res.status(500).json({ success: false, message: error.message });
     }
 });
+
 // ============================================================
-// MANAGER PERFORMANCE - DASHBOARD SUMMARY
+// MANAGER PERFORMANCE
 // ============================================================
 app.get('/api/manager/dashboard-summary', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
@@ -1458,9 +1445,6 @@ app.get('/api/manager/dashboard-summary', authMiddleware, requireRole(['warehous
     }
 });
 
-// ============================================================
-// MANAGER PERFORMANCE - TEAM PERFORMANCE
-// ============================================================
 app.get('/api/manager/team-performance', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
         const date = req.query.date || new Date().toISOString().split('T')[0];
@@ -1486,9 +1470,6 @@ app.get('/api/manager/team-performance', authMiddleware, requireRole(['warehouse
     }
 });
 
-// ============================================================
-// MANAGER PERFORMANCE - PRODUCT PERFORMANCE
-// ============================================================
 app.get('/api/manager/product-performance', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
     try {
         const date = req.query.date || new Date().toISOString().split('T')[0];
@@ -1514,6 +1495,7 @@ app.get('/api/manager/product-performance', authMiddleware, requireRole(['wareho
         res.status(500).json({ success: false, message: error.message });
     }
 });
+
 // ============================================================
 // START SERVER
 // ============================================================
