@@ -731,18 +731,29 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
 });
 
 // ============================================================
-// MARK CREDIT AS PAID (SALES TEAM CLICKS PAYMENT RECEIVED)
+// MARK CREDIT AS PAID - WITH PAYMENT METHOD
 // ============================================================
 app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
     let connection;
     try {
-        const { credit_id } = req.body;
+        const { credit_id, payment_method, sales_date } = req.body;
+        
+        if (!payment_method) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Payment method is required (cash or bank_transfer)' 
+            });
+        }
         
         connection = await pool.getConnection();
         await connection.beginTransaction();
         
+        // Get credit details
         const [credit] = await connection.query(
-            'SELECT id, order_id, status FROM credit_approvals WHERE id = ? AND status = "approved" AND is_paid = 0',
+            `SELECT c.id, c.order_id, c.amount_due, o.team_id, o.customer_name 
+             FROM credit_approvals c
+             JOIN sales_orders o ON c.order_id = o.id
+             WHERE c.id = ? AND c.status = 'approved' AND c.is_paid = 0`,
             [credit_id]
         );
         
@@ -750,18 +761,41 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
             throw new Error('Credit not found or already paid');
         }
         
+        const saleDate = sales_date || new Date().toISOString().split('T')[0];
+        const orderNumber = `PAY-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        
+        // Create a new payment record (sales order) for the credit payment
+        const [orderResult] = await connection.query(
+            `INSERT INTO sales_orders 
+             (order_number, team_id, customer_name, total_amount, payment_method, sales_date, created_by, approval_status, payment_status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                orderNumber, 
+                credit[0].team_id, 
+                credit[0].customer_name + ' (Credit Payment)', 
+                credit[0].amount_due, 
+                payment_method, 
+                saleDate, 
+                req.user.id, 
+                'not_required', 
+                'paid'
+            ]
+        );
+        
+        // Mark credit as paid
         await connection.query(
             'UPDATE credit_approvals SET is_paid = 1, payment_received_at = NOW(), status = "paid" WHERE id = ?',
             [credit_id]
         );
         
-        await connection.query(
-            'UPDATE sales_orders SET payment_status = "paid" WHERE id = ?',
-            [credit[0].order_id]
-        );
-        
         await connection.commit();
-        res.json({ success: true, message: 'Payment recorded successfully! Customer credit is now settled.' });
+        
+        res.json({ 
+            success: true, 
+            message: `Payment of ₦${credit[0].amount_due.toLocaleString()} recorded via ${payment_method}.`,
+            order_id: orderResult.insertId
+        });
+        
     } catch (error) {
         if (connection) await connection.rollback();
         console.error('Mark paid error:', error);
@@ -770,7 +804,6 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
         if (connection) connection.release();
     }
 });
-
 // ============================================================
 // SUBMIT DAY SALES
 // ============================================================
