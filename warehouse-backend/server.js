@@ -842,7 +842,7 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
         if (connection) connection.release();
     }
 });
-============================================================
+// ============================================================
 // SUBMIT DAY SALES
 // ============================================================
 app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
