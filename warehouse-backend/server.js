@@ -842,7 +842,77 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
         if (connection) connection.release();
     }
 });
-
+============================================================
+// SUBMIT DAY SALES
+// ============================================================
+app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
+    let connection;
+    try {
+        const { team_id, sales_date, move_remaining_goods } = req.body;
+        
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+        
+        const [remainingGoods] = await connection.query(
+            `SELECT a.id, a.product_id, 
+                    (a.allocated_qty - a.sold_qty - a.returned_qty) as remaining_qty
+             FROM sales_team_allocations a
+             WHERE a.team_id = ? AND a.allocated_date = ? AND a.status = 'active'
+               AND (a.allocated_qty - a.sold_qty - a.returned_qty) > 0`,
+            [team_id, sales_date]
+        );
+        
+        const hasRemaining = remainingGoods.length > 0;
+        let totalRemaining = 0;
+        for (const goods of remainingGoods) {
+            totalRemaining += goods.remaining_qty;
+        }
+        
+        if (hasRemaining && move_remaining_goods === undefined) {
+            await connection.rollback();
+            return res.json({ 
+                success: false, 
+                requires_action: true,
+                message: `You have ${totalRemaining} units of unsold goods. Move to warehouse or keep?`,
+                total_remaining: totalRemaining
+            });
+        }
+        
+        await connection.query(
+            'UPDATE sales_orders SET submitted_for_review = 1 WHERE team_id = ? AND sales_date = ?',
+            [team_id, sales_date]
+        );
+        
+        if (move_remaining_goods === true) {
+            for (const goods of remainingGoods) {
+                await connection.query(
+                    'UPDATE sales_team_allocations SET returned_qty = returned_qty + ? WHERE id = ?',
+                    [goods.remaining_qty, goods.id]
+                );
+            }
+            await connection.commit();
+            res.json({ 
+                success: true, 
+                message: `${totalRemaining} units pending manager approval.`,
+                pending_approval: true
+            });
+        } else {
+            await connection.commit();
+            res.json({ 
+                success: true, 
+                message: `${totalRemaining} units kept for continued selling.`,
+                kept: true
+            });
+        }
+        
+    } catch (error) { 
+        if (connection) await connection.rollback();
+        console.error('Submit day error:', error);
+        res.status(500).json({ success: false, message: error.message }); 
+    } finally {
+        if (connection) connection.release();
+    }
+});
 // ============================================================
 // PENDING RETURNS
 // ============================================================
