@@ -1405,6 +1405,46 @@ app.get('/api/admin/system-info', superAdminMiddleware, async (req, res) => {
     }
 });
 // ============================================================
+// MANAGER PERFORMANCE - DASHBOARD SUMMARY
+// ============================================================
+app.get('/api/manager/dashboard-summary', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
+    try {
+        const date = req.query.date || new Date().toISOString().split('T')[0];
+        
+        const [sales] = await pool.query(
+            'SELECT COALESCE(SUM(total_amount), 0) as total FROM sales_orders WHERE sales_date = ?',
+            [date]
+        );
+        
+        const [orders] = await pool.query(
+            'SELECT COUNT(*) as count FROM sales_orders WHERE sales_date = ?',
+            [date]
+        );
+        
+        const [units] = await pool.query(
+            `SELECT COALESCE(SUM(oi.quantity), 0) as total 
+             FROM sales_orders o
+             JOIN sales_order_items oi ON o.id = oi.order_id
+             WHERE o.sales_date = ?`,
+            [date]
+        );
+        
+        res.json({
+            success: true,
+            data: {
+                total_sales: sales[0]?.total || 0,
+                total_orders: orders[0]?.count || 0,
+                total_units: units[0]?.total || 0,
+                date: date
+            }
+        });
+    } catch (error) {
+        console.error('Dashboard summary error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================================
 // MANAGER PERFORMANCE - TEAM PERFORMANCE
 // ============================================================
 app.get('/api/manager/team-performance', authMiddleware, requireRole(['warehouse_manager']), async (req, res) => {
