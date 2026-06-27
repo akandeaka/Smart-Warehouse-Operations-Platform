@@ -106,49 +106,27 @@
             background: rgba(255,255,255,0.3);
         }
 
-        /* Company Logo in Header */
+        /* Company Logo in Header - Monochrome */
         .header-brand {
             display: flex;
-            align-items: center;
-            gap: 12px;
+            flex-direction: column;
+            align-items: flex-start;
+            line-height: 1.1;
         }
 
-        .header-logo-icon {
-            width: 36px;
-            height: 36px;
-            background: linear-gradient(135deg, #F40009, #CC0000);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
+        .header-brand .logo-main {
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            color: white;
         }
 
-        .header-logo-icon svg {
-            width: 22px;
-            height: 22px;
-            fill: white;
-        }
-
-        .header-brand-text {
-            line-height: 1.2;
-        }
-
-        .header-brand-text .company {
-            font-size: 12px;
-            font-weight: 300;
-            opacity: 0.8;
-            letter-spacing: 1px;
-        }
-
-        .header-brand-text .product {
-            font-size: 16px;
-            font-weight: 700;
-            letter-spacing: -0.3px;
-        }
-
-        .header-brand-text .product span {
-            color: #D4A843;
+        .header-brand .logo-sub {
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 4px;
+            color: rgba(255,255,255,0.7);
+            text-transform: uppercase;
         }
 
         .header {
@@ -382,16 +360,9 @@
                 gap: 15px;
                 padding: 15px;
             }
-            .header-brand {
-                flex-direction: column;
-                gap: 5px;
-            }
-            .header-actions {
-                justify-content: center;
-            }
-            .stats-container {
-                grid-template-columns: 1fr;
-            }
+            .header-brand { align-items: center; }
+            .header-actions { justify-content: center; }
+            .stats-container { grid-template-columns: 1fr; }
             table {
                 display: block;
                 overflow-x: auto;
@@ -412,17 +383,8 @@
 <body>
     <header class="header">
         <div class="header-brand">
-            <div class="header-logo-icon">
-                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                    <polygon points="50,5 95,30 95,70 50,95 5,70 5,30" fill="white" opacity="0.9"/>
-                    <polygon points="50,15 85,35 85,65 50,85 15,65 15,35" fill="none" stroke="white" stroke-width="2" opacity="0.5"/>
-                    <text x="50" y="55" font-family="Arial, sans-serif" font-size="38" font-weight="900" fill="white" text-anchor="middle" dominant-baseline="central">A</text>
-                </svg>
-            </div>
-            <div class="header-brand-text">
-                <div class="company">AKINEX Technologies</div>
-                <div class="product">AKINEX <span>SWOP</span></div>
-            </div>
+            <div class="logo-main">AKINEX</div>
+            <div class="logo-sub">TECHNOLOGIES</div>
         </div>
         <div class="header-actions">
             <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
