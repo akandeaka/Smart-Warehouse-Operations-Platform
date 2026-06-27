@@ -142,47 +142,46 @@
         }
 
         /* ============================================================
-           COMPANY BRANDING WITH NEW LOGO
+           MONOCHROME AKINEX TECHNOLOGIES LOGO
            ============================================================ */
         .company-header {
             text-align: center;
             margin-bottom: 28px;
         }
 
-        /* Company Logo - Monochrome Style */
+        /* Monochrome Logo - Exactly as provided */
         .company-logo {
             display: inline-flex;
             flex-direction: column;
             align-items: center;
             text-decoration: none;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
 
-        .logo-text {
+        .logo-monochrome {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1;
+        }
+
+        .logo-monochrome .logo-text {
             font-size: 42px;
             font-weight: 900;
-            letter-spacing: 4px;
+            letter-spacing: 6px;
             color: var(--text-primary);
-            line-height: 1;
+            text-transform: uppercase;
             transition: color 0.3s ease;
         }
 
-        .logo-text .highlight {
-            color: var(--brand-primary);
-        }
-
-        .logo-sub {
-            font-size: 11px;
+        .logo-monochrome .logo-sub {
+            font-size: 12px;
             font-weight: 600;
-            letter-spacing: 6px;
+            letter-spacing: 10px;
             color: var(--text-secondary);
             text-transform: uppercase;
-            margin-top: 4px;
+            margin-top: 2px;
             transition: color 0.3s ease;
-        }
-
-        .logo-sub span {
-            color: var(--brand-gold);
         }
 
         /* Company Slogan */
@@ -206,7 +205,7 @@
             display: flex;
             align-items: center;
             gap: 15px;
-            margin: 18px 0 20px 0;
+            margin: 16px 0 18px 0;
         }
 
         .brand-divider::before,
@@ -219,7 +218,7 @@
 
         .brand-divider .divider-icon {
             color: var(--brand-primary);
-            font-size: 16px;
+            font-size: 14px;
             opacity: 0.6;
         }
 
@@ -475,14 +474,14 @@
                 border-radius: 16px;
             }
 
-            .logo-text {
+            .logo-monochrome .logo-text {
                 font-size: 32px;
-                letter-spacing: 3px;
+                letter-spacing: 4px;
             }
 
-            .logo-sub {
-                font-size: 9px;
-                letter-spacing: 4px;
+            .logo-monochrome .logo-sub {
+                font-size: 10px;
+                letter-spacing: 6px;
             }
 
             .company-slogan {
@@ -536,17 +535,15 @@
             </div>
 
             <!-- ============================================================
-                 COMPANY HEADER WITH NEW LOGO
+                 MONOCHROME AKINEX TECHNOLOGIES LOGO
                  ============================================================ -->
             <div class="company-header">
 
-                <!-- Company Logo - Monochrome Style -->
+                <!-- Monochrome Logo - Exactly as provided -->
                 <div class="company-logo">
-                    <div class="logo-text">
-                        AKINEX
-                    </div>
-                    <div class="logo-sub">
-                        <span>TECHNOLOGIES</span>
+                    <div class="logo-monochrome">
+                        <div class="logo-text">AKINEX</div>
+                        <div class="logo-sub">TECHNOLOGIES</div>
                     </div>
                 </div>
 
