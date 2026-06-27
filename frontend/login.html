@@ -224,7 +224,7 @@
             opacity: 0.6;
         }
 
-        /* Product Name */
+        /* Product Section */
         .product-section {
             text-align: center;
             margin-bottom: 6px;
@@ -331,10 +331,6 @@
             margin-right: 6px;
             color: var(--brand-primary);
             width: 16px;
-        }
-
-        .input-wrapper {
-            position: relative;
         }
 
         input {
@@ -550,7 +546,7 @@
             <div class="company-header">
 
                 <!-- Company Logo -->
-                <a href="#" class="company-logo">
+                <div class="company-logo">
                     <div class="logo-icon-wrapper">
                         <!-- Custom SVG Logo - Modern "A" Mark -->
                         <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -567,7 +563,7 @@
                             Engineering <span>Smarter</span> Business Operations
                         </div>
                     </div>
-                </a>
+                </div>
 
                 <!-- Divider -->
                 <div class="brand-divider">
@@ -637,8 +633,14 @@
     </div>
 
     <script>
+        const API_URL = 'https://warehouse-backend-new-u9rq.onrender.com/api';
+        
+        let redirectPortal = 'sales';
+        let twofaSessionId = null;
+        let isTwoFAMode = false;
+        
         // ============================================================
-        // DARK MODE
+        // HYBRID DARK MODE
         // ============================================================
         function getSystemTheme() {
             return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -668,28 +670,18 @@
         // Initialize
         applyTheme(getCurrentTheme());
 
-        // System change listener
+        // Listen for system changes (only if user hasn't saved preference)
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
             const saved = localStorage.getItem('theme');
             if (!saved) {
                 applyTheme(e.matches ? 'dark' : 'light');
             }
         });
-
-        // ============================================================
-        // LOGIN LOGIC
-        // ============================================================
-
-        const API_URL = 'https://warehouse-backend-new-u9rq.onrender.com/api';
-
-        let redirectPortal = 'sales';
-        let twofaSessionId = null;
-        let isTwoFAMode = false;
-
-        // Determine portal from URL
+        
+        // Determine which portal we are trying to access
         const urlParams = new URLSearchParams(window.location.search);
         const redirectParam = urlParams.get('redirect');
-
+        
         if (redirectParam === 'super-admin') {
             redirectPortal = 'super-admin';
         } else if (redirectParam === 'manager-dashboard') {
@@ -704,62 +696,61 @@
                 redirectPortal = 'sales';
             }
         }
-
-        // Update UI
+        
+        // Update UI based on portal
         const portalBadge = document.getElementById('portalBadge');
         const portalSubtitle = document.getElementById('portalSubtitle');
-
+        
         switch(redirectPortal) {
             case 'super-admin':
-                portalBadge.innerHTML = '<i class="fas fa-crown"></i> SUPER ADMIN PORTAL';
+                portalBadge.innerHTML = '🔐 SUPER ADMIN PORTAL';
                 portalBadge.className = 'portal-badge portal-super-admin';
                 portalSubtitle.innerHTML = 'Enter your credentials to access the admin panel';
                 break;
             case 'manager':
-                portalBadge.innerHTML = '<i class="fas fa-chart-bar"></i> WAREHOUSE MANAGER PORTAL';
+                portalBadge.innerHTML = '📊 WAREHOUSE MANAGER PORTAL';
                 portalBadge.className = 'portal-badge portal-manager';
                 portalSubtitle.innerHTML = 'Enter your credentials to manage warehouse operations';
                 break;
             default:
-                portalBadge.innerHTML = '<i class="fas fa-users"></i> SALES TEAM PORTAL';
+                portalBadge.innerHTML = '💰 SALES TEAM PORTAL';
                 portalBadge.className = 'portal-badge portal-sales';
                 portalSubtitle.innerHTML = 'Enter your credentials to start selling';
         }
-
-        // Form submit
+        
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-
+            
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const twofaCode = document.getElementById('twofaCode').value;
             const errorDiv = document.getElementById('errorMsg');
             const infoDiv = document.getElementById('infoMsg');
             const loginBtn = document.getElementById('loginBtn');
-
+            
             errorDiv.style.display = 'none';
             infoDiv.style.display = 'none';
-
-            // 2FA Mode
+            
+            // If we're in 2FA mode, handle 2FA verification
             if (isTwoFAMode) {
                 if (!twofaCode) {
                     errorDiv.textContent = '⚠️ Please enter your 2FA secret code';
                     errorDiv.style.display = 'block';
                     return;
                 }
-
+                
                 try {
                     loginBtn.disabled = true;
                     loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying 2FA...';
-
+                    
                     const response = await fetch(`${API_URL}/auth/verify-2fa`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ sessionId: twofaSessionId, secretCode: twofaCode })
                     });
-
+                    
                     const data = await response.json();
-
+                    
                     if (!data.success) {
                         errorDiv.textContent = data.message || '2FA verification failed';
                         errorDiv.style.display = 'block';
@@ -767,13 +758,13 @@
                         loginBtn.innerHTML = '<i class="fas fa-key"></i> Verify 2FA Code';
                         return;
                     }
-
+                    
                     if (data.token) {
                         localStorage.setItem('token', data.token);
                         localStorage.setItem('user', JSON.stringify(data.user));
                         window.location.href = data.redirectUrl;
                     }
-
+                    
                 } catch (error) {
                     errorDiv.textContent = 'Network error. Please try again.';
                     errorDiv.style.display = 'block';
@@ -782,12 +773,12 @@
                 }
                 return;
             }
-
-            // Normal login
+            
+            // Normal login flow
             try {
                 loginBtn.disabled = true;
                 loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
-
+                
                 const response = await fetch(`${API_URL}/auth/login-portal`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -803,8 +794,8 @@
                     loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
                     return;
                 }
-
-                // 2FA required
+                
+                // Check if 2FA is required (ONLY for super_admin)
                 if (data.requiresTwoFA && data.sessionId) {
                     isTwoFAMode = true;
                     twofaSessionId = data.sessionId;
@@ -815,14 +806,14 @@
                     loginBtn.disabled = false;
                     return;
                 }
-
-                // Complete login
+                
+                // No 2FA required - complete login
                 if (data.token) {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('user', JSON.stringify(data.user));
                     window.location.href = data.redirectUrl;
                 }
-
+                
             } catch (error) {
                 errorDiv.textContent = 'Network error. Please try again.';
                 errorDiv.style.display = 'block';
@@ -830,8 +821,8 @@
                 loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
             }
         });
-
-        // PWA Service Worker
+        
+        // Register Service Worker for PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
