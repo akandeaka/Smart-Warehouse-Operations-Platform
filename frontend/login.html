@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Login - Warehouse Stock System</title>
+    <title>AKINEX SWOP - Smart Warehouse Operations Platform</title>
     
     <!-- PWA Support -->
     <link rel="manifest" href="/manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="WMS">
+    <meta name="apple-mobile-web-app-title" content="AKINEX SWOP">
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
-    <meta name="theme-color" content="#667eea">
+    <meta name="theme-color" content="#F40009">
     
     <style>
         /* ============================================================
@@ -20,40 +20,50 @@
         :root {
             --bg-body: #f0f2f5;
             --bg-card: #ffffff;
-            --bg-gradient-start: #667eea;
-            --bg-gradient-end: #764ba2;
-            --text-primary: #333333;
-            --text-secondary: #666666;
-            --text-light: #555555;
-            --border-color: #ddd;
-            --shadow: 0 10px 25px rgba(0,0,0,0.1);
-            --input-bg: #ffffff;
-            --input-border: #ddd;
-            --button-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --error-bg: #f8d7da;
-            --error-text: #721c24;
-            --logo-color: #333333;
+            --bg-gradient-start: #0a0a1a;
+            --bg-gradient-end: #1a1a2e;
+            --text-primary: #1a1a2e;
+            --text-secondary: #555555;
+            --text-light: #888888;
+            --border-color: #e8e8e8;
+            --shadow: 0 20px 60px rgba(0,0,0,0.12);
+            --input-bg: #f8f9fa;
+            --input-border: #e0e0e0;
+            --button-gradient: linear-gradient(135deg, #F40009 0%, #CC0000 100%);
+            --error-bg: #fde8ea;
+            --error-text: #c62828;
+            --info-bg: #e3f2fd;
+            --info-text: #0d47a1;
+            --brand-primary: #F40009;
+            --brand-secondary: #CC0000;
+            --brand-dark: #0a0a1a;
+            --brand-gold: #D4A843;
         }
 
         /* ============================================================
-           DARK MODE (Hybrid - User can toggle or follow system)
+           DARK MODE
            ============================================================ */
         [data-theme="dark"] {
-            --bg-body: #1a1a2e;
-            --bg-card: #2d2d2d;
-            --bg-gradient-start: #1a1a2e;
-            --bg-gradient-end: #16213e;
-            --text-primary: #e0e0e0;
+            --bg-body: #0a0a1a;
+            --bg-card: #16162e;
+            --bg-gradient-start: #0a0a1a;
+            --bg-gradient-end: #16162e;
+            --text-primary: #e8e8e8;
             --text-secondary: #aaaaaa;
-            --text-light: #999999;
-            --border-color: #444;
-            --shadow: 0 10px 25px rgba(0,0,0,0.5);
-            --input-bg: #3d3d3d;
-            --input-border: #555;
-            --button-gradient: linear-gradient(135deg, #2d2d2d 0%, #1a1a2e 100%);
-            --error-bg: #2d1a1a;
+            --text-light: #777777;
+            --border-color: #2a2a4a;
+            --shadow: 0 20px 60px rgba(0,0,0,0.5);
+            --input-bg: #22224a;
+            --input-border: #333366;
+            --button-gradient: linear-gradient(135deg, #F40009 0%, #CC0000 100%);
+            --error-bg: #2a1a1a;
             --error-text: #ff6b6b;
-            --logo-color: #e0e0e0;
+            --info-bg: #1a2a4a;
+            --info-text: #8ab4f8;
+            --brand-primary: #F40009;
+            --brand-secondary: #CC0000;
+            --brand-dark: #0a0a1a;
+            --brand-gold: #D4A843;
         }
 
         * {
@@ -61,205 +71,574 @@
             padding: 0;
             box-sizing: border-box;
         }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
             background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             transition: background 0.3s ease;
+            padding: 20px;
         }
+
+        .login-wrapper {
+            width: 100%;
+            max-width: 440px;
+        }
+
         .login-container {
             background: var(--bg-card);
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: var(--shadow);
-            width: 100%;
-            max-width: 400px;
-            margin: 20px;
-            transition: background 0.3s ease, box-shadow 0.3s ease;
-        }
-        .login-container h1 {
-            text-align: center;
-            margin-bottom: 10px;
-            color: var(--text-primary);
-            font-size: 24px;
-            transition: color 0.3s ease;
-        }
-        .portal-badge {
-            text-align: center;
-            margin-bottom: 20px;
-            padding: 8px;
-            background: #f0f0f0;
+            padding: 50px 40px 35px 40px;
             border-radius: 20px;
-            font-size: 14px;
-            font-weight: bold;
-            color: var(--text-primary);
-            transition: background 0.3s ease, color 0.3s ease;
+            box-shadow: var(--shadow);
+            transition: background 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
         }
-        [data-theme="dark"] .portal-badge {
-            background: #3d3d3d;
+
+        /* Premium Accent Bar */
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--brand-primary), var(--brand-gold), var(--brand-primary));
+            background-size: 200% 100%;
+            animation: shimmer 3s ease-in-out infinite;
         }
-        .portal-super-admin { background: #dc3545; color: white; }
-        .portal-manager { background: #ffc107; color: #333; }
-        .portal-sales { background: #28a745; color: white; }
-        .subtitle {
-            text-align: center;
-            color: var(--text-secondary);
-            margin-bottom: 30px;
-            font-size: 14px;
-            transition: color 0.3s ease;
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
         }
-        .form-group {
-            margin-bottom: 20px;
+
+        /* Dark Mode Toggle */
+        .theme-toggle-wrapper {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 8px;
         }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-            color: var(--text-primary);
-            transition: color 0.3s ease;
-        }
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid var(--input-border);
-            border-radius: 5px;
-            font-size: 16px;
-            background: var(--input-bg);
-            color: var(--text-primary);
-            transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
-        }
-        input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background: var(--button-gradient);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: opacity 0.3s;
-        }
-        button:hover {
-            opacity: 0.9;
-        }
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        .error-msg {
-            background: var(--error-bg);
-            color: var(--error-text);
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            display: none;
-            transition: background 0.3s ease, color 0.3s ease;
-        }
-        .info-msg {
-            background: #cce5ff;
-            color: #004085;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            display: none;
-        }
-        [data-theme="dark"] .info-msg {
-            background: #1a2a4a;
-            color: #8ab4f8;
-        }
-        .logo {
-            text-align: center;
-            font-size: 48px;
-            margin-bottom: 20px;
-        }
-        .twofa-group {
-            display: none;
-        }
-        
-        /* Dark Mode Toggle Button */
+
         .theme-toggle {
             background: transparent;
             border: none;
             cursor: pointer;
             font-size: 20px;
-            color: var(--text-primary);
+            color: var(--text-secondary);
             padding: 5px 10px;
-            border-radius: 5px;
-            transition: background 0.3s ease;
+            border-radius: 8px;
+            transition: all 0.3s ease;
             width: auto;
             margin: 0;
         }
+
         .theme-toggle:hover {
+            background: var(--border-color);
             opacity: 0.8;
         }
-        .theme-toggle-wrapper {
-            display: flex;
-            justify-content: flex-end;
-            margin-bottom: 15px;
+
+        /* ============================================================
+           COMPANY BRANDING
+           ============================================================ */
+        .company-header {
+            text-align: center;
+            margin-bottom: 28px;
         }
-        
+
+        /* Company Logo */
+        .company-logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+            text-decoration: none;
+        }
+
+        .logo-icon-wrapper {
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(244, 0, 9, 0.3);
+            flex-shrink: 0;
+        }
+
+        .logo-icon-wrapper svg {
+            width: 30px;
+            height: 30px;
+            fill: white;
+        }
+
+        .company-name {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+            line-height: 1.2;
+        }
+
+        .company-name .highlight {
+            color: var(--brand-primary);
+        }
+
+        .company-slogan {
+            font-size: 11px;
+            color: var(--text-secondary);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            font-weight: 400;
+            margin-top: 2px;
+        }
+
+        .company-slogan span {
+            color: var(--brand-gold);
+            font-weight: 600;
+        }
+
+        /* Divider */
+        .brand-divider {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 16px 0 18px 0;
+        }
+
+        .brand-divider::before,
+        .brand-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-color), transparent);
+        }
+
+        .brand-divider .divider-icon {
+            color: var(--brand-primary);
+            font-size: 16px;
+            opacity: 0.6;
+        }
+
+        /* Product Name */
+        .product-section {
+            text-align: center;
+            margin-bottom: 6px;
+        }
+
+        .product-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+            color: white;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .product-name {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+        }
+
+        .product-name .highlight {
+            color: var(--brand-primary);
+        }
+
+        .product-tagline {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 6px;
+            font-weight: 400;
+            letter-spacing: 0.2px;
+        }
+
+        .product-tagline .highlight {
+            color: var(--brand-primary);
+            font-weight: 600;
+        }
+
+        .product-tagline .dot {
+            color: var(--brand-primary);
+            font-weight: 700;
+            margin: 0 4px;
+        }
+
+        /* Portal Badge */
+        .portal-badge {
+            text-align: center;
+            margin: 18px 0 16px 0;
+            padding: 8px 16px;
+            background: var(--border-color);
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            transition: background 0.3s ease, color 0.3s ease;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .portal-badge i {
+            margin-right: 6px;
+        }
+
+        .portal-super-admin { 
+            background: #dc3545; 
+            color: white; 
+        }
+        .portal-manager { 
+            background: #ffc107; 
+            color: #333; 
+        }
+        .portal-sales { 
+            background: #28a745; 
+            color: white; 
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            font-size: 14px;
+            transition: color 0.3s ease;
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-primary);
+            transition: color 0.3s ease;
+        }
+
+        label i {
+            margin-right: 6px;
+            color: var(--brand-primary);
+            width: 16px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        input {
+            width: 100%;
+            padding: 13px 16px;
+            border: 2px solid var(--input-border);
+            border-radius: 12px;
+            font-size: 15px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 4px rgba(244, 0, 9, 0.1);
+            background: var(--bg-card);
+        }
+
+        input::placeholder {
+            color: var(--text-light);
+            opacity: 0.6;
+        }
+
+        /* Login Button */
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background: var(--button-gradient);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 8px;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .login-btn:hover::after {
+            left: 100%;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(244, 0, 9, 0.35);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .login-btn i {
+            font-size: 18px;
+        }
+
+        /* Messages */
+        .error-msg, .info-msg {
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            display: none;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .error-msg {
+            background: var(--error-bg);
+            color: var(--error-text);
+            border-left: 4px solid #dc3545;
+        }
+
+        .info-msg {
+            background: var(--info-bg);
+            color: var(--info-text);
+            border-left: 4px solid #17a2b8;
+        }
+
+        .twofa-group {
+            display: none;
+        }
+
+        /* Footer */
+        .login-footer {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 18px;
+            border-top: 1px solid var(--border-color);
+            transition: border-color 0.3s ease;
+        }
+
+        .login-footer .company {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .login-footer .company strong {
+            color: var(--brand-primary);
+            font-weight: 700;
+        }
+
+        .login-footer .version {
+            display: block;
+            margin-top: 4px;
+            font-size: 11px;
+            color: var(--text-light);
+            letter-spacing: 0.5px;
+        }
+
+        .login-footer .version span {
+            color: var(--brand-primary);
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
         @media (max-width: 480px) {
             .login-container {
-                padding: 25px;
-                margin: 15px;
+                padding: 30px 20px 25px 20px;
+                border-radius: 16px;
             }
-            .logo {
-                font-size: 48px;
+
+            .logo-icon-wrapper {
+                width: 44px;
+                height: 44px;
             }
-            h1 {
+
+            .logo-icon-wrapper svg {
+                width: 24px;
+                height: 24px;
+            }
+
+            .company-name {
+                font-size: 17px;
+            }
+
+            .company-slogan {
+                font-size: 10px;
+                letter-spacing: 1px;
+            }
+
+            .product-name {
                 font-size: 20px;
+            }
+
+            .product-tagline {
+                font-size: 11px;
+            }
+
+            .login-btn {
+                padding: 13px;
+                font-size: 14px;
+            }
+
+            input {
+                padding: 11px 14px;
+                font-size: 14px;
+            }
+
+            .portal-badge {
+                font-size: 12px;
+                padding: 6px 12px;
+            }
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+            button, input {
+                min-height: 48px;
+                font-size: 16px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="theme-toggle-wrapper">
-            <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
-                <span id="themeIcon">🌙</span>
-            </button>
+
+    <div class="login-wrapper">
+
+        <div class="login-container">
+
+            <!-- Dark Mode Toggle -->
+            <div class="theme-toggle-wrapper">
+                <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                    <span id="themeIcon">🌙</span>
+                </button>
+            </div>
+
+            <!-- ============================================================
+                 COMPANY HEADER
+                 ============================================================ -->
+            <div class="company-header">
+
+                <!-- Company Logo -->
+                <a href="#" class="company-logo">
+                    <div class="logo-icon-wrapper">
+                        <!-- Custom SVG Logo - Modern "A" Mark -->
+                        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                            <polygon points="50,5 95,30 95,70 50,95 5,70 5,30" fill="white" opacity="0.9"/>
+                            <polygon points="50,15 85,35 85,65 50,85 15,65 15,35" fill="none" stroke="white" stroke-width="2" opacity="0.5"/>
+                            <text x="50" y="55" font-family="Arial, sans-serif" font-size="38" font-weight="900" fill="white" text-anchor="middle" dominant-baseline="central">A</text>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="company-name">
+                            AKINEX <span class="highlight">Technologies</span>
+                        </div>
+                        <div class="company-slogan">
+                            Engineering <span>Smarter</span> Business Operations
+                        </div>
+                    </div>
+                </a>
+
+                <!-- Divider -->
+                <div class="brand-divider">
+                    <span class="divider-icon">◆</span>
+                </div>
+
+                <!-- Product Section -->
+                <div class="product-section">
+                    <div class="product-badge">Flagship Product</div>
+                    <div class="product-name">
+                        AKINEX <span class="highlight">SWOP</span>
+                    </div>
+                    <div class="product-tagline">
+                        <span class="highlight">Smart Warehouse</span> Operations Platform
+                    </div>
+                    <div class="product-tagline" style="font-size:12px; margin-top:4px; color:var(--text-light);">
+                        Real-time Inventory <span class="dot">•</span> Sales Tracking <span class="dot">•</span> Cash Reconciliation
+                    </div>
+                </div>
+            </div>
+
+            <!-- Portal Badge -->
+            <div class="portal-badge" id="portalBadge">
+                <i class="fas fa-shield-alt"></i> Loading...
+            </div>
+
+            <div class="subtitle" id="portalSubtitle">Enter your credentials to continue</div>
+
+            <!-- Messages -->
+            <div id="errorMsg" class="error-msg"></div>
+            <div id="infoMsg" class="info-msg"></div>
+
+            <!-- Login Form -->
+            <form id="loginForm">
+                <div class="form-group">
+                    <label><i class="fas fa-user"></i> Username</label>
+                    <input type="text" id="username" placeholder="Enter your username" required autocomplete="off">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fas fa-lock"></i> Password</label>
+                    <input type="password" id="password" placeholder="Enter your password" required>
+                </div>
+
+                <div class="form-group twofa-group" id="twofaGroup">
+                    <label><i class="fas fa-key"></i> 2FA Secret Code</label>
+                    <input type="password" id="twofaCode" placeholder="Enter your 2FA secret code">
+                </div>
+
+                <button type="submit" class="login-btn" id="loginBtn">
+                    <i class="fas fa-sign-in-alt"></i> Sign In
+                </button>
+            </form>
+
+            <!-- Footer -->
+            <div class="login-footer">
+                <div class="company">
+                    <strong>AKINEX SWOP</strong> &mdash; Smart Warehouse Operations Platform
+                </div>
+                <div class="version">
+                    v2.0 &bull; <span>Secure</span> &bull; Real-Time
+                </div>
+            </div>
+
         </div>
-        <div class="logo">🏭</div>
-        <div class="portal-badge" id="portalBadge">Loading...</div>
-        <h1>Warehouse <span style="color:#F40009">Stock System</span></h1>
-        <div class="subtitle" id="portalSubtitle">Enter your credentials</div>
-        <div id="errorMsg" class="error-msg"></div>
-        <div id="infoMsg" class="info-msg"></div>
-        
-        <form id="loginForm">
-            <div class="form-group">
-                <label>Username</label>
-                <input type="text" id="username" required autocomplete="off">
-            </div>
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" id="password" required>
-            </div>
-            <div class="form-group twofa-group" id="twofaGroup">
-                <label>2FA Secret Code (Super Admin only)</label>
-                <input type="password" id="twofaCode" placeholder="Enter your secret code">
-            </div>
-            <button type="submit" id="loginBtn">Login</button>
-        </form>
+
     </div>
 
     <script>
-        const API_URL = 'https://warehouse-backend-new-u9rq.onrender.com/api';
-        
-        let redirectPortal = 'sales';
-        let twofaSessionId = null;
-        let isTwoFAMode = false;
-        
         // ============================================================
-        // HYBRID DARK MODE
+        // DARK MODE
         // ============================================================
         function getSystemTheme() {
             return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -289,18 +668,28 @@
         // Initialize
         applyTheme(getCurrentTheme());
 
-        // Listen for system changes (only if user hasn't saved preference)
+        // System change listener
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
             const saved = localStorage.getItem('theme');
             if (!saved) {
                 applyTheme(e.matches ? 'dark' : 'light');
             }
         });
-        
-        // Determine which portal we are trying to access
+
+        // ============================================================
+        // LOGIN LOGIC
+        // ============================================================
+
+        const API_URL = 'https://warehouse-backend-new-u9rq.onrender.com/api';
+
+        let redirectPortal = 'sales';
+        let twofaSessionId = null;
+        let isTwoFAMode = false;
+
+        // Determine portal from URL
         const urlParams = new URLSearchParams(window.location.search);
         const redirectParam = urlParams.get('redirect');
-        
+
         if (redirectParam === 'super-admin') {
             redirectPortal = 'super-admin';
         } else if (redirectParam === 'manager-dashboard') {
@@ -315,89 +704,90 @@
                 redirectPortal = 'sales';
             }
         }
-        
-        // Update UI based on portal
+
+        // Update UI
         const portalBadge = document.getElementById('portalBadge');
         const portalSubtitle = document.getElementById('portalSubtitle');
-        
+
         switch(redirectPortal) {
             case 'super-admin':
-                portalBadge.innerHTML = '🔐 SUPER ADMIN PORTAL';
+                portalBadge.innerHTML = '<i class="fas fa-crown"></i> SUPER ADMIN PORTAL';
                 portalBadge.className = 'portal-badge portal-super-admin';
-                portalSubtitle.innerHTML = 'Enter your credentials';
+                portalSubtitle.innerHTML = 'Enter your credentials to access the admin panel';
                 break;
             case 'manager':
-                portalBadge.innerHTML = '📊 WAREHOUSE MANAGER PORTAL';
+                portalBadge.innerHTML = '<i class="fas fa-chart-bar"></i> WAREHOUSE MANAGER PORTAL';
                 portalBadge.className = 'portal-badge portal-manager';
-                portalSubtitle.innerHTML = 'Enter your credentials';
+                portalSubtitle.innerHTML = 'Enter your credentials to manage warehouse operations';
                 break;
             default:
-                portalBadge.innerHTML = '💰 SALES TEAM PORTAL';
+                portalBadge.innerHTML = '<i class="fas fa-users"></i> SALES TEAM PORTAL';
                 portalBadge.className = 'portal-badge portal-sales';
-                portalSubtitle.innerHTML = 'Enter your credentials';
+                portalSubtitle.innerHTML = 'Enter your credentials to start selling';
         }
-        
+
+        // Form submit
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const twofaCode = document.getElementById('twofaCode').value;
             const errorDiv = document.getElementById('errorMsg');
             const infoDiv = document.getElementById('infoMsg');
             const loginBtn = document.getElementById('loginBtn');
-            
+
             errorDiv.style.display = 'none';
             infoDiv.style.display = 'none';
-            
-            // If we're in 2FA mode, handle 2FA verification
+
+            // 2FA Mode
             if (isTwoFAMode) {
                 if (!twofaCode) {
-                    errorDiv.textContent = 'Please enter your 2FA secret code';
+                    errorDiv.textContent = '⚠️ Please enter your 2FA secret code';
                     errorDiv.style.display = 'block';
                     return;
                 }
-                
+
                 try {
                     loginBtn.disabled = true;
-                    loginBtn.textContent = 'Verifying 2FA...';
-                    
+                    loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying 2FA...';
+
                     const response = await fetch(`${API_URL}/auth/verify-2fa`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ sessionId: twofaSessionId, secretCode: twofaCode })
                     });
-                    
+
                     const data = await response.json();
-                    
+
                     if (!data.success) {
                         errorDiv.textContent = data.message || '2FA verification failed';
                         errorDiv.style.display = 'block';
                         loginBtn.disabled = false;
-                        loginBtn.textContent = 'Verify 2FA Code';
+                        loginBtn.innerHTML = '<i class="fas fa-key"></i> Verify 2FA Code';
                         return;
                     }
-                    
+
                     if (data.token) {
                         localStorage.setItem('token', data.token);
                         localStorage.setItem('user', JSON.stringify(data.user));
                         window.location.href = data.redirectUrl;
                     }
-                    
+
                 } catch (error) {
                     errorDiv.textContent = 'Network error. Please try again.';
                     errorDiv.style.display = 'block';
                     loginBtn.disabled = false;
-                    loginBtn.textContent = 'Verify 2FA Code';
+                    loginBtn.innerHTML = '<i class="fas fa-key"></i> Verify 2FA Code';
                 }
                 return;
             }
-            
-            // Normal login flow
+
+            // Normal login
             try {
                 loginBtn.disabled = true;
-                loginBtn.textContent = 'Verifying...';
-                
+                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
+
                 const response = await fetch(`${API_URL}/auth/login-portal`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -407,41 +797,41 @@
                 const data = await response.json();
 
                 if (!data.success) {
-                    errorDiv.textContent = data.message || 'Login failed';
+                    errorDiv.textContent = data.message || 'Login failed. Please check your credentials.';
                     errorDiv.style.display = 'block';
                     loginBtn.disabled = false;
-                    loginBtn.textContent = 'Login';
+                    loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
                     return;
                 }
-                
-                // Check if 2FA is required (ONLY for super_admin)
+
+                // 2FA required
                 if (data.requiresTwoFA && data.sessionId) {
                     isTwoFAMode = true;
                     twofaSessionId = data.sessionId;
                     document.getElementById('twofaGroup').style.display = 'block';
-                    infoDiv.textContent = data.message || 'Enter your 2FA secret code to continue.';
+                    infoDiv.textContent = '🔐 Two-factor authentication required. Enter your secret code to continue.';
                     infoDiv.style.display = 'block';
-                    loginBtn.textContent = 'Verify 2FA Code';
+                    loginBtn.innerHTML = '<i class="fas fa-key"></i> Verify 2FA Code';
                     loginBtn.disabled = false;
                     return;
                 }
-                
-                // No 2FA required - complete login
+
+                // Complete login
                 if (data.token) {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('user', JSON.stringify(data.user));
                     window.location.href = data.redirectUrl;
                 }
-                
+
             } catch (error) {
                 errorDiv.textContent = 'Network error. Please try again.';
                 errorDiv.style.display = 'block';
                 loginBtn.disabled = false;
-                loginBtn.textContent = 'Login';
+                loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
             }
         });
-        
-        // Register Service Worker for PWA
+
+        // PWA Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
@@ -450,5 +840,6 @@
             });
         }
     </script>
+
 </body>
 </html>
