@@ -3,35 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manager Performance Dashboard</title>
+    <title>AKINEX SWOP - Manager Performance Dashboard</title>
     
     <!-- PWA Support -->
     <link rel="manifest" href="/manifest.json">
-    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="WMS">
+    <meta name="apple-mobile-web-app-title" content="AKINEX SWOP">
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
-    <meta name="theme-color" content="#667eea">
+    <meta name="theme-color" content="#F40009">
     
     <style>
         /* ============================================================
            LIGHT MODE (Default)
            ============================================================ */
         :root {
-            --bg-body: #f5f5f5;
+            --bg-body: #f5f7fa;
             --bg-card: #ffffff;
-            --bg-header: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --bg-header: linear-gradient(135deg, #1a1a2e 0%, #2d2d4a 100%);
             --text-primary: #333333;
             --text-secondary: #666666;
             --text-light: #999999;
-            --border-color: #ddd;
-            --shadow: 0 2px 5px rgba(0,0,0,0.1);
+            --border-color: #e0e0e0;
+            --shadow: 0 2px 10px rgba(0,0,0,0.05);
             --table-header: #f8f9fa;
             --input-bg: #ffffff;
             --input-border: #ddd;
             --tab-bg: #f0f0f0;
-            --tab-active: #667eea;
+            --tab-active: #F40009;
             --success-bg: #d4edda;
             --success-text: #155724;
             --error-bg: #f8d7da;
@@ -44,37 +43,43 @@
             --btn-download: #17a2b8;
             --no-data-color: #999;
             --error-color: #dc3545;
+            --brand-primary: #F40009;
+            --brand-secondary: #CC0000;
+            --brand-gold: #D4A843;
         }
 
         /* ============================================================
            DARK MODE
            ============================================================ */
         [data-theme="dark"] {
-            --bg-body: #1a1a2e;
-            --bg-card: #2d2d2d;
-            --bg-header: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            --bg-body: #0a0a1a;
+            --bg-card: #16162e;
+            --bg-header: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%);
             --text-primary: #e0e0e0;
             --text-secondary: #aaaaaa;
             --text-light: #888888;
-            --border-color: #444;
-            --shadow: 0 2px 5px rgba(0,0,0,0.5);
-            --table-header: #3d3d3d;
-            --input-bg: #3d3d3d;
-            --input-border: #555;
-            --tab-bg: #3d3d3d;
-            --tab-active: #667eea;
+            --border-color: #2a2a4a;
+            --shadow: 0 2px 10px rgba(0,0,0,0.5);
+            --table-header: #22224a;
+            --input-bg: #22224a;
+            --input-border: #333366;
+            --tab-bg: #22224a;
+            --tab-active: #F40009;
             --success-bg: #1a3a1a;
             --success-text: #8bc34a;
             --error-bg: #3a1a1a;
             --error-text: #ff6b6b;
             --positive: #8bc34a;
             --negative: #ff6b6b;
-            --progress-bg: #444;
+            --progress-bg: #333366;
             --progress-fill: #8bc34a;
             --rank-1-bg: #2a2a1a;
             --btn-download: #17a2b8;
             --no-data-color: #666;
             --error-color: #ff6b6b;
+            --brand-primary: #F40009;
+            --brand-secondary: #CC0000;
+            --brand-gold: #D4A843;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -87,7 +92,7 @@
         
         /* Dark Mode Toggle Button */
         .theme-toggle {
-            background: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.15);
             border: none;
             cursor: pointer;
             font-size: 18px;
@@ -95,35 +100,82 @@
             padding: 8px 12px;
             border-radius: 5px;
             transition: background 0.3s ease;
-            margin-right: 10px;
+            margin-right: 5px;
         }
         .theme-toggle:hover {
             background: rgba(255,255,255,0.3);
         }
-        
+
+        /* Company Logo in Header */
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #F40009, #CC0000);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .header-logo-icon svg {
+            width: 22px;
+            height: 22px;
+            fill: white;
+        }
+
+        .header-brand-text {
+            line-height: 1.2;
+        }
+
+        .header-brand-text .company {
+            font-size: 12px;
+            font-weight: 300;
+            opacity: 0.8;
+            letter-spacing: 1px;
+        }
+
+        .header-brand-text .product {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        .header-brand-text .product span {
+            color: #D4A843;
+        }
+
         .header {
             background: var(--bg-header);
             color: white;
-            padding: 15px 25px;
+            padding: 15px 30px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
             transition: background 0.3s ease;
         }
+
         .header-actions {
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 8px;
             flex-wrap: wrap;
         }
-        
+
         .stats-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 15px;
             padding: 20px;
         }
+
         .stat-card {
             background: var(--bg-card);
             padding: 15px;
@@ -132,27 +184,32 @@
             box-shadow: var(--shadow);
             transition: background 0.3s ease, box-shadow 0.3s ease;
         }
+
         .stat-card .label {
             font-size: 12px;
             color: var(--text-secondary);
             margin-bottom: 5px;
         }
+
         .stat-card .value {
             font-size: 24px;
             font-weight: bold;
             color: var(--tab-active);
         }
+
         .stat-card .trend {
             font-size: 12px;
             margin-top: 5px;
         }
+
         .stat-card .trend.positive {
             color: var(--positive);
         }
+
         .stat-card .trend.negative {
             color: var(--negative);
         }
-        
+
         .card {
             background: var(--bg-card);
             padding: 20px;
@@ -161,30 +218,32 @@
             box-shadow: var(--shadow);
             transition: background 0.3s ease, box-shadow 0.3s ease;
         }
-        
+
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 15px;
         }
+
         th, td {
             padding: 10px;
             text-align: left;
             border-bottom: 1px solid var(--border-color);
             transition: border-color 0.3s ease;
         }
+
         th {
             background: var(--table-header);
             color: var(--text-primary);
             transition: background 0.3s ease, color 0.3s ease;
         }
-        
+
         .loading {
             text-align: center;
             padding: 40px;
             color: var(--text-secondary);
         }
-        
+
         .tab-buttons {
             display: flex;
             gap: 10px;
@@ -193,6 +252,7 @@
             flex-wrap: wrap;
             transition: border-color 0.3s ease;
         }
+
         .tab-btn {
             background: none;
             border: none;
@@ -201,26 +261,34 @@
             font-size: 16px;
             color: var(--text-secondary);
         }
+
         .tab-btn.active {
             color: var(--tab-active);
             border-bottom: 2px solid var(--tab-active);
         }
+
         .tab-content {
             display: none;
         }
+
         .tab-content.active {
             display: block;
         }
-        
+
         .logout-btn, .refresh-btn, .back-btn {
-            background: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.15);
             padding: 8px 16px;
             border-radius: 5px;
             cursor: pointer;
             border: none;
             color: white;
-            margin-left: 10px;
+            transition: background 0.3s ease;
         }
+
+        .logout-btn:hover, .refresh-btn:hover, .back-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
         .download-btn {
             background: var(--btn-download);
             color: white;
@@ -230,23 +298,27 @@
             cursor: pointer;
             margin: 10px;
         }
+
         .positive {
             color: var(--positive);
         }
+
         .negative {
             color: var(--negative);
         }
+
         .no-data-text {
             text-align: center;
             padding: 20px;
             color: var(--no-data-color);
         }
+
         .error-text {
             text-align: center;
             padding: 20px;
             color: var(--error-color);
         }
-        
+
         .progress-bar {
             background: var(--progress-bg);
             border-radius: 10px;
@@ -257,16 +329,18 @@
             vertical-align: middle;
             transition: background 0.3s ease;
         }
+
         .progress-fill {
             background: var(--progress-fill);
             height: 100%;
             border-radius: 10px;
             transition: background 0.3s ease;
         }
+
         .rank-1 {
             background-color: var(--rank-1-bg);
         }
-        
+
         #errorMsg {
             background: var(--error-bg);
             color: var(--error-text);
@@ -276,6 +350,7 @@
             display: none;
             transition: background 0.3s ease, color 0.3s ease;
         }
+
         #successMsg {
             background: var(--success-bg);
             color: var(--success-text);
@@ -285,8 +360,35 @@
             display: none;
             transition: background 0.3s ease, color 0.3s ease;
         }
-        
+
+        /* Footer */
+        .app-footer {
+            text-align: center;
+            padding: 15px 20px;
+            font-size: 11px;
+            color: var(--text-light);
+            border-top: 1px solid var(--border-color);
+            margin-top: 20px;
+            transition: border-color 0.3s ease, color 0.3s ease;
+        }
+        .app-footer strong {
+            color: var(--brand-primary);
+        }
+
         @media screen and (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                text-align: center;
+                gap: 15px;
+                padding: 15px;
+            }
+            .header-brand {
+                flex-direction: column;
+                gap: 5px;
+            }
+            .header-actions {
+                justify-content: center;
+            }
             .stats-container {
                 grid-template-columns: 1fr;
             }
@@ -304,20 +406,24 @@
                 padding: 6px 12px;
                 font-size: 12px;
             }
-            .header {
-                flex-direction: column;
-                text-align: center;
-                gap: 15px;
-            }
-            .header-actions {
-                justify-content: center;
-            }
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>📊 Manager Performance Dashboard</h1>
+    <header class="header">
+        <div class="header-brand">
+            <div class="header-logo-icon">
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <polygon points="50,5 95,30 95,70 50,95 5,70 5,30" fill="white" opacity="0.9"/>
+                    <polygon points="50,15 85,35 85,65 50,85 15,65 15,35" fill="none" stroke="white" stroke-width="2" opacity="0.5"/>
+                    <text x="50" y="55" font-family="Arial, sans-serif" font-size="38" font-weight="900" fill="white" text-anchor="middle" dominant-baseline="central">A</text>
+                </svg>
+            </div>
+            <div class="header-brand-text">
+                <div class="company">AKINEX Technologies</div>
+                <div class="product">AKINEX <span>SWOP</span></div>
+            </div>
+        </div>
         <div class="header-actions">
             <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
                 <span id="themeIcon">🌙</span>
@@ -326,7 +432,7 @@
             <button class="back-btn" onclick="goBack()">← Back to Dashboard</button>
             <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
-    </div>
+    </header>
 
     <div id="errorMsg"></div>
     <div id="successMsg"></div>
@@ -335,7 +441,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
             <div style="display: flex; gap: 15px; align-items: center; flex-wrap: wrap;">
                 <span>📅 Select Date:</span>
-                <input type="date" id="dateSelector" value="">
+                <input type="date" id="dateSelector" value="" style="padding: 8px 12px; border: 1px solid var(--input-border); border-radius: 5px; background: var(--input-bg); color: var(--text-primary);">
                 <button class="download-btn" onclick="loadAllData()">Load Report</button>
             </div>
             <button class="download-btn" onclick="downloadReport()">📥 Download CSV</button>
@@ -382,9 +488,13 @@
         </div>
     </div>
 
+    <div class="app-footer">
+        <strong>AKINEX SWOP</strong> &mdash; Smart Warehouse Operations Platform &bull; v2.0 &bull; Secure &bull; Real-Time
+    </div>
+
     <script>
         // ============================================================
-        // DARK MODE FUNCTIONS
+        // HYBRID DARK MODE
         // ============================================================
         function getSystemTheme() {
             return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -411,10 +521,10 @@
             applyTheme(newTheme);
         }
 
-        // Initialize theme
+        // Initialize
         applyTheme(getCurrentTheme());
 
-        // Listen for system changes (only if user hasn't saved preference)
+        // Listen for system changes
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
             const saved = localStorage.getItem('theme');
             if (!saved) {
@@ -423,7 +533,7 @@
         });
 
         // ============================================================
-        // ORIGINAL JAVASCRIPT - UNCHANGED
+        // PERFORMANCE DASHBOARD LOGIC
         // ============================================================
 
         const API_URL = 'https://warehouse-backend-new-u9rq.onrender.com/api';
@@ -469,9 +579,6 @@
             event.target.classList.add('active');
         }
 
-        // ============================================================
-        // LOAD TEAM PERFORMANCE
-        // ============================================================
         async function loadTeamPerformance() {
             const loadingDiv = document.getElementById('teamLoading');
             const tableWrapper = document.getElementById('teamTableWrapper');
@@ -485,7 +592,6 @@
                 if (data && data.success && data.data && data.data.length > 0) {
                     teamData = data.data;
                     
-                    // Calculate totals
                     let totalSales = 0, totalUnits = 0, totalOrders = 0;
                     teamData.forEach(t => {
                         totalSales += parseFloat(t.total_sales) || 0;
@@ -528,9 +634,6 @@
             }
         }
 
-        // ============================================================
-        // LOAD PRODUCT PERFORMANCE
-        // ============================================================
         async function loadProductPerformance() {
             const loadingDiv = document.getElementById('productLoading');
             const tableWrapper = document.getElementById('productTableWrapper');
@@ -573,9 +676,6 @@
             }
         }
 
-        // ============================================================
-        // LOAD COMPARISON
-        // ============================================================
         async function loadComparisonData() {
             const loadingDiv = document.getElementById('comparisonLoading');
             const container = document.getElementById('comparisonContent');
@@ -619,7 +719,6 @@
                 const ordersChange = curTotal.total_orders - prevTotal.total_orders;
                 const ordersPercent = prevTotal.total_orders > 0 ? (ordersChange / prevTotal.total_orders * 100) : 0;
                 
-                // Update trend indicators
                 document.getElementById('totalSalesTrend').innerHTML = `${salesChange >= 0 ? '▲' : '▼'} ${formatMoney(Math.abs(salesChange))} (${salesPercent.toFixed(1)}%)`;
                 document.getElementById('totalSalesTrend').className = `trend ${salesChange >= 0 ? 'positive' : 'negative'}`;
                 document.getElementById('totalUnitsTrend').innerHTML = `${unitsChange >= 0 ? '▲' : '▼'} ${Math.abs(unitsChange)} (${unitsPercent.toFixed(1)}%)`;
@@ -686,11 +785,9 @@
         function goBack() { window.location.href = 'manager-dashboard.html'; }
         function logout() { localStorage.clear(); window.location.href = 'login.html'; }
 
-        // Initialize
         if (!authToken) window.location.href = 'login.html';
         else loadAllData();
 
-        // Register Service Worker for PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
