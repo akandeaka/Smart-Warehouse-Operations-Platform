@@ -142,59 +142,58 @@
         }
 
         /* ============================================================
-           COMPANY BRANDING
+           COMPANY BRANDING WITH NEW LOGO
            ============================================================ */
         .company-header {
             text-align: center;
             margin-bottom: 28px;
         }
 
-        /* Company Logo */
+        /* Company Logo - Monochrome Style */
         .company-logo {
             display: inline-flex;
+            flex-direction: column;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 8px;
             text-decoration: none;
+            margin-bottom: 12px;
         }
 
-        .logo-icon-wrapper {
-            width: 52px;
-            height: 52px;
-            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 15px rgba(244, 0, 9, 0.3);
-            flex-shrink: 0;
-        }
-
-        .logo-icon-wrapper svg {
-            width: 30px;
-            height: 30px;
-            fill: white;
-        }
-
-        .company-name {
-            font-size: 20px;
-            font-weight: 800;
+        .logo-text {
+            font-size: 42px;
+            font-weight: 900;
+            letter-spacing: 4px;
             color: var(--text-primary);
-            letter-spacing: -0.5px;
-            line-height: 1.2;
+            line-height: 1;
+            transition: color 0.3s ease;
         }
 
-        .company-name .highlight {
+        .logo-text .highlight {
             color: var(--brand-primary);
         }
 
+        .logo-sub {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 6px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-top: 4px;
+            transition: color 0.3s ease;
+        }
+
+        .logo-sub span {
+            color: var(--brand-gold);
+        }
+
+        /* Company Slogan */
         .company-slogan {
             font-size: 11px;
             color: var(--text-secondary);
-            letter-spacing: 1.5px;
+            letter-spacing: 2px;
             text-transform: uppercase;
             font-weight: 400;
-            margin-top: 2px;
+            margin-top: 8px;
+            transition: color 0.3s ease;
         }
 
         .company-slogan span {
@@ -207,7 +206,7 @@
             display: flex;
             align-items: center;
             gap: 15px;
-            margin: 16px 0 18px 0;
+            margin: 18px 0 20px 0;
         }
 
         .brand-divider::before,
@@ -238,7 +237,7 @@
             border-radius: 20px;
             font-size: 10px;
             font-weight: 700;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
             margin-bottom: 8px;
         }
@@ -476,23 +475,19 @@
                 border-radius: 16px;
             }
 
-            .logo-icon-wrapper {
-                width: 44px;
-                height: 44px;
+            .logo-text {
+                font-size: 32px;
+                letter-spacing: 3px;
             }
 
-            .logo-icon-wrapper svg {
-                width: 24px;
-                height: 24px;
-            }
-
-            .company-name {
-                font-size: 17px;
+            .logo-sub {
+                font-size: 9px;
+                letter-spacing: 4px;
             }
 
             .company-slogan {
-                font-size: 10px;
-                letter-spacing: 1px;
+                font-size: 9px;
+                letter-spacing: 1.5px;
             }
 
             .product-name {
@@ -541,28 +536,23 @@
             </div>
 
             <!-- ============================================================
-                 COMPANY HEADER
+                 COMPANY HEADER WITH NEW LOGO
                  ============================================================ -->
             <div class="company-header">
 
-                <!-- Company Logo -->
+                <!-- Company Logo - Monochrome Style -->
                 <div class="company-logo">
-                    <div class="logo-icon-wrapper">
-                        <!-- Custom SVG Logo - Modern "A" Mark -->
-                        <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                            <polygon points="50,5 95,30 95,70 50,95 5,70 5,30" fill="white" opacity="0.9"/>
-                            <polygon points="50,15 85,35 85,65 50,85 15,65 15,35" fill="none" stroke="white" stroke-width="2" opacity="0.5"/>
-                            <text x="50" y="55" font-family="Arial, sans-serif" font-size="38" font-weight="900" fill="white" text-anchor="middle" dominant-baseline="central">A</text>
-                        </svg>
+                    <div class="logo-text">
+                        AKINEX
                     </div>
-                    <div>
-                        <div class="company-name">
-                            AKINEX <span class="highlight">Technologies</span>
-                        </div>
-                        <div class="company-slogan">
-                            Engineering <span>Smarter</span> Business Operations
-                        </div>
+                    <div class="logo-sub">
+                        <span>TECHNOLOGIES</span>
                     </div>
+                </div>
+
+                <!-- Company Slogan -->
+                <div class="company-slogan">
+                    Engineering <span>Smarter</span> Business Operations
                 </div>
 
                 <!-- Divider -->
