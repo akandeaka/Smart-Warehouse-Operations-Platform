@@ -1,311 +1,1065 @@
-/* ==========================================
-   AKINEX SWOP Enterprise Login
-   login.js - Complete Authentication
-========================================== */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>AKINEX SWOP - Smart Warehouse Operations Platform</title>
 
-document.addEventListener("DOMContentLoaded", function() {
+    <!-- PWA Support -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AKINEX SWOP">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <meta name="theme-color" content="#0B2B5C">
 
-    // ============================================================
-    // API Configuration
-    // ============================================================
-    const API_URL = 'https://warehouse-backend-new-u9rq.onrender.com/api';
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-    // ============================================================
-    // DOM Elements
-    // ============================================================
-    const loginForm = document.getElementById('loginForm');
-    const loginBtn = document.getElementById('loginBtn');
-    const username = document.getElementById('username');
-    const password = document.getElementById('password');
-    const twofaCode = document.getElementById('twofaCode');
-    const togglePassword = document.getElementById('togglePassword');
-    const themeToggle = document.getElementById('themeToggle');
-    const portalBadge = document.getElementById('portalBadge');
-    const errorMsg = document.getElementById('errorMsg');
-    const infoMsg = document.getElementById('infoMsg');
-    const rememberMe = document.getElementById('rememberMe');
-    const twofaGroup = document.getElementById('twofaGroup');
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
-    // ============================================================
-    // State Variables
-    // ============================================================
-    let redirectPortal = 'sales';
-    let twofaSessionId = null;
-    let isTwoFAMode = false;
-
-    // ============================================================
-    // 1. PORTAL DETECTION
-    // ============================================================
-    const urlParams = new URLSearchParams(window.location.search);
-    const redirectParam = urlParams.get('redirect');
-
-    if (redirectParam === 'super-admin') {
-        redirectPortal = 'super-admin';
-    } else if (redirectParam === 'manager-dashboard') {
-        redirectPortal = 'manager';
-    } else {
-        const referrer = document.referrer;
-        if (referrer.includes('super-admin')) {
-            redirectPortal = 'super-admin';
-        } else if (referrer.includes('manager-dashboard')) {
-            redirectPortal = 'manager';
-        } else {
-            redirectPortal = 'sales';
-        }
-    }
-
-    // Update Portal Badge
-    switch (redirectPortal) {
-        case 'super-admin':
-            portalBadge.textContent = '🔐 SUPER ADMIN PORTAL';
-            portalBadge.style.background = '#dc3545';
-            portalBadge.style.color = 'white';
-            break;
-        case 'manager':
-            portalBadge.textContent = '📊 WAREHOUSE MANAGER PORTAL';
-            portalBadge.style.background = '#ffc107';
-            portalBadge.style.color = '#333';
-            break;
-        default:
-            portalBadge.textContent = '💰 SALES TEAM PORTAL';
-            portalBadge.style.background = '#16A34A';
-            portalBadge.style.color = 'white';
-    }
-
-    // ============================================================
-    // 2. REMEMBER ME
-    // ============================================================
-    if (localStorage.getItem('rememberUser')) {
-        username.value = localStorage.getItem('rememberUser');
-        rememberMe.checked = true;
-    }
-
-    // ============================================================
-    // 3. PASSWORD TOGGLE
-    // ============================================================
-    togglePassword.addEventListener('click', function() {
-        const icon = this.querySelector('i');
-        if (password.type === 'password') {
-            password.type = 'text';
-            icon.classList.remove('fa-eye');
-            icon.classList.add('fa-eye-slash');
-        } else {
-            password.type = 'password';
-            icon.classList.remove('fa-eye-slash');
-            icon.classList.add('fa-eye');
-        }
-    });
-
-    // ============================================================
-    // 4. CAPS LOCK DETECTION
-    // ============================================================
-    password.addEventListener('keyup', function(e) {
-        if (e.getModifierState('CapsLock')) {
-            showInfo('⚠️ Caps Lock is ON');
-        } else {
-            infoMsg.style.display = 'none';
-        }
-    });
-
-    // ============================================================
-    // 5. DARK MODE
-    // ============================================================
-    if (localStorage.getItem('theme') === 'dark') {
-        document.body.classList.add('dark');
-        themeToggle.innerHTML = '<i class="fa-solid fa-sun"></i>';
-    }
-
-    themeToggle.addEventListener('click', function() {
-        document.body.classList.toggle('dark');
-        if (document.body.classList.contains('dark')) {
-            localStorage.setItem('theme', 'dark');
-            this.innerHTML = '<i class="fa-solid fa-sun"></i>';
-        } else {
-            localStorage.setItem('theme', 'light');
-            this.innerHTML = '<i class="fa-solid fa-moon"></i>';
-        }
-    });
-
-    // ============================================================
-    // 6. MESSAGE FUNCTIONS
-    // ============================================================
-    function showError(msg) {
-        errorMsg.style.display = 'block';
-        infoMsg.style.display = 'none';
-        errorMsg.textContent = msg;
-    }
-
-    function showInfo(msg) {
-        infoMsg.style.display = 'block';
-        errorMsg.style.display = 'none';
-        infoMsg.textContent = msg;
-    }
-
-    function clearMessages() {
-        errorMsg.style.display = 'none';
-        infoMsg.style.display = 'none';
-    }
-
-    // ============================================================
-    // 7. VALIDATION
-    // ============================================================
-    function validate() {
-        clearMessages();
-
-        if (username.value.trim() === '') {
-            showError('Employee ID is required.');
-            username.focus();
-            return false;
+    <style>
+        /* ============================================================
+           CSS VARIABLES
+           ============================================================ */
+        :root {
+            --bg-body: #f0f2f5;
+            --bg-card: #ffffff;
+            --text-primary: #1a1a2e;
+            --text-secondary: #555555;
+            --text-muted: #888888;
+            --border-color: #e8e8e8;
+            --shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+            --input-bg: #f8f9fa;
+            --input-border: #e0e0e0;
+            --brand-primary: #0B2B5C;
+            --brand-secondary: #16A34A;
+            --brand-accent: #F40009;
+            --brand-gold: #D4A843;
+            --error-bg: #fde8ea;
+            --error-text: #c62828;
+            --info-bg: #e3f2fd;
+            --info-text: #0d47a1;
+            --card-border: rgba(255, 255, 255, 0.3);
+            --radius: 20px;
+            --transition: 0.35s ease;
+            --logo-color: #1a1a2e;
+            --logo-sub-color: #666666;
         }
 
-        if (password.value.trim() === '') {
-            showError('Password is required.');
-            password.focus();
-            return false;
+        /* ============================================================
+           DARK MODE
+           ============================================================ */
+        [data-theme="dark"] {
+            --bg-body: #0a0a1a;
+            --bg-card: #16162e;
+            --text-primary: #e8e8e8;
+            --text-secondary: #aaaaaa;
+            --text-muted: #777777;
+            --border-color: #2a2a4a;
+            --shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            --input-bg: #22224a;
+            --input-border: #333366;
+            --brand-primary: #0B2B5C;
+            --brand-secondary: #16A34A;
+            --brand-accent: #F40009;
+            --brand-gold: #D4A843;
+            --error-bg: #2a1a1a;
+            --error-text: #ff6b6b;
+            --info-bg: #1a2a4a;
+            --info-text: #8ab4f8;
+            --card-border: rgba(255, 255, 255, 0.08);
+            --logo-color: #ffffff;
+            --logo-sub-color: rgba(255, 255, 255, 0.6);
         }
 
-        if (isTwoFAMode && twofaCode.value.trim() === '') {
-            showError('2FA secret code is required.');
-            twofaCode.focus();
-            return false;
+        /* ============================================================
+           RESET
+           ============================================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
-        return true;
-    }
-
-    // ============================================================
-    // 8. LOGIN SUBMIT
-    // ============================================================
-    loginForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-
-        if (!validate()) return;
-
-        loginBtn.classList.add('loading');
-        loginBtn.disabled = true;
-        loginBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Authenticating...';
-
-        if (rememberMe.checked) {
-            localStorage.setItem('rememberUser', username.value);
-        } else {
-            localStorage.removeItem('rememberUser');
+        body {
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-body);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background 0.3s ease;
+            padding: 20px;
         }
 
-        try {
-            // 2FA Mode
-            if (isTwoFAMode) {
-                const response = await fetch(`${API_URL}/auth/verify-2fa`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sessionId: twofaSessionId,
-                        secretCode: twofaCode.value.trim()
-                    })
-                });
+        .login-wrapper {
+            width: 100%;
+            max-width: 440px;
+        }
 
-                const data = await response.json();
+        /* ============================================================
+           LOGIN CARD
+           ============================================================ */
+        .login-card {
+            background: var(--bg-card);
+            padding: 45px 40px 35px 40px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            transition: background 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--card-border);
+        }
 
-                if (!data.success) {
-                    showError(data.message || '2FA verification failed');
-                    loginBtn.classList.remove('loading');
-                    loginBtn.disabled = false;
-                    loginBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Secure Sign In';
-                    return;
-                }
+        /* Premium Accent Bar */
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--brand-accent), var(--brand-gold), var(--brand-accent));
+            background-size: 200% 100%;
+            animation: shimmer 3s ease-in-out infinite;
+        }
 
-                if (data.token) {
-                    localStorage.setItem('token', data.token);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    showInfo('✅ Authentication successful! Redirecting...');
-                    setTimeout(() => {
-                        window.location.href = data.redirectUrl;
-                    }, 1000);
-                }
-                return;
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+            100% {
+                background-position: 200% 0;
+            }
+        }
+
+        /* ============================================================
+           HEADER - LOGO + THEME TOGGLE
+           ============================================================ */
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .card-header .logo-section {
+            display: flex;
+            flex-direction: column;
+            line-height: 1;
+        }
+
+        .card-header .logo-main {
+            font-size: 22px;
+            font-weight: 900;
+            letter-spacing: 4px;
+            color: var(--logo-color);
+            text-transform: uppercase;
+            transition: color 0.3s ease;
+        }
+
+        .card-header .logo-sub {
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 6px;
+            color: var(--logo-sub-color);
+            text-transform: uppercase;
+            margin-top: 1px;
+            transition: color 0.3s ease;
+        }
+
+        .card-header .theme-toggle {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            font-size: 18px;
+            color: var(--text-secondary);
+            padding: 6px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            width: auto;
+            margin: 0;
+            flex-shrink: 0;
+        }
+
+        .card-header .theme-toggle:hover {
+            background: var(--border-color);
+            opacity: 0.8;
+        }
+
+        /* ============================================================
+           WELCOME
+           ============================================================ */
+        .welcome {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .welcome h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            transition: color 0.3s ease;
+        }
+
+        .welcome p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            transition: color 0.3s ease;
+        }
+
+        /* ============================================================
+           PORTAL BADGE
+           ============================================================ */
+        .portal-badge {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 8px 16px;
+            background: var(--border-color);
+            border-radius: 50px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+            transition: background 0.3s ease, color 0.3s ease;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .portal-badge i {
+            margin-right: 6px;
+        }
+
+        .portal-super-admin {
+            background: #dc3545;
+            color: white;
+        }
+        .portal-manager {
+            background: #ffc107;
+            color: #333;
+        }
+        .portal-sales {
+            background: #16A34A;
+            color: white;
+        }
+
+        /* ============================================================
+           MESSAGES
+           ============================================================ */
+        .message {
+            padding: 10px 14px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            display: none;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .message.error {
+            background: var(--error-bg);
+            color: var(--error-text);
+            border-left: 4px solid #dc3545;
+        }
+
+        .message.info {
+            background: var(--info-bg);
+            color: var(--info-text);
+            border-left: 4px solid #17a2b8;
+        }
+
+        /* ============================================================
+           FORM
+           ============================================================ */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-primary);
+            transition: color 0.3s ease;
+        }
+
+        .form-group label i {
+            margin-right: 6px;
+            color: var(--brand-secondary);
+            width: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--input-border);
+            border-radius: 12px;
+            font-size: 14px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--brand-secondary);
+            box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.12);
+            background: var(--bg-card);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-muted);
+            opacity: 0.6;
+        }
+
+        /* Password Wrapper */
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-wrapper input {
+            padding-right: 50px;
+        }
+
+        .password-wrapper .eye-btn {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            color: var(--text-muted);
+            padding: 4px;
+            transition: color 0.3s ease;
+        }
+
+        .password-wrapper .eye-btn:hover {
+            color: var(--brand-secondary);
+        }
+
+        /* 2FA Group */
+        .twofa-group {
+            display: none;
+        }
+
+        /* ============================================================
+           OPTIONS
+           ============================================================ */
+        .options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 18px 0 22px 0;
+            font-size: 13px;
+        }
+
+        .options label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-weight: 400;
+            transition: color 0.3s ease;
+        }
+
+        .options label input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--brand-secondary);
+            cursor: pointer;
+        }
+
+        .options a {
+            text-decoration: none;
+            color: var(--brand-secondary);
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        .options a:hover {
+            text-decoration: underline;
+        }
+
+        /* ============================================================
+           LOGIN BUTTON
+           ============================================================ */
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .login-btn:hover::after {
+            left: 100%;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(11, 43, 92, 0.30);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .login-btn i {
+            font-size: 16px;
+        }
+
+        /* Loading State */
+        .login-btn.loading {
+            pointer-events: none;
+            opacity: 0.85;
+        }
+
+        /* ============================================================
+           SECURITY
+           ============================================================ */
+        .security {
+            margin-top: 22px;
+            padding: 14px;
+            background: var(--border-color);
+            border-radius: 12px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        .security i {
+            margin-right: 8px;
+            color: var(--brand-secondary);
+        }
+
+        /* ============================================================
+           FOOTER
+           ============================================================ */
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+            font-size: 11px;
+            color: var(--text-muted);
+            transition: border-color 0.3s ease, color 0.3s ease;
+        }
+
+        .footer strong {
+            color: var(--brand-secondary);
+            font-weight: 700;
+        }
+
+        .footer .version {
+            display: block;
+            margin-top: 2px;
+            font-size: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        .footer .version span {
+            color: var(--brand-accent);
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 30px 20px 25px 20px;
+                border-radius: 16px;
             }
 
-            // Normal Login
-            const response = await fetch(`${API_URL}/auth/login-portal`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: username.value.trim(),
-                    password: password.value.trim(),
-                    portal: redirectPortal
-                })
+            .card-header .logo-main {
+                font-size: 18px;
+                letter-spacing: 3px;
+            }
+
+            .card-header .logo-sub {
+                font-size: 8px;
+                letter-spacing: 4px;
+            }
+
+            .welcome h2 {
+                font-size: 24px;
+            }
+
+            .form-group input {
+                padding: 10px 14px;
+                font-size: 13px;
+            }
+
+            .login-btn {
+                padding: 13px;
+                font-size: 14px;
+            }
+
+            .options {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .portal-badge {
+                font-size: 12px;
+                padding: 6px 12px;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .login-card {
+                padding: 25px 16px 20px 16px;
+            }
+
+            .card-header .logo-main {
+                font-size: 16px;
+                letter-spacing: 2px;
+            }
+
+            .card-header .logo-sub {
+                font-size: 7px;
+                letter-spacing: 3px;
+            }
+
+            .welcome h2 {
+                font-size: 20px;
+            }
+
+            .login-btn {
+                padding: 12px;
+                font-size: 13px;
+            }
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+            button,
+            input {
+                min-height: 44px;
+                font-size: 15px;
+            }
+        }
+
+        /* ============================================================
+           ANIMATIONS
+           ============================================================ */
+        .login-card {
+            animation: fadeUp 0.8s ease;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ============================================================
+           SCROLLBAR
+           ============================================================ */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--brand-secondary);
+            border-radius: 20px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-body);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-wrapper">
+
+        <div class="login-card">
+
+            <!-- ============================================================
+                 HEADER - LOGO TOP LEFT + THEME TOGGLE TOP RIGHT
+                 ============================================================ -->
+            <div class="card-header">
+
+                <div class="logo-section">
+                    <div class="logo-main">AKINEX</div>
+                    <div class="logo-sub">TECHNOLOGIES</div>
+                </div>
+
+                <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+                    <span id="themeIcon">🌙</span>
+                </button>
+
+            </div>
+
+            <!-- ============================================================
+                 WELCOME
+                 ============================================================ -->
+            <div class="welcome">
+                <h2>Welcome Back</h2>
+                <p>Sign in to continue</p>
+            </div>
+
+            <!-- ============================================================
+                 PORTAL BADGE (DYNAMIC)
+                 ============================================================ -->
+            <div id="portalBadge" class="portal-badge portal-sales">
+                <i class="fas fa-shield-alt"></i> Loading...
+            </div>
+
+            <!-- ============================================================
+                 MESSAGES
+                 ============================================================ -->
+            <div id="errorMsg" class="message error"></div>
+            <div id="infoMsg" class="message info"></div>
+
+            <!-- ============================================================
+                 LOGIN FORM
+                 ============================================================ -->
+            <form id="loginForm" novalidate>
+
+                <!-- Username -->
+                <div class="form-group">
+                    <label><i class="fas fa-user"></i> Username</label>
+                    <input type="text" id="username" placeholder="Enter your username" autocomplete="off" required>
+                </div>
+
+                <!-- Password -->
+                <div class="form-group">
+                    <label><i class="fas fa-lock"></i> Password</label>
+                    <div class="password-wrapper">
+                        <input type="password" id="password" placeholder="Enter your password" required>
+                        <button type="button" class="eye-btn" id="togglePassword" aria-label="Toggle password visibility">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2FA (Hidden by default) -->
+                <div class="form-group twofa-group" id="twofaGroup">
+                    <label><i class="fas fa-key"></i> 2FA Secret Code</label>
+                    <input type="password" id="twofaCode" placeholder="Enter your 2FA secret code">
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="login-btn" id="loginBtn">
+                    <i class="fas fa-sign-in-alt"></i> Secure Sign In
+                </button>
+
+            </form>
+
+            <!-- ============================================================
+                 OPTIONS
+                 ============================================================ -->
+            <div class="options">
+                <label>
+                    <input type="checkbox" id="rememberMe">
+                    Remember Me
+                </label>
+                <a href="#">Forgot Password?</a>
+            </div>
+
+            <!-- ============================================================
+                 SECURITY BADGE
+                 ============================================================ -->
+            <div class="security">
+                <i class="fas fa-shield-halved"></i>
+                Protected with Enterprise Authentication
+            </div>
+
+            <!-- ============================================================
+                 FOOTER
+                 ============================================================ -->
+            <div class="footer">
+                <strong>AKINEX SWOP</strong> &mdash; Smart Warehouse Operations Platform
+                <span class="version">v2.0 &bull; <span>Secure</span> &bull; Real-Time</span>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+
+            // ============================================================
+            // API Configuration
+            // ============================================================
+            const API_URL = 'https://warehouse-backend-new-u9rq.onrender.com/api';
+
+            // ============================================================
+            // DOM Elements
+            // ============================================================
+            const loginForm = document.getElementById('loginForm');
+            const loginBtn = document.getElementById('loginBtn');
+            const username = document.getElementById('username');
+            const password = document.getElementById('password');
+            const twofaCode = document.getElementById('twofaCode');
+            const togglePassword = document.getElementById('togglePassword');
+            const themeToggle = document.getElementById('themeToggle');
+            const themeIcon = document.getElementById('themeIcon');
+            const portalBadge = document.getElementById('portalBadge');
+            const errorMsg = document.getElementById('errorMsg');
+            const infoMsg = document.getElementById('infoMsg');
+            const rememberMe = document.getElementById('rememberMe');
+            const twofaGroup = document.getElementById('twofaGroup');
+
+            // ============================================================
+            // State Variables
+            // ============================================================
+            let redirectPortal = 'sales';
+            let twofaSessionId = null;
+            let isTwoFAMode = false;
+
+            // ============================================================
+            // 1. DARK MODE
+            // ============================================================
+            function getSystemTheme() {
+                return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+
+            function getCurrentTheme() {
+                const saved = localStorage.getItem('theme');
+                if (saved) return saved;
+                return getSystemTheme();
+            }
+
+            function applyTheme(theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+                if (themeIcon) {
+                    themeIcon.textContent = theme === 'dark' ? '☀️' : '🌙';
+                }
+            }
+
+            // Initialize theme
+            applyTheme(getCurrentTheme());
+
+            // Theme toggle
+            themeToggle.addEventListener('click', function() {
+                const current = document.documentElement.getAttribute('data-theme') || 'light';
+                const newTheme = current === 'dark' ? 'light' : 'dark';
+                localStorage.setItem('theme', newTheme);
+                applyTheme(newTheme);
             });
 
-            const data = await response.json();
+            // Listen for system changes
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+                const saved = localStorage.getItem('theme');
+                if (!saved) {
+                    applyTheme(e.matches ? 'dark' : 'light');
+                }
+            });
 
-            if (!data.success) {
-                showError(data.message || 'Login failed. Please check your credentials.');
-                loginBtn.classList.remove('loading');
-                loginBtn.disabled = false;
-                loginBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Secure Sign In';
-                return;
+            // ============================================================
+            // 2. PORTAL DETECTION
+            // ============================================================
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirectParam = urlParams.get('redirect');
+
+            if (redirectParam === 'super-admin') {
+                redirectPortal = 'super-admin';
+            } else if (redirectParam === 'manager-dashboard') {
+                redirectPortal = 'manager';
+            } else {
+                const referrer = document.referrer;
+                if (referrer.includes('super-admin')) {
+                    redirectPortal = 'super-admin';
+                } else if (referrer.includes('manager-dashboard')) {
+                    redirectPortal = 'manager';
+                } else {
+                    redirectPortal = 'sales';
+                }
             }
 
-            // 2FA Required
-            if (data.requiresTwoFA && data.sessionId) {
-                isTwoFAMode = true;
-                twofaSessionId = data.sessionId;
-                twofaGroup.classList.remove('hidden');
-                showInfo('🔐 Two-factor authentication required. Enter your secret code.');
-                loginBtn.innerHTML = '<i class="fa-solid fa-key"></i> Verify 2FA Code';
-                loginBtn.classList.remove('loading');
-                loginBtn.disabled = false;
-                return;
+            // Update Portal Badge
+            portalBadge.innerHTML = '';
+            switch (redirectPortal) {
+                case 'super-admin':
+                    portalBadge.innerHTML = '<i class="fas fa-crown"></i> SUPER ADMIN PORTAL';
+                    portalBadge.className = 'portal-badge portal-super-admin';
+                    break;
+                case 'manager':
+                    portalBadge.innerHTML = '<i class="fas fa-chart-bar"></i> WAREHOUSE MANAGER PORTAL';
+                    portalBadge.className = 'portal-badge portal-manager';
+                    break;
+                default:
+                    portalBadge.innerHTML = '<i class="fas fa-users"></i> SALES TEAM PORTAL';
+                    portalBadge.className = 'portal-badge portal-sales';
             }
 
-            // Login Success
-            if (data.token) {
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('user', JSON.stringify(data.user));
-                showInfo('✅ Authentication successful! Redirecting...');
-                setTimeout(() => {
-                    window.location.href = data.redirectUrl;
-                }, 1000);
+            // ============================================================
+            // 3. REMEMBER ME
+            // ============================================================
+            if (localStorage.getItem('rememberUser')) {
+                username.value = localStorage.getItem('rememberUser');
+                rememberMe.checked = true;
             }
 
-        } catch (error) {
-            console.error('Login error:', error);
-            showError('Network error. Please check your connection.');
-        } finally {
-            loginBtn.classList.remove('loading');
-            loginBtn.disabled = false;
-            if (!isTwoFAMode) {
-                loginBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> Secure Sign In';
+            // ============================================================
+            // 4. PASSWORD TOGGLE
+            // ============================================================
+            togglePassword.addEventListener('click', function() {
+                const icon = this.querySelector('i');
+                if (password.type === 'password') {
+                    password.type = 'text';
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                } else {
+                    password.type = 'password';
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                }
+            });
+
+            // ============================================================
+            // 5. CAPS LOCK DETECTION
+            // ============================================================
+            password.addEventListener('keyup', function(e) {
+                if (e.getModifierState('CapsLock')) {
+                    showInfo('⚠️ Caps Lock is ON');
+                } else {
+                    infoMsg.style.display = 'none';
+                }
+            });
+
+            // ============================================================
+            // 6. MESSAGE FUNCTIONS
+            // ============================================================
+            function showError(msg) {
+                errorMsg.style.display = 'block';
+                infoMsg.style.display = 'none';
+                errorMsg.textContent = msg;
             }
-        }
-    });
 
-    // ============================================================
-    // 9. ENTER KEY SUPPORT
-    // ============================================================
-    document.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            loginForm.requestSubmit();
-        }
-    });
+            function showInfo(msg) {
+                infoMsg.style.display = 'block';
+                errorMsg.style.display = 'none';
+                infoMsg.textContent = msg;
+            }
 
-    // ============================================================
-    // 10. AUTO FOCUS
-    // ============================================================
-    username.focus();
+            function clearMessages() {
+                errorMsg.style.display = 'none';
+                infoMsg.style.display = 'none';
+            }
 
-    // ============================================================
-    // 11. PWA SERVICE WORKER
-    // ============================================================
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-            navigator.serviceWorker.register('/sw.js')
-                .then(function(reg) {
-                    console.log('Service Worker registered:', reg);
-                })
-                .catch(function(err) {
-                    console.error('Service Worker registration failed:', err);
+            // ============================================================
+            // 7. VALIDATION
+            // ============================================================
+            function validate() {
+                clearMessages();
+
+                if (username.value.trim() === '') {
+                    showError('Username is required.');
+                    username.focus();
+                    return false;
+                }
+
+                if (password.value.trim() === '') {
+                    showError('Password is required.');
+                    password.focus();
+                    return false;
+                }
+
+                if (isTwoFAMode && twofaCode.value.trim() === '') {
+                    showError('2FA secret code is required.');
+                    twofaCode.focus();
+                    return false;
+                }
+
+                return true;
+            }
+
+            // ============================================================
+            // 8. LOGIN SUBMIT - COMPLETE API INTEGRATION
+            // ============================================================
+            loginForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                if (!validate()) return;
+
+                // Show loading state
+                loginBtn.classList.add('loading');
+                loginBtn.disabled = true;
+                loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
+
+                // Save remember me
+                if (rememberMe.checked) {
+                    localStorage.setItem('rememberUser', username.value);
+                } else {
+                    localStorage.removeItem('rememberUser');
+                }
+
+                try {
+                    // ============================================================
+                    // 2FA MODE
+                    // ============================================================
+                    if (isTwoFAMode) {
+                        const response = await fetch(`${API_URL}/auth/verify-2fa`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                sessionId: twofaSessionId,
+                                secretCode: twofaCode.value.trim()
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (!data.success) {
+                            showError(data.message || '2FA verification failed');
+                            loginBtn.classList.remove('loading');
+                            loginBtn.disabled = false;
+                            loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Secure Sign In';
+                            return;
+                        }
+
+                        if (data.token) {
+                            localStorage.setItem('token', data.token);
+                            localStorage.setItem('user', JSON.stringify(data.user));
+                            showInfo('✅ Authentication successful! Redirecting...');
+                            setTimeout(() => {
+                                window.location.href = data.redirectUrl;
+                            }, 1000);
+                        }
+                        return;
+                    }
+
+                    // ============================================================
+                    // NORMAL LOGIN
+                    // ============================================================
+                    const response = await fetch(`${API_URL}/auth/login-portal`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            username: username.value.trim(),
+                            password: password.value.trim(),
+                            portal: redirectPortal
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (!data.success) {
+                        showError(data.message || 'Login failed. Please check your credentials.');
+                        loginBtn.classList.remove('loading');
+                        loginBtn.disabled = false;
+                        loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Secure Sign In';
+                        return;
+                    }
+
+                    // ============================================================
+                    // 2FA REQUIRED
+                    // ============================================================
+                    if (data.requiresTwoFA && data.sessionId) {
+                        isTwoFAMode = true;
+                        twofaSessionId = data.sessionId;
+                        twofaGroup.classList.remove('twofa-group');
+                        twofaGroup.style.display = 'block';
+                        showInfo('🔐 Two-factor authentication required. Enter your secret code.');
+                        loginBtn.innerHTML = '<i class="fas fa-key"></i> Verify 2FA Code';
+                        loginBtn.classList.remove('loading');
+                        loginBtn.disabled = false;
+                        return;
+                    }
+
+                    // ============================================================
+                    // LOGIN SUCCESS
+                    // ============================================================
+                    if (data.token) {
+                        localStorage.setItem('token', data.token);
+                        localStorage.setItem('user', JSON.stringify(data.user));
+                        showInfo('✅ Authentication successful! Redirecting...');
+                        setTimeout(() => {
+                            window.location.href = data.redirectUrl;
+                        }, 1000);
+                    }
+
+                } catch (error) {
+                    console.error('Login error:', error);
+                    showError('Network error. Please check your connection.');
+                } finally {
+                    loginBtn.classList.remove('loading');
+                    loginBtn.disabled = false;
+                    if (!isTwoFAMode) {
+                        loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Secure Sign In';
+                    }
+                }
+            });
+
+            // ============================================================
+            // 9. ENTER KEY SUPPORT
+            // ============================================================
+            document.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    loginForm.requestSubmit();
+                }
+            });
+
+            // ============================================================
+            // 10. AUTO FOCUS
+            // ============================================================
+            username.focus();
+
+            // ============================================================
+            // 11. PWA SERVICE WORKER
+            // ============================================================
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                    navigator.serviceWorker.register('/sw.js')
+                        .then(function(reg) {
+                            console.log('Service Worker registered:', reg);
+                        })
+                        .catch(function(err) {
+                            console.error('Service Worker registration failed:', err);
+                        });
                 });
-        });
-    }
+            }
 
-});
+        }); // End DOMContentLoaded
+    </script>
+
+</body>
+</html>
