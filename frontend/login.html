@@ -125,12 +125,8 @@
         }
 
         @keyframes shimmer {
-            0% {
-                background-position: -200% 0;
-            }
-            100% {
-                background-position: 200% 0;
-            }
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
         }
 
         /* ============================================================
@@ -144,12 +140,35 @@
         }
 
         /* ============================================================
-           LOGO IMAGE - YOUR ACTUAL LOGO (FIXED EXTENSION)
+           LOGO IMAGE - CORRECT PATH: assets/akinex-logo.jpeg
            ============================================================ */
         .logo-image {
             max-width: 160px;
             height: auto;
             display: block;
+        }
+
+        .logo-fallback {
+            display: none;
+            flex-direction: column;
+            line-height: 1;
+        }
+
+        .logo-fallback .logo-main {
+            font-size: 22px;
+            font-weight: 900;
+            letter-spacing: 4px;
+            color: var(--text-primary);
+            text-transform: uppercase;
+        }
+
+        .logo-fallback .logo-sub {
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 6px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-top: 1px;
         }
 
         /* Theme Toggle */
@@ -584,12 +603,21 @@
         <div class="login-card">
 
             <!-- ============================================================
-                 HEADER - YOUR ACTUAL LOGO IMAGE (.jpeg) + THEME TOGGLE
+                 HEADER - LOGO IMAGE (CORRECT PATH) + THEME TOGGLE
                  ============================================================ -->
             <div class="card-header">
 
-                <!-- ✅ YOUR ACTUAL LOGO - CORRECT FILE EXTENSION -->
-                <img src="assets/images/akinex-logo.jpeg" alt="AKINEX TECHNOLOGIES" class="logo-image">
+                <!-- ✅ CORRECT PATH: assets/akinex-logo.jpeg -->
+                <img src="assets/akinex-logo.jpeg" 
+                     alt="AKINEX TECHNOLOGIES" 
+                     class="logo-image"
+                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+
+                <!-- Fallback text logo (shows if image fails) -->
+                <div class="logo-fallback">
+                    <div class="logo-main">AKINEX</div>
+                    <div class="logo-sub">TECHNOLOGIES</div>
+                </div>
 
                 <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
                     <span id="themeIcon">🌙</span>
