@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>AKINEX SWOP - Smart Warehouse Operations Platform</title>
+    <title>AKINEX SWOP - Login</title>
     
     <!-- PWA Support -->
     <link rel="manifest" href="/manifest.json">
@@ -15,19 +15,20 @@
     
     <style>
         /* ============================================================
-           LIGHT MODE (Default)
+           LIGHT MODE
            ============================================================ */
         :root {
             --bg-body: #f0f2f5;
-            --bg-card: #ffffff;
-            --bg-gradient-start: #0a0a1a;
-            --bg-gradient-end: #1a1a2e;
+            --bg-card: rgba(255, 255, 255, 0.92);
+            --bg-gradient-start: rgba(10, 10, 26, 0.7);
+            --bg-gradient-end: rgba(26, 26, 46, 0.85);
             --text-primary: #1a1a2e;
             --text-secondary: #555555;
             --text-light: #888888;
+            --text-lighter: #aaaaaa;
             --border-color: #e8e8e8;
-            --shadow: 0 20px 60px rgba(0,0,0,0.12);
-            --input-bg: #f8f9fa;
+            --shadow: 0 20px 60px rgba(0,0,0,0.15);
+            --input-bg: rgba(255, 255, 255, 0.9);
             --input-border: #e0e0e0;
             --button-gradient: linear-gradient(135deg, #F40009 0%, #CC0000 100%);
             --error-bg: #fde8ea;
@@ -36,8 +37,12 @@
             --info-text: #0d47a1;
             --brand-primary: #F40009;
             --brand-secondary: #CC0000;
-            --brand-dark: #0a0a1a;
             --brand-gold: #D4A843;
+            /* Logo Colors - Monochrome */
+            --logo-main-color: #1a1a2e;
+            --logo-sub-color: #666666;
+            --logo-slogan-color: #999999;
+            --card-border: rgba(255,255,255,0.3);
         }
 
         /* ============================================================
@@ -45,15 +50,16 @@
            ============================================================ */
         [data-theme="dark"] {
             --bg-body: #0a0a1a;
-            --bg-card: #16162e;
-            --bg-gradient-start: #0a0a1a;
-            --bg-gradient-end: #16162e;
+            --bg-card: rgba(22, 22, 46, 0.92);
+            --bg-gradient-start: rgba(10, 10, 26, 0.7);
+            --bg-gradient-end: rgba(22, 22, 46, 0.85);
             --text-primary: #e8e8e8;
             --text-secondary: #aaaaaa;
             --text-light: #777777;
+            --text-lighter: #555555;
             --border-color: #2a2a4a;
             --shadow: 0 20px 60px rgba(0,0,0,0.5);
-            --input-bg: #22224a;
+            --input-bg: rgba(34, 34, 74, 0.9);
             --input-border: #333366;
             --button-gradient: linear-gradient(135deg, #F40009 0%, #CC0000 100%);
             --error-bg: #2a1a1a;
@@ -62,8 +68,12 @@
             --info-text: #8ab4f8;
             --brand-primary: #F40009;
             --brand-secondary: #CC0000;
-            --brand-dark: #0a0a1a;
             --brand-gold: #D4A843;
+            /* Logo Colors - Monochrome (Dark Mode) */
+            --logo-main-color: #ffffff;
+            --logo-sub-color: rgba(255,255,255,0.6);
+            --logo-slogan-color: rgba(255,255,255,0.4);
+            --card-border: rgba(255,255,255,0.08);
         }
 
         * {
@@ -74,28 +84,51 @@
 
         body {
             font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             transition: background 0.3s ease;
             padding: 20px;
+            
+            /* Background Image - Optional */
+            background-image: url('bg-login.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+
+        /* Fallback gradient if image fails to load */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            z-index: 0;
         }
 
         .login-wrapper {
             width: 100%;
-            max-width: 440px;
+            max-width: 420px;
+            position: relative;
+            z-index: 1;
         }
 
         .login-container {
             background: var(--bg-card);
-            padding: 50px 40px 35px 40px;
-            border-radius: 20px;
+            padding: 35px 30px 28px 30px;
+            border-radius: 16px;
             box-shadow: var(--shadow);
             transition: background 0.3s ease, box-shadow 0.3s ease;
             position: relative;
             overflow: hidden;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
         }
 
         /* Premium Accent Bar */
@@ -105,7 +138,7 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 5px;
+            height: 4px;
             background: linear-gradient(90deg, var(--brand-primary), var(--brand-gold), var(--brand-primary));
             background-size: 200% 100%;
             animation: shimmer 3s ease-in-out infinite;
@@ -116,21 +149,72 @@
             100% { background-position: 200% 0; }
         }
 
-        /* Dark Mode Toggle */
-        .theme-toggle-wrapper {
+        /* ============================================================
+           HEADER - LOGO TOP LEFT | THEME TOGGLE TOP RIGHT
+           ============================================================ */
+        .login-header {
             display: flex;
-            justify-content: flex-end;
-            margin-bottom: 8px;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 4px;
+        }
+
+        /* ============================================================
+           LOGO - EXACT MONOCHROME COPY
+           ============================================================ */
+        .login-logo {
+            display: flex;
+            flex-direction: column;
+            line-height: 1;
+        }
+
+        .login-logo .logo-main {
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: 4px;
+            color: var(--logo-main-color);
+            text-transform: uppercase;
+            transition: color 0.3s ease;
+        }
+
+        .login-logo .logo-sub {
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 6px;
+            color: var(--logo-sub-color);
+            text-transform: uppercase;
+            margin-top: 1px;
+            transition: color 0.3s ease;
+        }
+
+        /* ============================================================
+           SLOGAN - UNDER LOGO
+           ============================================================ */
+        .login-slogan {
+            font-size: 9px;
+            font-weight: 300;
+            letter-spacing: 2px;
+            color: var(--logo-slogan-color);
+            text-transform: uppercase;
+            margin-top: 4px;
+            transition: color 0.3s ease;
+        }
+
+        /* Theme Toggle - Top Right */
+        .theme-toggle-wrapper {
+            flex-shrink: 0;
+            margin-left: 10px;
+            margin-top: 2px;
         }
 
         .theme-toggle {
-            background: transparent;
-            border: none;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.08);
             cursor: pointer;
-            font-size: 20px;
+            font-size: 16px;
             color: var(--text-secondary);
-            padding: 5px 10px;
-            border-radius: 8px;
+            padding: 4px 8px;
+            border-radius: 6px;
             transition: all 0.3s ease;
             width: auto;
             margin: 0;
@@ -141,71 +225,12 @@
             opacity: 0.8;
         }
 
-        /* ============================================================
-           MONOCHROME AKINEX TECHNOLOGIES LOGO
-           ============================================================ */
-        .company-header {
-            text-align: center;
-            margin-bottom: 28px;
-        }
-
-        /* Monochrome Logo - Exactly as provided */
-        .company-logo {
-            display: inline-flex;
-            flex-direction: column;
-            align-items: center;
-            text-decoration: none;
-            margin-bottom: 8px;
-        }
-
-        .logo-monochrome {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            line-height: 1;
-        }
-
-        .logo-monochrome .logo-text {
-            font-size: 42px;
-            font-weight: 900;
-            letter-spacing: 6px;
-            color: var(--text-primary);
-            text-transform: uppercase;
-            transition: color 0.3s ease;
-        }
-
-        .logo-monochrome .logo-sub {
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 10px;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            margin-top: 2px;
-            transition: color 0.3s ease;
-        }
-
-        /* Company Slogan */
-        .company-slogan {
-            font-size: 11px;
-            color: var(--text-secondary);
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            font-weight: 400;
-            margin-top: 8px;
-            transition: color 0.3s ease;
-        }
-
-        .company-slogan span {
-            color: var(--brand-gold);
-            font-weight: 600;
-        }
-
         /* Divider */
         .brand-divider {
             display: flex;
             align-items: center;
             gap: 15px;
-            margin: 16px 0 18px 0;
+            margin: 16px 0 20px 0;
         }
 
         .brand-divider::before,
@@ -218,54 +243,35 @@
 
         .brand-divider .divider-icon {
             color: var(--brand-primary);
-            font-size: 14px;
-            opacity: 0.6;
+            font-size: 12px;
+            opacity: 0.5;
         }
 
-        /* Product Section */
-        .product-section {
+        /* ============================================================
+           CENTER CONTENT
+           ============================================================ */
+        .login-center {
             text-align: center;
-            margin-bottom: 6px;
         }
 
-        .product-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
-            color: white;
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }
-
-        .product-name {
-            font-size: 24px;
-            font-weight: 800;
-            color: var(--text-primary);
-            letter-spacing: -0.5px;
-        }
-
-        .product-name .highlight {
-            color: var(--brand-primary);
-        }
-
-        .product-tagline {
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-top: 6px;
+        .login-center .product-name {
+            font-size: 22px;
             font-weight: 400;
-            letter-spacing: 0.2px;
+            color: var(--text-primary);
+            letter-spacing: 0.5px;
+            transition: color 0.3s ease;
         }
 
-        .product-tagline .highlight {
-            color: var(--brand-primary);
-            font-weight: 600;
+        .login-center .product-tagline {
+            font-size: 13px;
+            font-weight: 300;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            letter-spacing: 0.3px;
+            transition: color 0.3s ease;
         }
 
-        .product-tagline .dot {
+        .login-center .product-tagline .dot {
             color: var(--brand-primary);
             font-weight: 700;
             margin: 0 4px;
@@ -274,11 +280,11 @@
         /* Portal Badge */
         .portal-badge {
             text-align: center;
-            margin: 18px 0 16px 0;
-            padding: 8px 16px;
+            margin: 20px 0 14px 0;
+            padding: 6px 14px;
             background: var(--border-color);
             border-radius: 20px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             color: var(--text-primary);
             transition: background 0.3s ease, color 0.3s ease;
@@ -306,21 +312,24 @@
         .subtitle {
             text-align: center;
             color: var(--text-secondary);
-            margin-bottom: 24px;
-            font-size: 14px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            font-weight: 300;
             transition: color 0.3s ease;
         }
 
-        /* Form */
+        /* ============================================================
+           FORM
+           ============================================================ */
         .form-group {
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
 
         label {
             display: block;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             font-weight: 600;
-            font-size: 13px;
+            font-size: 12px;
             color: var(--text-primary);
             transition: color 0.3s ease;
         }
@@ -328,15 +337,15 @@
         label i {
             margin-right: 6px;
             color: var(--brand-primary);
-            width: 16px;
+            width: 14px;
         }
 
         input {
             width: 100%;
-            padding: 13px 16px;
+            padding: 11px 14px;
             border: 2px solid var(--input-border);
-            border-radius: 12px;
-            font-size: 15px;
+            border-radius: 10px;
+            font-size: 14px;
             background: var(--input-bg);
             color: var(--text-primary);
             transition: all 0.3s ease;
@@ -355,24 +364,26 @@
             opacity: 0.6;
         }
 
-        /* Login Button */
+        /* ============================================================
+           LOGIN BUTTON
+           ============================================================ */
         .login-btn {
             width: 100%;
-            padding: 15px;
+            padding: 13px;
             background: var(--button-gradient);
             color: white;
             border: none;
-            border-radius: 12px;
-            font-size: 16px;
+            border-radius: 10px;
+            font-size: 15px;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.3s ease;
-            margin-top: 8px;
+            margin-top: 6px;
             letter-spacing: 0.5px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: 10px;
             position: relative;
             overflow: hidden;
         }
@@ -405,16 +416,18 @@
         }
 
         .login-btn i {
-            font-size: 18px;
+            font-size: 16px;
         }
 
-        /* Messages */
+        /* ============================================================
+           MESSAGES
+           ============================================================ */
         .error-msg, .info-msg {
-            padding: 12px 16px;
-            border-radius: 10px;
-            margin-bottom: 16px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 14px;
             display: none;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
         }
 
@@ -434,17 +447,19 @@
             display: none;
         }
 
-        /* Footer */
+        /* ============================================================
+           FOOTER
+           ============================================================ */
         .login-footer {
             text-align: center;
-            margin-top: 24px;
-            padding-top: 18px;
+            margin-top: 20px;
+            padding-top: 14px;
             border-top: 1px solid var(--border-color);
             transition: border-color 0.3s ease;
         }
 
         .login-footer .company {
-            font-size: 12px;
+            font-size: 11px;
             color: var(--text-secondary);
         }
 
@@ -455,8 +470,8 @@
 
         .login-footer .version {
             display: block;
-            margin-top: 4px;
-            font-size: 11px;
+            margin-top: 3px;
+            font-size: 10px;
             color: var(--text-light);
             letter-spacing: 0.5px;
         }
@@ -470,53 +485,82 @@
            ============================================================ */
         @media (max-width: 480px) {
             .login-container {
-                padding: 30px 20px 25px 20px;
-                border-radius: 16px;
+                padding: 25px 18px 20px 18px;
+                border-radius: 14px;
             }
 
-            .logo-monochrome .logo-text {
-                font-size: 32px;
+            .login-logo .logo-main {
+                font-size: 17px;
+                letter-spacing: 3px;
+            }
+
+            .login-logo .logo-sub {
+                font-size: 8px;
                 letter-spacing: 4px;
             }
 
-            .logo-monochrome .logo-sub {
-                font-size: 10px;
-                letter-spacing: 6px;
-            }
-
-            .company-slogan {
-                font-size: 9px;
+            .login-slogan {
+                font-size: 8px;
                 letter-spacing: 1.5px;
             }
 
-            .product-name {
-                font-size: 20px;
+            .login-center .product-name {
+                font-size: 18px;
             }
 
-            .product-tagline {
+            .login-center .product-tagline {
                 font-size: 11px;
             }
 
             .login-btn {
-                padding: 13px;
+                padding: 12px;
                 font-size: 14px;
             }
 
             input {
-                padding: 11px 14px;
-                font-size: 14px;
+                padding: 10px 12px;
+                font-size: 13px;
             }
 
             .portal-badge {
-                font-size: 12px;
-                padding: 6px 12px;
+                font-size: 11px;
+                padding: 5px 12px;
+            }
+
+            .brand-divider {
+                margin: 12px 0 16px 0;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .login-logo .logo-main {
+                font-size: 15px;
+                letter-spacing: 2px;
+            }
+
+            .login-logo .logo-sub {
+                font-size: 7px;
+                letter-spacing: 3px;
+            }
+
+            .login-slogan {
+                font-size: 7px;
+                letter-spacing: 1px;
+            }
+
+            .login-center .product-name {
+                font-size: 16px;
+            }
+
+            .login-center .product-tagline {
+                font-size: 10px;
             }
         }
 
         @media (hover: none) and (pointer: coarse) {
             button, input {
-                min-height: 48px;
-                font-size: 16px;
+                min-height: 44px;
+                font-size: 15px;
             }
         }
     </style>
@@ -527,85 +571,86 @@
 
         <div class="login-container">
 
-            <!-- Dark Mode Toggle -->
-            <div class="theme-toggle-wrapper">
-                <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
-                    <span id="themeIcon">🌙</span>
-                </button>
+            <!-- ============================================================
+                 HEADER - LOGO TOP LEFT | THEME TOGGLE TOP RIGHT
+                 ============================================================ -->
+            <div class="login-header">
+
+                <!-- ============================================================
+                     LOGO - EXACT MONOCHROME COPY
+                     ============================================================ -->
+                <div class="login-logo">
+                    <div class="logo-main">AKINEX</div>
+                    <div class="logo-sub">TECHNOLOGIES</div>
+                    <div class="login-slogan">ENGINEERING SMARTER BUSINESS OPERATIONS</div>
+                </div>
+
+                <!-- Theme Toggle - Top Right -->
+                <div class="theme-toggle-wrapper">
+                    <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle theme">
+                        <span id="themeIcon">🌙</span>
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Divider -->
+            <div class="brand-divider">
+                <span class="divider-icon">◆</span>
             </div>
 
             <!-- ============================================================
-                 MONOCHROME AKINEX TECHNOLOGIES LOGO
+                 CENTER CONTENT
                  ============================================================ -->
-            <div class="company-header">
+            <div class="login-center">
 
-                <!-- Monochrome Logo - Exactly as provided -->
-                <div class="company-logo">
-                    <div class="logo-monochrome">
-                        <div class="logo-text">AKINEX</div>
-                        <div class="logo-sub">TECHNOLOGIES</div>
-                    </div>
+                <!-- Product Name - Clear, Not Bold -->
+                <div class="product-name">Smart Warehouse Operations Platform</div>
+
+                <!-- Tagline -->
+                <div class="product-tagline">
+                    Real-time Inventory <span class="dot">•</span> Sales Tracking <span class="dot">•</span> Cash Reconciliation
                 </div>
 
-                <!-- Company Slogan -->
-                <div class="company-slogan">
-                    Engineering <span>Smarter</span> Business Operations
+                <!-- Portal Badge -->
+                <div class="portal-badge" id="portalBadge">
+                    <i class="fas fa-shield-alt"></i> Loading...
                 </div>
 
-                <!-- Divider -->
-                <div class="brand-divider">
-                    <span class="divider-icon">◆</span>
-                </div>
+                <!-- Subtitle -->
+                <div class="subtitle" id="portalSubtitle">Enter your credentials to continue</div>
 
-                <!-- Product Section -->
-                <div class="product-section">
-                    <div class="product-badge">Flagship Product</div>
-                    <div class="product-name">
-                        AKINEX <span class="highlight">SWOP</span>
+                <!-- Messages -->
+                <div id="errorMsg" class="error-msg"></div>
+                <div id="infoMsg" class="info-msg"></div>
+
+                <!-- Login Form -->
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label><i class="fas fa-user"></i> Username</label>
+                        <input type="text" id="username" placeholder="Enter your username" required autocomplete="off">
                     </div>
-                    <div class="product-tagline">
-                        <span class="highlight">Smart Warehouse</span> Operations Platform
+
+                    <div class="form-group">
+                        <label><i class="fas fa-lock"></i> Password</label>
+                        <input type="password" id="password" placeholder="Enter your password" required>
                     </div>
-                    <div class="product-tagline" style="font-size:12px; margin-top:4px; color:var(--text-light);">
-                        Real-time Inventory <span class="dot">•</span> Sales Tracking <span class="dot">•</span> Cash Reconciliation
+
+                    <div class="form-group twofa-group" id="twofaGroup">
+                        <label><i class="fas fa-key"></i> 2FA Secret Code</label>
+                        <input type="password" id="twofaCode" placeholder="Enter your 2FA secret code">
                     </div>
-                </div>
+
+                    <button type="submit" class="login-btn" id="loginBtn">
+                        <i class="fas fa-sign-in-alt"></i> Sign In
+                    </button>
+                </form>
+
             </div>
 
-            <!-- Portal Badge -->
-            <div class="portal-badge" id="portalBadge">
-                <i class="fas fa-shield-alt"></i> Loading...
-            </div>
-
-            <div class="subtitle" id="portalSubtitle">Enter your credentials to continue</div>
-
-            <!-- Messages -->
-            <div id="errorMsg" class="error-msg"></div>
-            <div id="infoMsg" class="info-msg"></div>
-
-            <!-- Login Form -->
-            <form id="loginForm">
-                <div class="form-group">
-                    <label><i class="fas fa-user"></i> Username</label>
-                    <input type="text" id="username" placeholder="Enter your username" required autocomplete="off">
-                </div>
-
-                <div class="form-group">
-                    <label><i class="fas fa-lock"></i> Password</label>
-                    <input type="password" id="password" placeholder="Enter your password" required>
-                </div>
-
-                <div class="form-group twofa-group" id="twofaGroup">
-                    <label><i class="fas fa-key"></i> 2FA Secret Code</label>
-                    <input type="password" id="twofaCode" placeholder="Enter your 2FA secret code">
-                </div>
-
-                <button type="submit" class="login-btn" id="loginBtn">
-                    <i class="fas fa-sign-in-alt"></i> Sign In
-                </button>
-            </form>
-
-            <!-- Footer -->
+            <!-- ============================================================
+                 FOOTER
+                 ============================================================ -->
             <div class="login-footer">
                 <div class="company">
                     <strong>AKINEX SWOP</strong> &mdash; Smart Warehouse Operations Platform
@@ -618,6 +663,9 @@
         </div>
 
     </div>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <script>
         const API_URL = 'https://warehouse-backend-new-u9rq.onrender.com/api';
@@ -654,10 +702,8 @@
             applyTheme(newTheme);
         }
 
-        // Initialize
         applyTheme(getCurrentTheme());
 
-        // Listen for system changes (only if user hasn't saved preference)
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
             const saved = localStorage.getItem('theme');
             if (!saved) {
@@ -665,7 +711,9 @@
             }
         });
         
-        // Determine which portal we are trying to access
+        // ============================================================
+        // PORTAL DETECTION
+        // ============================================================
         const urlParams = new URLSearchParams(window.location.search);
         const redirectParam = urlParams.get('redirect');
         
@@ -684,7 +732,6 @@
             }
         }
         
-        // Update UI based on portal
         const portalBadge = document.getElementById('portalBadge');
         const portalSubtitle = document.getElementById('portalSubtitle');
         
@@ -705,6 +752,9 @@
                 portalSubtitle.innerHTML = 'Enter your credentials to start selling';
         }
         
+        // ============================================================
+        // LOGIN SUBMIT
+        // ============================================================
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -718,7 +768,6 @@
             errorDiv.style.display = 'none';
             infoDiv.style.display = 'none';
             
-            // If we're in 2FA mode, handle 2FA verification
             if (isTwoFAMode) {
                 if (!twofaCode) {
                     errorDiv.textContent = '⚠️ Please enter your 2FA secret code';
@@ -761,7 +810,6 @@
                 return;
             }
             
-            // Normal login flow
             try {
                 loginBtn.disabled = true;
                 loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
@@ -782,7 +830,6 @@
                     return;
                 }
                 
-                // Check if 2FA is required (ONLY for super_admin)
                 if (data.requiresTwoFA && data.sessionId) {
                     isTwoFAMode = true;
                     twofaSessionId = data.sessionId;
@@ -794,7 +841,6 @@
                     return;
                 }
                 
-                // No 2FA required - complete login
                 if (data.token) {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('user', JSON.stringify(data.user));
@@ -809,7 +855,9 @@
             }
         });
         
-        // Register Service Worker for PWA
+        // ============================================================
+        // PWA SERVICE WORKER
+        // ============================================================
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
