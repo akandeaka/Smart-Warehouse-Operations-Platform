@@ -270,7 +270,7 @@
         }
 
         /* ============================================================
-           FORM - EMPTY INPUT FIELDS
+           FORM - BLANK INPUT FIELDS (NO PLACEHOLDER)
            ============================================================ */
         .form-group {
             margin-bottom: 16px;
@@ -308,11 +308,6 @@
             border-color: var(--brand-secondary);
             box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.12);
             background: var(--bg-card);
-        }
-
-        .form-group input::placeholder {
-            color: var(--text-muted);
-            opacity: 0.6;
         }
 
         /* Password Wrapper */
@@ -647,21 +642,21 @@
             <div id="infoMsg" class="message info"></div>
 
             <!-- ============================================================
-                 LOGIN FORM - EMPTY INPUT FIELDS
+                 LOGIN FORM - BLANK INPUT FIELDS (NO PLACEHOLDER)
                  ============================================================ -->
             <form id="loginForm" novalidate>
 
-                <!-- Username - Empty -->
+                <!-- Username - Completely Blank -->
                 <div class="form-group">
                     <label><i class="fas fa-user"></i> Username</label>
-                    <input type="text" id="username" placeholder="Enter your username" autocomplete="off" required>
+                    <input type="text" id="username" autocomplete="off" required>
                 </div>
 
-                <!-- Password - Empty -->
+                <!-- Password - Completely Blank -->
                 <div class="form-group">
                     <label><i class="fas fa-lock"></i> Password</label>
                     <div class="password-wrapper">
-                        <input type="password" id="password" placeholder="Enter your password" required>
+                        <input type="password" id="password" required>
                         <button type="button" class="eye-btn" id="togglePassword" aria-label="Toggle password visibility">
                             <i class="fas fa-eye"></i>
                         </button>
@@ -671,7 +666,7 @@
                 <!-- 2FA (Hidden by default) -->
                 <div class="form-group twofa-group" id="twofaGroup">
                     <label><i class="fas fa-key"></i> 2FA Secret Code</label>
-                    <input type="password" id="twofaCode" placeholder="Enter your 2FA secret code">
+                    <input type="password" id="twofaCode">
                 </div>
 
                 <!-- Submit Button -->
