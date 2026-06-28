@@ -140,10 +140,10 @@
         }
 
         /* ============================================================
-           LOGO IMAGE - IMGUR URL
+           LOGO IMAGE - SMALL VERSION
            ============================================================ */
         .logo-image {
-            max-width: 160px;
+            max-width: 100px;  /* REDUCED - Small logo */
             height: auto;
             display: block;
         }
@@ -155,17 +155,17 @@
         }
 
         .logo-fallback .logo-main {
-            font-size: 22px;
+            font-size: 18px;  /* Smaller fallback text */
             font-weight: 900;
-            letter-spacing: 4px;
+            letter-spacing: 3px;
             color: var(--text-primary);
             text-transform: uppercase;
         }
 
         .logo-fallback .logo-sub {
-            font-size: 9px;
+            font-size: 8px;
             font-weight: 600;
-            letter-spacing: 6px;
+            letter-spacing: 5px;
             color: var(--text-muted);
             text-transform: uppercase;
             margin-top: 1px;
@@ -505,7 +505,7 @@
             }
 
             .logo-image {
-                max-width: 130px;
+                max-width: 80px;  /* Even smaller on mobile */
             }
 
             .welcome h2 {
@@ -540,7 +540,7 @@
             }
 
             .logo-image {
-                max-width: 110px;
+                max-width: 70px;
             }
 
             .welcome h2 {
@@ -603,17 +603,17 @@
         <div class="login-card">
 
             <!-- ============================================================
-                 HEADER - LOGO (IMGUR) + THEME TOGGLE
+                 HEADER - SMALL LOGO + THEME TOGGLE
                  ============================================================ -->
             <div class="card-header">
 
-                <!-- ✅ LOGO FROM IMGUR -->
+                <!-- ✅ SMALL LOGO FROM IMGUR -->
                 <img src="https://i.imgur.com/PNshPOV.jpeg" 
                      alt="AKINEX TECHNOLOGIES" 
                      class="logo-image"
                      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
 
-                <!-- Fallback text logo (shows if image fails) -->
+                <!-- Fallback text logo -->
                 <div class="logo-fallback">
                     <div class="logo-main">AKINEX</div>
                     <div class="logo-sub">TECHNOLOGIES</div>
