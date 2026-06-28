@@ -46,8 +46,6 @@
             --card-border: rgba(255, 255, 255, 0.3);
             --radius: 20px;
             --transition: 0.35s ease;
-            --logo-color: #1a1a2e;
-            --logo-sub-color: #666666;
         }
 
         /* ============================================================
@@ -72,8 +70,6 @@
             --info-bg: #1a2a4a;
             --info-text: #8ab4f8;
             --card-border: rgba(255, 255, 255, 0.08);
-            --logo-color: #ffffff;
-            --logo-sub-color: rgba(255, 255, 255, 0.6);
         }
 
         /* ============================================================
@@ -138,7 +134,7 @@
         }
 
         /* ============================================================
-           HEADER - LOGO + THEME TOGGLE
+           HEADER - LOGO IMAGE + THEME TOGGLE
            ============================================================ */
         .card-header {
             display: flex;
@@ -147,32 +143,17 @@
             margin-bottom: 20px;
         }
 
-        .card-header .logo-section {
-            display: flex;
-            flex-direction: column;
-            line-height: 1;
+        /* ============================================================
+           LOGO IMAGE - YOUR ACTUAL LOGO
+           ============================================================ */
+        .logo-image {
+            max-width: 160px;
+            height: auto;
+            display: block;
         }
 
-        .card-header .logo-main {
-            font-size: 22px;
-            font-weight: 900;
-            letter-spacing: 4px;
-            color: var(--logo-color);
-            text-transform: uppercase;
-            transition: color 0.3s ease;
-        }
-
-        .card-header .logo-sub {
-            font-size: 9px;
-            font-weight: 600;
-            letter-spacing: 6px;
-            color: var(--logo-sub-color);
-            text-transform: uppercase;
-            margin-top: 1px;
-            transition: color 0.3s ease;
-        }
-
-        .card-header .theme-toggle {
+        /* Theme Toggle */
+        .theme-toggle {
             background: transparent;
             border: 1px solid var(--border-color);
             cursor: pointer;
@@ -186,7 +167,7 @@
             flex-shrink: 0;
         }
 
-        .card-header .theme-toggle:hover {
+        .theme-toggle:hover {
             background: var(--border-color);
             opacity: 0.8;
         }
@@ -220,11 +201,9 @@
             text-align: center;
             margin-bottom: 20px;
             padding: 8px 16px;
-            background: var(--border-color);
             border-radius: 50px;
             font-size: 13px;
             font-weight: 600;
-            color: var(--text-primary);
             transition: background 0.3s ease, color 0.3s ease;
             display: inline-block;
             width: 100%;
@@ -506,14 +485,8 @@
                 border-radius: 16px;
             }
 
-            .card-header .logo-main {
-                font-size: 18px;
-                letter-spacing: 3px;
-            }
-
-            .card-header .logo-sub {
-                font-size: 8px;
-                letter-spacing: 4px;
+            .logo-image {
+                max-width: 130px;
             }
 
             .welcome h2 {
@@ -547,14 +520,8 @@
                 padding: 25px 16px 20px 16px;
             }
 
-            .card-header .logo-main {
-                font-size: 16px;
-                letter-spacing: 2px;
-            }
-
-            .card-header .logo-sub {
-                font-size: 7px;
-                letter-spacing: 3px;
+            .logo-image {
+                max-width: 110px;
             }
 
             .welcome h2 {
@@ -617,14 +584,12 @@
         <div class="login-card">
 
             <!-- ============================================================
-                 HEADER - LOGO TOP LEFT + THEME TOGGLE TOP RIGHT
+                 HEADER - YOUR ACTUAL LOGO IMAGE + THEME TOGGLE
                  ============================================================ -->
             <div class="card-header">
 
-                <div class="logo-section">
-                    <div class="logo-main">AKINEX</div>
-                    <div class="logo-sub">TECHNOLOGIES</div>
-                </div>
+                <!-- ✅ YOUR ACTUAL LOGO IMAGE -->
+                <img src="assets/images/akinex-logo.png" alt="AKINEX TECHNOLOGIES" class="logo-image">
 
                 <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
                     <span id="themeIcon">🌙</span>
