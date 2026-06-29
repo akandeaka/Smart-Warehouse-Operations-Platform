@@ -1,4 +1,5 @@
-# 🏭 Warehouse Stock Management System
+# 🏭 Smart-Warehouse-Operations-Platform
+
 
 A complete Progressive Web App (PWA) for managing warehouse inventory, sales team allocations, credit approvals, and daily reporting. Designed for Coca-Cola distribution operations.
 
