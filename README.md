@@ -1,173 +1,321 @@
-# 🏭 Smart-Warehouse-Operations-Platform
+# 📦 Smart Warehouse Operations Platform (SWOP)
 
+### Engineering Smarter Business Operations
 
-A complete Progressive Web App (PWA) for managing warehouse inventory, sales team allocations, credit approvals, and daily reporting. Designed for Coca-Cola distribution operations.
+> **An enterprise-grade warehouse operations platform designed to help businesses improve inventory accuracy, streamline warehouse processes, strengthen accountability, and make data-driven decisions through intelligent automation and real-time operational visibility.**
 
-## 🌐 Live Demo
-
-**Live URL:** [https://warehouse-backend-new-u9rq.onrender.com](https://warehouse-backend-new-u9rq.onrender.com)
-
----
-
-## 📋 Table of Contents
-
-- [Overview](#overview)
-- [Features](#features)
-- [Technology Stack](#technology-stack)
-- [System Architecture](#system-architecture)
-- [Installation](#installation)
-- [Database Setup](#database-setup)
-- [Configuration](#configuration)
-- [Deployment](#deployment)
-- [API Endpoints](#api-endpoints)
-- [User Roles](#user-roles)
-- [Screenshots](#screenshots)
-- [Contributing](#contributing)
-- [License](#license)
+![Status](https://img.shields.io/badge/Status-Active%20Development-success)
+![Node.js](https://img.shields.io/badge/Backend-Node.js-green)
+![MySQL](https://img.shields.io/badge/Database-MySQL-blue)
+![License](https://img.shields.io/badge/License-MIT-orange)
 
 ---
 
-## 📖 Overview
+# 🌍 Product Vision
 
-The **Warehouse Stock Management System** is a full-featured inventory management solution designed for Coca-Cola warehouse distribution operations. It provides real-time stock tracking, sales team allocation, credit management, and comprehensive reporting.
-
-### Key Capabilities
-
-- **Multi-role Access:** Super Admin, Warehouse Manager, and Sales Team
-- **Real-time Stock Tracking:** Monitor inventory levels across multiple sales teams
-- **Credit Management:** Full approval workflow with payment tracking
-- **Returns Tracking:** Monitor unsold goods and return rates by team
-- **Mobile Ready:** Install as PWA on Android devices
-- **Multiple Batch Submissions:** Submit sales multiple times per day
+To become a trusted digital platform that transforms warehouse operations by replacing manual inventory management with intelligent, secure, and transparent business processes.
 
 ---
 
-## 🚀 Features
+# 🎯 Product Mission
 
-### Super Admin
-- ✅ Full system control
-- ✅ Product management (CRUD + Excel upload)
-- ✅ User management (create, reset passwords, deactivate)
-- ✅ System statistics
-- ✅ 2-Factor Authentication
-
-### Warehouse Manager
-- ✅ Allocate stock to sales teams
-- ✅ View current stock levels
-- ✅ Approve/reject credit requests
-- ✅ Accept/reject returned goods
-- ✅ View daily sales reports
-- ✅ Close day operations
-- ✅ Returns tracking by team
-
-### Sales Team
-- ✅ View allocated stock
-- ✅ Confirm receipt of goods
-- ✅ Record sales (Cash, Bank Transfer, Credit)
-- ✅ Submit day sales (multiple batches)
-- ✅ Track credit requests and payments
-- ✅ View transaction history
-- ✅ Download CSV reports
-
-### PWA Support
-- ✅ Installable on mobile devices
-- ✅ Offline caching
-- ✅ Apple and Android support
-- ✅ Home screen icon
-
-###Technology Stack Overview 1
-| **Layer**                        | **Technology**                    | **Version**     |
-| -------------------------------- | --------------------------------- | --------------- |
-| **Backend Runtime**              | Node.js                           | v18+            |
-| **Backend Framework**            | Express.js                        | v4.18.2         |
-| **Database**                     | MySQL (Aiven Cloud)               | v8.0            |
-| **Database Driver**              | mysql2                            | v3.6.0          |
-| **File Upload Management**       | Multer                            | v1.4.5          |
-| **Excel File Processing**        | SheetJS (xlsx)                    | v0.18.5         |
-| **Frontend**                     | HTML5, CSS3, Vanilla JavaScript   | Latest          |
-| **Progressive Web App (PWA)**    | Web App Manifest & Service Worker | Latest          |
-| **Cloud Hosting Platform**       | Render.com                        | Managed Service |
-| **Version Control & Repository** | GitHub                            | Latest          |
-
-### Technology Stack Overview
-
-* **Node.js (v18+)** powers the server-side application and API services.
-* **Express.js (v4.18.2)** provides a lightweight and scalable web application framework.
-* **MySQL (v8.0)** hosted on **Aiven Cloud** serves as the primary relational database.
-* **mysql2 (v3.6.0)** enables efficient communication between Node.js and MySQL.
-* **Multer (v1.4.5)** handles file uploads such as images, documents, and spreadsheets.
-* **SheetJS (xlsx v0.18.5)** processes Excel files for data import and export functionality.
-* **HTML5, CSS3, and Vanilla JavaScript** provide a responsive and lightweight frontend experience.
-* **PWA technologies** (Manifest and Service Worker) enable offline access and app-like functionality.
-* **Render.com** hosts and deploys the application in the cloud.
-* **GitHub** is used for source code management, version control, and collaboration.
+To empower businesses with real-time inventory visibility, intelligent sales monitoring, automated warehouse operations, and actionable business insights that improve operational efficiency and strengthen decision-making.
 
 ---
 
+# 💡 Why SWOP Was Built
 
-## 🏗️ System Architecture
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ CLIENT LAYER │
-│ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │
-│ │ Login │ │ Super │ │ Manager │ │ Sales │ │
-│ │ Page │ │ Admin │ │ Dashboard │ │ Dashboard │ │
-│ └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ │
-│ │
-│ ┌─────────────────────────────────────────────────────────────────────┐ │
-│ │ Service Worker (sw.js) │ │
-│ └─────────────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────────┘
-│
-▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ SERVER LAYER │
-│ ┌─────────────────────────────────────────────────────────────────────┐ │
-│ │ Express.js Application │ │
-│ │ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ │ │
-│ │ │ Auth │ │ Product │ │ Sales │ │ │
-│ │ │ Middleware │ │ Routes │ │ Routes │ │ │
-│ │ └─────────────┘ └─────────────┘ └─────────────┘ │ │
-│ └─────────────────────────────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────────┘
-│
-▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│ DATABASE LAYER │
-│ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐ │
-│ │ users │ │products │ │ sales_ │ │ sales_ │ │ credit_ │ │
-│ │ │ │ │ │ orders │ │ teams │ │approvals│ │
-│ └─────────┘ └─────────┘ └─────────┘ └─────────┘ └─────────┘ │
-└─────────────────────────────────────────────────────────────────────────────┘
+Sometimes innovation begins by observing a real business challenge.
 
-text
+During a visit to a warehouse operated by a former banking executive, I observed how daily operations relied heavily on spreadsheets, paper registers, and manual stock reconciliation.
+
+Although the business was growing, the warehouse team faced several operational challenges:
+
+- Manual inventory reconciliation
+- Late-night stock balancing
+- Limited visibility into daily warehouse activities
+- Difficulty tracking inventory movement
+- Sales monitoring challenges
+- Risk of inventory discrepancies
+- Time-consuming reporting processes
+
+Having spent over seven years supporting enterprise banking systems where accuracy, accountability, and real-time information are critical, I realized these same operational principles could significantly improve warehouse management.
+
+That experience inspired the development of the **Smart Warehouse Operations Platform (SWOP)**.
 
 ---
 
-## 📦 Installation
+# 🚨 Business Challenges
 
-### Prerequisites
+Many growing businesses continue to rely on manual warehouse processes that create operational inefficiencies.
 
-- Node.js (v16+)
-- MySQL database (Aiven, AWS RDS, or local)
-- GitHub account
-- Render.com account (free tier works)
+### Inventory Inaccuracy
 
-### Local Development Setup
+Manual stock reconciliation often leads to discrepancies between physical inventory and recorded stock.
+
+### Delayed Decision Making
+
+Management lacks immediate access to accurate operational information.
+
+### Limited Accountability
+
+Without detailed audit trails, tracking inventory movement becomes difficult.
+
+### Inefficient Reporting
+
+Generating operational reports requires significant manual effort.
+
+### Operational Risk
+
+Manual processes increase the likelihood of stock losses, duplicate records, and human error.
+
+---
+
+# 🚀 The SWOP Solution
+
+SWOP digitizes warehouse operations by integrating inventory management, sales monitoring, reporting, and business intelligence into a single secure platform.
+
+The platform enables organizations to:
+
+- Monitor inventory in real time
+- Record and track warehouse transactions
+- Improve stock accuracy
+- Monitor sales performance
+- Generate operational reports
+- Strengthen accountability through user-based activities
+- Support better business decisions using live operational data
+
+---
+
+# ✨ Core Business Modules
+
+## 📦 Inventory Management
+
+- Product Registration
+- Stock Updates
+- Inventory Adjustments
+- Category Management
+- Stock Availability Monitoring
+
+---
+
+## 💰 Sales Management
+
+- Sales Recording
+- Sales History
+- Daily Sales Tracking
+- Customer Transactions
+
+---
+
+## 📊 Executive Dashboard
+
+- Inventory Overview
+- Sales Summary
+- Operational Statistics
+- Performance Indicators
+
+---
+
+## 👥 User Management
+
+- User Registration
+- Role-Based Access
+- Permission Management
+
+---
+
+## 🔐 Security
+
+- Secure Authentication
+- Session Management
+- User Authorization
+- Protected Business Data
+
+---
+
+## 📈 Reporting & Analytics
+
+- Sales Reports
+- Inventory Reports
+- Stock Movement Analysis
+- Operational Performance Monitoring
+
+---
+
+# 📊 Business Benefits
+
+SWOP delivers measurable improvements to warehouse operations by helping organizations:
+
+✅ Improve inventory accuracy
+
+✅ Reduce manual reconciliation
+
+✅ Increase operational transparency
+
+✅ Strengthen accountability
+
+✅ Improve reporting speed
+
+✅ Enhance decision-making
+
+✅ Support business growth
+
+---
+
+# 🛠 Technology Stack
+
+## Backend
+
+- Node.js
+- Express.js
+
+## Frontend
+
+- HTML5
+- CSS3
+- JavaScript
+
+## Database
+
+- MySQL
+
+## Version Control
+
+- Git
+- GitHub
+
+---
+
+# 🏗 System Architecture
+
+```
+Warehouse Users
+
+        │
+
+        ▼
+
+Frontend (HTML/CSS/JavaScript)
+
+        │
+
+        ▼
+
+Node.js + Express API
+
+        │
+
+        ▼
+
+MySQL Database
+
+        │
+
+        ▼
+
+Business Reports & Dashboard
+```
+
+---
+
+# 🔒 Security Features
+
+- User Authentication
+- Role-Based Authorization
+- Secure Session Management
+- Protected Database Access
+- Input Validation
+- Data Integrity Controls
+
+---
+
+# 📷 Screenshots
+
+> Screenshots of the application interface will be added here.
+
+- Login Page
+- Dashboard
+- Inventory Module
+- Sales Module
+- Reports
+- User Management
+
+---
+
+# 🚀 Installation
 
 ```bash
-# Clone repository
-git clone https://github.com/your-username/Warehouse-Stock-Balancing-System.git
-cd Warehouse-Stock-Balancing-System
+git clone https://github.com/akandeaka/Smart-Warehouse-Operations-Platform.git
+```
 
-# Install dependencies
+```bash
+cd Smart-Warehouse-Operations-Platform
+```
+
+```bash
 npm install
+```
 
-# Create .env file
-cat > .env << EOF
-DB_HOST=your-database-host
-DB_USER=your-database-user
-DB_PASSWORD=your-database-password
-DB_NAME=your-database-name
-PORT=3000
-EOF
+Configure your MySQL database and update the environment variables.
 
+```bash
+npm start
+```
+
+---
+
+# 🔮 Future Roadmap
+
+The platform is actively evolving with planned enhancements including:
+
+- Barcode Integration
+- QR Code Support
+- Mobile Application
+- AI Inventory Forecasting
+- Low Stock Alerts
+- Purchase Order Management
+- Supplier Management
+- Multi-Warehouse Support
+- Business Intelligence Dashboard
+- Cloud Deployment
+- REST API
+- Data Backup & Recovery
+
+---
+
+# 👨‍💻 About the Developer
+
+**Akande Akinpelu**
+
+Enterprise IT Professional | Business Systems Developer | Cybersecurity | AI & Automation
+
+With over seven years of Enterprise IT experience, I build trusted digital platforms that improve operational efficiency, strengthen accountability, and help businesses make better decisions through intelligent technology.
+
+My work combines business operations, software engineering, cybersecurity, and automation to solve real-world operational challenges.
+
+---
+
+# 🤝 Connect With Me
+
+**LinkedIn**
+
+https://linkedin.com/in/akande-akinpelu
+
+**GitHub**
+
+https://github.com/akandeaka
+
+---
+
+# 📄 License
+
+This project is licensed under the MIT License.
+
+---
+
+## ⭐ Project Philosophy
+
+> **Technology should do more than automate business processes—it should build trust.**
+
+Every feature within the Smart Warehouse Operations Platform is designed to improve transparency, accountability, operational efficiency, and business growth through intelligent digital transformation.
