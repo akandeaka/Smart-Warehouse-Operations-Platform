@@ -1,4 +1,8 @@
-const db = require('../config/database');
+// ============================================================
+// DriverSettlement Model - Corrected Path
+// ============================================================
+
+const db = require('../database');  // ✅ Fixed path
 
 class DriverSettlement {
     // Create a new settlement
@@ -78,7 +82,7 @@ class DriverSettlement {
 
                 // Update product stock (add returned goods back)
                 await connection.query(
-                    'UPDATE products SET current_stock = current_stock + ? WHERE id = ?',
+                    'UPDATE products SET current_qty = current_qty + ? WHERE id = ?',
                     [item.quantity_returned, item.product_id]
                 );
             }
