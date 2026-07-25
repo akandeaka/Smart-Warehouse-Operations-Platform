@@ -1,4 +1,7 @@
-// server.js - Complete Backend with RBAC, 2FA, and PWA Support
+// ============================================================
+// server.js - Complete Backend with RBAC, 2FA, PWA, and DRIVERS
+// ============================================================
+
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
@@ -9,10 +12,15 @@ const xlsx = require('xlsx');
 
 const { pool, testConnection } = require('./database');
 
+// ============================================================
+// CREATE APP - ONLY ONCE
+// ============================================================
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// ============================================================
+// MIDDLEWARE
+// ============================================================
 app.use(cors());
 app.use(express.json());
 
@@ -205,6 +213,10 @@ app.post('/api/auth/login-portal', async (req, res) => {
                 roleMatch = (user.role === 'sales_rep');
                 redirectUrl = '/sales-dashboard.html';
                 break;
+            case 'reconciliation':
+                roleMatch = (user.role === 'reconciliation');
+                redirectUrl = '/reconciliation-dashboard.html';
+                break;
             default:
                 return res.status(400).json({ success: false, message: 'Invalid portal' });
         }
@@ -313,6 +325,7 @@ app.get('/api/auth/validate-portal', async (req, res) => {
             case 'super-admin': roleMatch = (user.role === 'super_admin'); break;
             case 'manager': roleMatch = (user.role === 'warehouse_manager'); break;
             case 'sales': roleMatch = (user.role === 'sales_rep'); break;
+            case 'reconciliation': roleMatch = (user.role === 'reconciliation'); break;
             default: roleMatch = false;
         }
         
@@ -725,7 +738,7 @@ app.post('/api/approvals/reject', authMiddleware, requireRole(['warehouse_manage
 });
 
 // ============================================================
-// MARK CREDIT AS PAID (ONLY ONE COPY - KEEP THIS)
+// MARK CREDIT AS PAID
 // ============================================================
 app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
     let connection;
@@ -842,6 +855,7 @@ app.post('/api/credit/mark-paid', authMiddleware, async (req, res) => {
         if (connection) connection.release();
     }
 });
+
 // ============================================================
 // SUBMIT DAY SALES
 // ============================================================
@@ -913,6 +927,7 @@ app.post('/api/sales/submit-day', authMiddleware, async (req, res) => {
         if (connection) connection.release();
     }
 });
+
 // ============================================================
 // PENDING RETURNS
 // ============================================================
@@ -1567,23 +1582,324 @@ app.get('/api/manager/product-performance', authMiddleware, requireRole(['wareho
 });
 
 // ============================================================
-// START SERVER
+// 🚛 DRIVER MODULE ROUTES (NEW - ADDED HERE)
+// ============================================================
+
+// Import driver models
+const Driver = require('./models/Driver');
+const DriverAssignment = require('./models/DriverAssignment');
+const DriverSettlement = require('./models/DriverSettlement');
+
+// ============================================================
+// DRIVER MANAGEMENT ROUTES
+// ============================================================
+
+// Get all drivers
+app.get('/api/drivers', authMiddleware, async (req, res) => {
+    try {
+        const drivers = await Driver.getAll(req.query);
+        res.json({ success: true, data: drivers });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Get driver by ID
+app.get('/api/drivers/:id', authMiddleware, async (req, res) => {
+    try {
+        const driver = await Driver.getById(req.params.id);
+        if (!driver) {
+            return res.status(404).json({ success: false, message: 'Driver not found' });
+        }
+        res.json({ success: true, data: driver });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Create new driver
+app.post('/api/drivers', authMiddleware, requireRole(['warehouse_manager', 'super_admin']), async (req, res) => {
+    try {
+        const driverData = {
+            ...req.body,
+            created_by: req.user.id
+        };
+        const driverId = await Driver.create(driverData);
+        res.status(201).json({ 
+            success: true, 
+            message: 'Driver created successfully',
+            data: { id: driverId }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Update driver
+app.put('/api/drivers/:id', authMiddleware, requireRole(['warehouse_manager', 'super_admin']), async (req, res) => {
+    try {
+        const updated = await Driver.update(req.params.id, req.body);
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Driver not found' });
+        }
+        res.json({ success: true, message: 'Driver updated successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Delete driver
+app.delete('/api/drivers/:id', authMiddleware, requireRole(['warehouse_manager', 'super_admin']), async (req, res) => {
+    try {
+        const deleted = await Driver.delete(req.params.id);
+        if (!deleted) {
+            return res.status(404).json({ success: false, message: 'Driver not found' });
+        }
+        res.json({ success: true, message: 'Driver deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Get driver assignments
+app.get('/api/drivers/:id/assignments', authMiddleware, async (req, res) => {
+    try {
+        const assignments = await Driver.getAssignments(req.params.id);
+        res.json({ success: true, data: assignments });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================================
+// DRIVER ASSIGNMENT ROUTES
+// ============================================================
+
+// Get all assignments
+app.get('/api/drivers/assignments', authMiddleware, async (req, res) => {
+    try {
+        const assignments = await DriverAssignment.getAll(req.query);
+        res.json({ success: true, data: assignments });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Get pending settlements
+app.get('/api/drivers/assignments/pending', authMiddleware, async (req, res) => {
+    try {
+        const pending = await DriverAssignment.getPendingSettlements();
+        res.json({ success: true, data: pending });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Get assignment by ID
+app.get('/api/drivers/assignments/:id', authMiddleware, async (req, res) => {
+    try {
+        const assignment = await DriverAssignment.getById(req.params.id);
+        if (!assignment) {
+            return res.status(404).json({ success: false, message: 'Assignment not found' });
+        }
+        res.json({ success: true, data: assignment });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Create new assignment
+app.post('/api/drivers/assignments', authMiddleware, requireRole(['warehouse_manager', 'super_admin']), async (req, res) => {
+    try {
+        const assignmentData = {
+            ...req.body,
+            manifest_number: DriverAssignment.generateManifestNumber(),
+            assignment_date: new Date().toISOString().slice(0, 10),
+            created_by: req.user.id
+        };
+        
+        const assignmentId = await DriverAssignment.create(assignmentData);
+        res.status(201).json({ 
+            success: true, 
+            message: 'Assignment created successfully',
+            data: { id: assignmentId, manifest_number: assignmentData.manifest_number }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Update assignment status (returned)
+app.put('/api/drivers/assignments/:id/return', authMiddleware, requireRole(['warehouse_manager', 'super_admin']), async (req, res) => {
+    try {
+        const updated = await DriverAssignment.updateStatus(req.params.id, 'returned', req.body.notes);
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Assignment not found' });
+        }
+        res.json({ success: true, message: 'Driver return recorded successfully' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================================
+// DRIVER SETTLEMENT ROUTES
+// ============================================================
+
+// Get all settlements
+app.get('/api/drivers/settlements', authMiddleware, async (req, res) => {
+    try {
+        const settlements = await DriverSettlement.getAll(req.query);
+        res.json({ success: true, data: settlements });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Get settlement by ID
+app.get('/api/drivers/settlements/:id', authMiddleware, async (req, res) => {
+    try {
+        const settlement = await DriverSettlement.getById(req.params.id);
+        if (!settlement) {
+            return res.status(404).json({ success: false, message: 'Settlement not found' });
+        }
+        res.json({ success: true, data: settlement });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Create new settlement
+app.post('/api/drivers/settlements', authMiddleware, requireRole(['warehouse_manager', 'reconciliation', 'super_admin']), async (req, res) => {
+    try {
+        const settlementData = {
+            ...req.body,
+            settled_by: req.user.id
+        };
+        
+        const settlementId = await DriverSettlement.create(settlementData);
+        res.status(201).json({ 
+            success: true, 
+            message: 'Settlement completed successfully',
+            data: { id: settlementId }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Update settlement status
+app.put('/api/drivers/settlements/:id/status', authMiddleware, requireRole(['warehouse_manager', 'super_admin']), async (req, res) => {
+    try {
+        const { status, resolution_notes } = req.body;
+        const updated = await DriverSettlement.updateStatus(req.params.id, status, resolution_notes);
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Settlement not found' });
+        }
+        res.json({ success: true, message: 'Settlement status updated' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Get daily settlement summary
+app.get('/api/drivers/settlements/summary/daily', authMiddleware, async (req, res) => {
+    try {
+        const date = req.query.date || new Date().toISOString().slice(0, 10);
+        const summary = await DriverSettlement.getDailySummary(date);
+        res.json({ success: true, data: summary });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================================
+// HTML ROUTES (For serving pages)
+// ============================================================
+
+// Serve manager dashboard
+app.get('/manager-dashboard.html', (req, res) => {
+    if (frontendPath) {
+        const filePath = path.join(frontendPath, 'manager-dashboard.html');
+        if (fs.existsSync(filePath)) {
+            res.sendFile(filePath);
+        } else {
+            res.status(404).send('manager-dashboard.html not found');
+        }
+    } else {
+        res.status(500).send('Frontend directory not configured');
+    }
+});
+
+// Serve sales dashboard
+app.get('/sales-dashboard.html', (req, res) => {
+    if (frontendPath) {
+        const filePath = path.join(frontendPath, 'sales-dashboard.html');
+        if (fs.existsSync(filePath)) {
+            res.sendFile(filePath);
+        } else {
+            res.status(404).send('sales-dashboard.html not found');
+        }
+    } else {
+        res.status(500).send('Frontend directory not configured');
+    }
+});
+
+// Serve reconciliation dashboard (NEW)
+app.get('/reconciliation-dashboard.html', (req, res) => {
+    if (frontendPath) {
+        const filePath = path.join(frontendPath, 'reconciliation-dashboard.html');
+        if (fs.existsSync(filePath)) {
+            res.sendFile(filePath);
+        } else {
+            res.status(404).send('reconciliation-dashboard.html not found');
+        }
+    } else {
+        res.status(500).send('Frontend directory not configured');
+    }
+});
+
+// Serve driver management page (NEW)
+app.get('/driver-management.html', (req, res) => {
+    if (frontendPath) {
+        const filePath = path.join(frontendPath, 'driver-management.html');
+        if (fs.existsSync(filePath)) {
+            res.sendFile(filePath);
+        } else {
+            res.status(404).send('driver-management.html not found');
+        }
+    } else {
+        res.status(500).send('Frontend directory not configured');
+    }
+});
+
+// ============================================================
+// START SERVER - ONLY ONCE
 // ============================================================
 async function startServer() {
-    console.log('Testing database connection...');
+    console.log('🔄 Testing database connection...');
     const dbConnected = await testConnection();
     
     if (dbConnected) {
-        console.log('Database connected. Starting server...');
+        console.log('✅ Database connected. Starting server...');
     } else {
-        console.log('Database connection failed. Starting server with limited functionality...');
+        console.log('⚠️ Database connection failed. Starting server with limited functionality...');
     }
     
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`✅ Server running on port ${PORT}`);
         console.log(`📱 App URL: http://localhost:${PORT}`);
         console.log(`💚 Health check: http://localhost:${PORT}/health`);
+        console.log(`📊 Manager Dashboard: http://localhost:${PORT}/manager-dashboard.html`);
+        console.log(`👨‍✈️ Driver Management: http://localhost:${PORT}/driver-management.html`);
+        console.log(`💰 Reconciliation: http://localhost:${PORT}/reconciliation-dashboard.html`);
+        console.log(`🛒 Sales Dashboard: http://localhost:${PORT}/sales-dashboard.html`);
     });
 }
 
 startServer();
+
+// ============================================================
+// EXPORT APP (For testing)
+// ============================================================
+module.exports = app;
