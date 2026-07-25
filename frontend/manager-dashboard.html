@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>AKINEX SWOP - Manager Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -13,6 +13,14 @@
     <meta name="apple-mobile-web-app-title" content="AKINEX SWOP">
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
     <meta name="theme-color" content="#F40009">
+
+    <!-- ====== ADDED: Additional PWA Meta Tags ====== -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="AKINEX SWOP Manager">
+    <meta name="msapplication-TileColor" content="#F40009">
+    <meta name="msapplication-TileImage" content="/icons/icon-144.png">
+    <script src="/js/pwa.js" defer></script>
+    <!-- =========================================== -->
     
     <style>
         /* ============================================================
@@ -630,6 +638,29 @@
 
         .table-wrapper {
             overflow-x: auto;
+        }
+
+        /* PWA Update Notification */
+        .pwa-update-notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #F40009;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-family: 'Segoe UI', sans-serif;
+            font-weight: 600;
+            z-index: 9999;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            cursor: pointer;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
 
         /* Footer */
@@ -1461,12 +1492,57 @@
             setTodayDate();
         }
 
+        // ============================================================
+        // PWA SERVICE WORKER (Enhanced)
+        // ============================================================
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('Service Worker registered:', reg))
-                    .catch(err => console.error('Service Worker registration failed:', err));
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                    .then(function(reg) {
+                        console.log('✅ Service Worker registered:', reg);
+                        
+                        // Check for updates
+                        reg.addEventListener('updatefound', function() {
+                            const newWorker = reg.installing;
+                            newWorker.addEventListener('statechange', function() {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    console.log('🔄 New version available!');
+                                    showUpdateNotification();
+                                }
+                            });
+                        });
+                    })
+                    .catch(function(err) {
+                        console.error('❌ Service Worker registration failed:', err);
+                    });
             });
+        }
+
+        // ============================================================
+        // PWA UPDATE NOTIFICATION
+        // ============================================================
+        function showUpdateNotification() {
+            // Check if notification already exists
+            if (document.querySelector('.pwa-update-notification')) return;
+            
+            const notification = document.createElement('div');
+            notification.className = 'pwa-update-notification';
+            notification.textContent = '🔄 New version available! Click to update.';
+            notification.onclick = function() {
+                window.location.reload();
+            };
+            document.body.appendChild(notification);
+            
+            // Auto-hide after 10 seconds
+            setTimeout(function() {
+                if (notification.parentNode) {
+                    notification.style.opacity = '0';
+                    notification.style.transition = 'opacity 0.5s';
+                    setTimeout(function() {
+                        if (notification.parentNode) notification.remove();
+                    }, 500);
+                }
+            }, 10000);
         }
     </script>
 </body>
