@@ -1,4 +1,8 @@
-const db = require('../config/database');
+// ============================================================
+// Driver Model - Corrected Path
+// ============================================================
+
+const db = require('../database');  // ✅ Fixed path
 
 class Driver {
     // Create a new driver
