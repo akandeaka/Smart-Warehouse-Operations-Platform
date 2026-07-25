@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline - Smart Warehouse</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #2d6a4f 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .offline-container {
+            background: white;
+            max-width: 500px;
+            width: 100%;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .offline-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #1a1a2e;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #6c757d;
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .status-dots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 20px 0;
+        }
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #dc3545;
+            animation: pulse 1.5s infinite;
+        }
+        .dot:nth-child(2) { animation-delay: 0.3s; }
+        .dot:nth-child(3) { animation-delay: 0.6s; }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.4; }
+            50% { transform: scale(1.3); opacity: 1; }
+        }
+        .btn-retry {
+            display: inline-block;
+            padding: 12px 40px;
+            background: #2d6a4f;
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: background 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+        .btn-retry:hover {
+            background: #1e4d3a;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .feature {
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .feature .icon { font-size: 30px; }
+        .feature .label { font-size: 12px; color: #6c757d; margin-top: 5px; }
+        .last-sync {
+            font-size: 13px;
+            color: #6c757d;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-icon">📡</div>
+        <h1>You're Offline</h1>
+        <p>Don't worry! You can still access previously loaded data. Connect to the internet to sync.</p>
+
+        <div class="status-dots">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <div class="icon">📦</div>
+                <div class="label">View Products</div>
+            </div>
+            <div class="feature">
+                <div class="icon">👨‍✈️</div>
+                <div class="label">Driver Data</div>
+            </div>
+            <div class="feature">
+                <div class="icon">📊</div>
+                <div class="label">Sales History</div>
+            </div>
+        </div>
+
+        <button class="btn-retry" onclick="retryConnection()">🔄 Retry Connection</button>
+        <div class="last-sync" id="lastSync">Last synced: Unknown</div>
+    </div>
+
+    <script>
+        function retryConnection() {
+            // Check if online
+            if (navigator.onLine) {
+                window.location.href = '/';
+            } else {
+                alert('Still offline. Please check your internet connection.');
+            }
+        }
+
+        // Update last sync time
+        const lastSync = localStorage.getItem('lastSyncTime');
+        if (lastSync) {
+            document.getElementById('lastSync').textContent = 
+                'Last synced: ' + new Date(parseInt(lastSync)).toLocaleString();
+        }
+
+        // Listen for online event
+        window.addEventListener('online', () => {
+            window.location.href = '/';
+        });
+    </script>
+</body>
+</html>
