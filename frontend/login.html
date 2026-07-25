@@ -13,6 +13,16 @@
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
     <meta name="theme-color" content="#0B2B5C">
 
+    <!-- ====== ADDED: Additional PWA Meta Tags ====== -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="AKINEX SWOP">
+    <meta name="msapplication-TileColor" content="#0B2B5C">
+    <meta name="msapplication-TileImage" content="/icons/icon-144.png">
+    
+    <!-- ====== ADDED: PWA Script ====== -->
+    <script src="/js/pwa.js" defer></script>
+    <!-- =========================================== -->
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1032,19 +1042,79 @@
             username.focus();
 
             // ============================================================
-            // 11. PWA SERVICE WORKER
+            // 11. PWA SERVICE WORKER (ENHANCED)
             // ============================================================
             if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                    navigator.serviceWorker.register('/sw.js')
+                    navigator.serviceWorker.register('/sw.js', { scope: '/' })
                         .then(function(reg) {
-                            console.log('Service Worker registered:', reg);
+                            console.log('✅ Service Worker registered:', reg);
+                            
+                            // Check for updates
+                            reg.addEventListener('updatefound', function() {
+                                const newWorker = reg.installing;
+                                newWorker.addEventListener('statechange', function() {
+                                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                        console.log('🔄 New version available!');
+                                        showUpdateNotification();
+                                    }
+                                });
+                            });
                         })
                         .catch(function(err) {
-                            console.error('Service Worker registration failed:', err);
+                            console.error('❌ Service Worker registration failed:', err);
                         });
                 });
             }
+
+            // ============================================================
+            // 12. PWA UPDATE NOTIFICATION
+            // ============================================================
+            function showUpdateNotification() {
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: #0B2B5C;
+                    color: white;
+                    padding: 12px 24px;
+                    border-radius: 10px;
+                    font-family: 'Poppins', sans-serif;
+                    font-weight: 600;
+                    z-index: 9999;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    cursor: pointer;
+                    animation: slideUp 0.3s ease;
+                `;
+                notification.textContent = '🔄 New version available! Click to update.';
+                notification.onclick = function() {
+                    window.location.reload();
+                };
+                document.body.appendChild(notification);
+                
+                // Auto-hide after 10 seconds
+                setTimeout(function() {
+                    if (notification.parentNode) {
+                        notification.style.opacity = '0';
+                        notification.style.transition = 'opacity 0.5s';
+                        setTimeout(function() {
+                            if (notification.parentNode) notification.remove();
+                        }, 500);
+                    }
+                }, 10000);
+            }
+
+            // Add slideUp animation
+            const styleSheet = document.createElement('style');
+            styleSheet.textContent = `
+                @keyframes slideUp {
+                    from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+                    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+                }
+            `;
+            document.head.appendChild(styleSheet);
 
         }); // End DOMContentLoaded
     </script>
