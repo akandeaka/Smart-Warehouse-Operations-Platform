@@ -2,10 +2,370 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=/login.html">
-    <title>Warehouse Stock System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>AKINEX SWOP - Smart Warehouse Operations Platform</title>
+    
+    <!-- PWA Support -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AKINEX SWOP">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <meta name="theme-color" content="#0B2B5C">
+
+    <!-- Additional PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="AKINEX SWOP">
+    <meta name="msapplication-TileColor" content="#0B2B5C">
+    <meta name="msapplication-TileImage" content="/icons/icon-144.png">
+    <script src="/js/pwa.js" defer></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 50%, #2d6a4f 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            transition: background 0.3s ease;
+        }
+
+        .landing-container {
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            animation: fadeUp 0.8s ease;
+        }
+
+        .logo-wrapper {
+            margin-bottom: 30px;
+        }
+
+        .logo-icon {
+            font-size: 80px;
+            display: block;
+            margin-bottom: 15px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .logo-main {
+            font-size: 32px;
+            font-weight: 900;
+            letter-spacing: 4px;
+            color: white;
+            text-transform: uppercase;
+            text-shadow: 0 2px 20px rgba(0,0,0,0.3);
+        }
+
+        .logo-sub {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 6px;
+            color: rgba(255,255,255,0.7);
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+
+        .tagline {
+            color: rgba(255,255,255,0.8);
+            font-size: 18px;
+            margin-bottom: 35px;
+            font-weight: 300;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 35px;
+        }
+
+        .feature-item {
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(10px);
+            padding: 20px 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .feature-item:hover {
+            background: rgba(255,255,255,0.15);
+            transform: translateY(-3px);
+        }
+
+        .feature-item .icon {
+            font-size: 30px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .feature-item .label {
+            font-size: 11px;
+            color: rgba(255,255,255,0.7);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-login {
+            display: inline-block;
+            padding: 16px 60px;
+            background: linear-gradient(135deg, #F40009, #cc0000);
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 30px rgba(244, 0, 9, 0.3);
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 40px rgba(244, 0, 9, 0.4);
+        }
+
+        .btn-login i {
+            margin-right: 10px;
+        }
+
+        .version-info {
+            margin-top: 25px;
+            font-size: 12px;
+            color: rgba(255,255,255,0.4);
+            letter-spacing: 1px;
+        }
+
+        .version-info span {
+            color: #F40009;
+        }
+
+        .redirect-text {
+            display: none;
+            margin-top: 20px;
+            font-size: 14px;
+            color: rgba(255,255,255,0.5);
+        }
+
+        .redirect-text a {
+            color: #F40009;
+            text-decoration: none;
+        }
+
+        .redirect-text a:hover {
+            text-decoration: underline;
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 480px) {
+            .logo-main { font-size: 26px; letter-spacing: 3px; }
+            .logo-icon { font-size: 60px; }
+            .tagline { font-size: 16px; }
+            .features-grid { grid-template-columns: 1fr; gap: 10px; }
+            .feature-item { padding: 15px; }
+            .btn-login { padding: 14px 40px; font-size: 16px; width: 100%; }
+        }
+
+        @media (hover: none) and (pointer: coarse) {
+            .btn-login { min-height: 48px; }
+        }
+
+        /* PWA Update Notification */
+        .pwa-update-notification {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #F40009;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            z-index: 9999;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            cursor: pointer;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+    </style>
 </head>
 <body>
-    <p>Redirecting to <a href="/login.html">login page</a>...</p>
+    <div class="landing-container">
+        <div class="logo-wrapper">
+            <span class="logo-icon">📦</span>
+            <h1 class="logo-main">AKINEX SWOP</h1>
+            <p class="logo-sub">Smart Warehouse Operations Platform</p>
+        </div>
+
+        <p class="tagline">
+            <i class="fas fa-arrow-right"></i> 
+            Complete warehouse management with driver tracking
+            <i class="fas fa-arrow-left"></i>
+        </p>
+
+        <div class="features-grid">
+            <div class="feature-item">
+                <span class="icon">📦</span>
+                <span class="label">Inventory</span>
+            </div>
+            <div class="feature-item">
+                <span class="icon">🚛</span>
+                <span class="label">Drivers</span>
+            </div>
+            <div class="feature-item">
+                <span class="icon">📊</span>
+                <span class="label">Reports</span>
+            </div>
+        </div>
+
+        <a href="/login.html" class="btn-login" id="loginBtn">
+            <i class="fas fa-sign-in-alt"></i> Go to Login
+        </a>
+
+        <div class="redirect-text" id="redirectText">
+            <i class="fas fa-spinner fa-spin"></i> Redirecting to <a href="/login.html">login page</a>...
+        </div>
+
+        <div class="version-info">
+            v2.0 &bull; <span>Secure</span> &bull; Real-Time
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // PWA SERVICE WORKER
+        // ============================================================
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                    .then(function(reg) {
+                        console.log('✅ Service Worker registered:', reg);
+                        
+                        reg.addEventListener('updatefound', function() {
+                            const newWorker = reg.installing;
+                            newWorker.addEventListener('statechange', function() {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    console.log('🔄 New version available!');
+                                    showUpdateNotification();
+                                }
+                            });
+                        });
+                    })
+                    .catch(function(err) {
+                        console.error('❌ Service Worker registration failed:', err);
+                    });
+            });
+        }
+
+        // ============================================================
+        // UPDATE NOTIFICATION
+        // ============================================================
+        function showUpdateNotification() {
+            if (document.querySelector('.pwa-update-notification')) return;
+            
+            const notification = document.createElement('div');
+            notification.className = 'pwa-update-notification';
+            notification.textContent = '🔄 New version available! Click to update.';
+            notification.onclick = function() {
+                window.location.reload();
+            };
+            document.body.appendChild(notification);
+            
+            setTimeout(function() {
+                if (notification.parentNode) {
+                    notification.style.opacity = '0';
+                    notification.style.transition = 'opacity 0.5s';
+                    setTimeout(function() {
+                        if (notification.parentNode) notification.remove();
+                    }, 500);
+                }
+            }, 10000);
+        }
+
+        // ============================================================
+        // AUTO-REDIRECT CHECK
+        // ============================================================
+        // Check if already logged in
+        const token = localStorage.getItem('token');
+        if (token) {
+            try {
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                if (user.role === 'super_admin') {
+                    window.location.href = 'super-admin.html';
+                } else if (user.role === 'warehouse_manager') {
+                    window.location.href = 'manager-dashboard.html';
+                } else if (user.role === 'reconciliation') {
+                    window.location.href = 'reconciliation-dashboard.html';
+                } else if (user.role === 'sales_rep') {
+                    window.location.href = 'sales-dashboard.html';
+                } else {
+                    // Fallback - show redirect message then go to login
+                    document.getElementById('redirectText').style.display = 'block';
+                    setTimeout(function() {
+                        window.location.href = 'login.html';
+                    }, 2000);
+                }
+            } catch (e) {
+                // If error parsing user, redirect to login
+                document.getElementById('redirectText').style.display = 'block';
+                setTimeout(function() {
+                    window.location.href = 'login.html';
+                }, 2000);
+            }
+        } else {
+            // No token - show redirect message then go to login
+            document.getElementById('redirectText').style.display = 'block';
+            setTimeout(function() {
+                window.location.href = 'login.html';
+            }, 1500);
+        }
+
+        // ============================================================
+        // PREVENT REDIRECT BLOCKING
+        // ============================================================
+        // If user clicks the login button, prevent auto-redirect
+        document.getElementById('loginBtn').addEventListener('click', function(e) {
+            // Allow natural navigation
+        });
+    </script>
 </body>
 </html>
