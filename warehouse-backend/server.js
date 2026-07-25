@@ -28,6 +28,39 @@ app.use(express.json());
 const upload = multer({ dest: 'uploads/' });
 
 // ============================================================
+// PWA HEADERS MIDDLEWARE
+// ============================================================
+app.use((req, res, next) => {
+    // Set cache control for service worker
+    if (req.path === '/sw.js' || req.path === '/manifest.json') {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+    }
+    
+    // Set secure headers for PWA
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    
+    // For iOS PWA
+    if (req.path === '/') {
+        res.setHeader('apple-mobile-web-app-capable', 'yes');
+        res.setHeader('apple-mobile-web-app-status-bar-style', 'black-translucent');
+        res.setHeader('apple-mobile-web-app-title', 'Smart Warehouse');
+    }
+    
+    next();
+});
+
+// ============================================================
+// PWA INSTALL STATS ENDPOINT
+// ============================================================
+app.post('/api/analytics/install', (req, res) => {
+    console.log('PWA Install analytics:', req.body);
+    res.json({ success: true });
+});
+// ============================================================
 // SERVE STATIC FILES
 // ============================================================
 const possiblePaths = [
@@ -1812,7 +1845,44 @@ app.get('/api/drivers/settlements/summary/daily', authMiddleware, async (req, re
         res.status(500).json({ success: false, message: error.message });
     }
 });
+// ============================================================
+// PWA SERVICE WORKER & OFFLINE PAGE (Optional but recommended)
+// ============================================================
 
+// Serve Service Worker with proper headers
+app.get('/sw.js', (req, res) => {
+    const swPath = path.join(frontendPath, 'sw.js');
+    if (fs.existsSync(swPath)) {
+        res.setHeader('Content-Type', 'application/javascript');
+        res.setHeader('Service-Worker-Allowed', '/');
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.sendFile(swPath);
+        console.log('✅ Serving service worker');
+    } else {
+        console.log('❌ sw.js not found at:', swPath);
+        res.status(404).send('Service Worker not found');
+    }
+});
+
+// Serve Offline Page
+app.get('/offline.html', (req, res) => {
+    const offlinePath = path.join(frontendPath, 'offline.html');
+    if (fs.existsSync(offlinePath)) {
+        res.sendFile(offlinePath);
+    } else {
+        res.status(404).send('Offline page not found');
+    }
+});
+
+// Serve Icons
+app.get('/icons/:filename', (req, res) => {
+    const iconPath = path.join(frontendPath, 'icons', req.params.filename);
+    if (fs.existsSync(iconPath)) {
+        res.sendFile(iconPath);
+    } else {
+        res.status(404).send('Icon not found');
+    }
+});
 // ============================================================
 // HTML ROUTES (For serving pages)
 // ============================================================
