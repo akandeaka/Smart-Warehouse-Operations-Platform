@@ -13,15 +13,12 @@
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
     <meta name="theme-color" content="#0B2B5C">
 
-    <!-- ====== ADDED: Additional PWA Meta Tags ====== -->
+    <!-- Additional PWA Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="AKINEX SWOP">
     <meta name="msapplication-TileColor" content="#0B2B5C">
     <meta name="msapplication-TileImage" content="/icons/icon-144.png">
-    
-    <!-- ====== ADDED: PWA Script ====== -->
     <script src="/js/pwa.js" defer></script>
-    <!-- =========================================== -->
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -56,6 +53,14 @@
             --card-border: rgba(255, 255, 255, 0.3);
             --radius: 20px;
             --transition: 0.35s ease;
+            --portal-super-admin-bg: #dc3545;
+            --portal-super-admin-text: white;
+            --portal-manager-bg: #ffc107;
+            --portal-manager-text: #333;
+            --portal-reconciliation-bg: #17a2b8;
+            --portal-reconciliation-text: white;
+            --portal-sales-bg: #16A34A;
+            --portal-sales-text: white;
         }
 
         /* ============================================================
@@ -80,6 +85,14 @@
             --info-bg: #1a2a4a;
             --info-text: #8ab4f8;
             --card-border: rgba(255, 255, 255, 0.08);
+            --portal-super-admin-bg: #dc3545;
+            --portal-super-admin-text: white;
+            --portal-manager-bg: #ffc107;
+            --portal-manager-text: #333;
+            --portal-reconciliation-bg: #17a2b8;
+            --portal-reconciliation-text: white;
+            --portal-sales-bg: #16A34A;
+            --portal-sales-text: white;
         }
 
         /* ============================================================
@@ -149,9 +162,6 @@
             margin-bottom: 20px;
         }
 
-        /* ============================================================
-           LOGO IMAGE - PROFESSIONAL SIZE
-           ============================================================ */
         .logo-image {
             max-width: 60px;
             height: auto;
@@ -181,7 +191,6 @@
             margin-top: 1px;
         }
 
-        /* Theme Toggle */
         .theme-toggle {
             background: transparent;
             border: 1px solid var(--border-color);
@@ -206,7 +215,7 @@
            ============================================================ */
         .welcome {
             text-align: center;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
         .welcome h2 {
@@ -224,12 +233,12 @@
         }
 
         /* ============================================================
-           PORTAL BADGE
+           PORTAL BADGE (DYNAMIC)
            ============================================================ */
         .portal-badge {
             text-align: center;
             margin-bottom: 20px;
-            padding: 8px 16px;
+            padding: 10px 16px;
             border-radius: 50px;
             font-size: 13px;
             font-weight: 600;
@@ -239,20 +248,68 @@
         }
 
         .portal-badge i {
-            margin-right: 6px;
+            margin-right: 8px;
         }
 
         .portal-super-admin {
-            background: #dc3545;
-            color: white;
+            background: var(--portal-super-admin-bg);
+            color: var(--portal-super-admin-text);
         }
         .portal-manager {
-            background: #ffc107;
-            color: #333;
+            background: var(--portal-manager-bg);
+            color: var(--portal-manager-text);
+        }
+        .portal-reconciliation {
+            background: var(--portal-reconciliation-bg);
+            color: var(--portal-reconciliation-text);
         }
         .portal-sales {
-            background: #16A34A;
-            color: white;
+            background: var(--portal-sales-bg);
+            color: var(--portal-sales-text);
+        }
+
+        /* ============================================================
+           PORTAL SELECTOR DROPDOWN (NEW)
+           ============================================================ */
+        .portal-selector {
+            margin-bottom: 16px;
+        }
+
+        .portal-selector label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-primary);
+            transition: color 0.3s ease;
+        }
+
+        .portal-selector label i {
+            margin-right: 6px;
+            color: var(--brand-secondary);
+        }
+
+        .portal-selector select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--input-border);
+            border-radius: 12px;
+            font-size: 14px;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+            font-family: inherit;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+        }
+
+        .portal-selector select:focus {
+            outline: none;
+            border-color: var(--brand-secondary);
+            box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.12);
         }
 
         /* ============================================================
@@ -280,7 +337,7 @@
         }
 
         /* ============================================================
-           FORM - BLANK INPUT FIELDS (NO PLACEHOLDER)
+           FORM
            ============================================================ */
         .form-group {
             margin-bottom: 16px;
@@ -445,7 +502,6 @@
             font-size: 16px;
         }
 
-        /* Loading State */
         .login-btn.loading {
             pointer-events: none;
             opacity: 0.85;
@@ -560,7 +616,8 @@
 
         @media (hover: none) and (pointer: coarse) {
             button,
-            input {
+            input,
+            select {
                 min-height: 44px;
                 font-size: 15px;
             }
@@ -607,18 +664,14 @@
 
         <div class="login-card">
 
-            <!-- ============================================================
-                 HEADER - LOGO + THEME TOGGLE
-                 ============================================================ -->
+            <!-- HEADER - LOGO + THEME TOGGLE -->
             <div class="card-header">
 
-                <!-- ✅ LOGO FROM IMGUR -->
                 <img src="https://i.imgur.com/PNshPOV.jpeg" 
                      alt="AKINEX TECHNOLOGIES" 
                      class="logo-image"
                      onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
 
-                <!-- Fallback text logo -->
                 <div class="logo-fallback">
                     <div class="logo-main">AKINEX</div>
                     <div class="logo-sub">TECHNOLOGIES</div>
@@ -630,39 +683,40 @@
 
             </div>
 
-            <!-- ============================================================
-                 WELCOME
-                 ============================================================ -->
+            <!-- WELCOME -->
             <div class="welcome">
                 <h2>Welcome Back</h2>
                 <p>Sign in to continue</p>
             </div>
 
-            <!-- ============================================================
-                 PORTAL BADGE (DYNAMIC)
-                 ============================================================ -->
+            <!-- PORTAL BADGE (DYNAMIC) -->
             <div id="portalBadge" class="portal-badge portal-sales">
-                <i class="fas fa-shield-alt"></i> Loading...
+                <i class="fas fa-users"></i> SALES TEAM PORTAL
             </div>
 
-            <!-- ============================================================
-                 MESSAGES
-                 ============================================================ -->
+            <!-- ====== NEW: PORTAL SELECTOR ====== -->
+            <div class="portal-selector">
+                <label><i class="fas fa-users-cog"></i> Select Portal</label>
+                <select id="portalSelect">
+                    <option value="sales">🛒 Sales Team</option>
+                    <option value="manager">📦 Warehouse Manager</option>
+                    <option value="reconciliation">💰 Reconciliation Officer</option>
+                    <option value="super-admin">👑 Super Admin</option>
+                </select>
+            </div>
+
+            <!-- MESSAGES -->
             <div id="errorMsg" class="message error"></div>
             <div id="infoMsg" class="message info"></div>
 
-            <!-- ============================================================
-                 LOGIN FORM - BLANK INPUT FIELDS (NO PLACEHOLDER)
-                 ============================================================ -->
+            <!-- LOGIN FORM -->
             <form id="loginForm" novalidate>
 
-                <!-- Username - Completely Blank -->
                 <div class="form-group">
                     <label><i class="fas fa-user"></i> Username</label>
                     <input type="text" id="username" autocomplete="off" required>
                 </div>
 
-                <!-- Password - Completely Blank -->
                 <div class="form-group">
                     <label><i class="fas fa-lock"></i> Password</label>
                     <div class="password-wrapper">
@@ -679,16 +733,13 @@
                     <input type="password" id="twofaCode">
                 </div>
 
-                <!-- Submit Button -->
                 <button type="submit" class="login-btn" id="loginBtn">
                     <i class="fas fa-sign-in-alt"></i> Secure Sign In
                 </button>
 
             </form>
 
-            <!-- ============================================================
-                 OPTIONS
-                 ============================================================ -->
+            <!-- OPTIONS -->
             <div class="options">
                 <label>
                     <input type="checkbox" id="rememberMe">
@@ -697,17 +748,13 @@
                 <a href="#">Forgot Password?</a>
             </div>
 
-            <!-- ============================================================
-                 SECURITY BADGE
-                 ============================================================ -->
+            <!-- SECURITY BADGE -->
             <div class="security">
                 <i class="fas fa-shield-halved"></i>
                 Protected with Enterprise Authentication
             </div>
 
-            <!-- ============================================================
-                 FOOTER
-                 ============================================================ -->
+            <!-- FOOTER -->
             <div class="footer">
                 <strong>AKINEX SWOP</strong> &mdash; Smart Warehouse Operations Platform
                 <span class="version">v2.0 &bull; <span>Secure</span> &bull; Real-Time</span>
@@ -716,9 +763,6 @@
         </div>
 
     </div>
-
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
@@ -740,6 +784,7 @@
             const themeToggle = document.getElementById('themeToggle');
             const themeIcon = document.getElementById('themeIcon');
             const portalBadge = document.getElementById('portalBadge');
+            const portalSelect = document.getElementById('portalSelect');
             const errorMsg = document.getElementById('errorMsg');
             const infoMsg = document.getElementById('infoMsg');
             const rememberMe = document.getElementById('rememberMe');
@@ -772,10 +817,8 @@
                 }
             }
 
-            // Initialize theme
             applyTheme(getCurrentTheme());
 
-            // Theme toggle
             themeToggle.addEventListener('click', function() {
                 const current = document.documentElement.getAttribute('data-theme') || 'light';
                 const newTheme = current === 'dark' ? 'light' : 'dark';
@@ -783,7 +826,6 @@
                 applyTheme(newTheme);
             });
 
-            // Listen for system changes
             window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
                 const saved = localStorage.getItem('theme');
                 if (!saved) {
@@ -792,41 +834,54 @@
             });
 
             // ============================================================
-            // 2. PORTAL DETECTION
+            // 2. PORTAL DETECTION - FIXED!
             // ============================================================
             const urlParams = new URLSearchParams(window.location.search);
             const redirectParam = urlParams.get('redirect');
 
-            if (redirectParam === 'super-admin') {
-                redirectPortal = 'super-admin';
-            } else if (redirectParam === 'manager-dashboard') {
-                redirectPortal = 'manager';
-            } else {
-                const referrer = document.referrer;
-                if (referrer.includes('super-admin')) {
-                    redirectPortal = 'super-admin';
-                } else if (referrer.includes('manager-dashboard')) {
-                    redirectPortal = 'manager';
-                } else {
-                    redirectPortal = 'sales';
+            // Get portal from URL or default to 'sales'
+            let detectedPortal = redirectParam || 'sales';
+
+            // Validate portal is valid
+            const validPortals = ['super-admin', 'manager', 'reconciliation', 'sales'];
+            if (!validPortals.includes(detectedPortal)) {
+                detectedPortal = 'sales';
+            }
+
+            // Set the dropdown to match detected portal
+            portalSelect.value = detectedPortal;
+            redirectPortal = detectedPortal;
+
+            // Update portal badge
+            function updatePortalBadge(portal) {
+                portalBadge.innerHTML = '';
+                switch (portal) {
+                    case 'super-admin':
+                        portalBadge.innerHTML = '<i class="fas fa-crown"></i> SUPER ADMIN PORTAL';
+                        portalBadge.className = 'portal-badge portal-super-admin';
+                        break;
+                    case 'manager':
+                        portalBadge.innerHTML = '<i class="fas fa-chart-bar"></i> WAREHOUSE MANAGER PORTAL';
+                        portalBadge.className = 'portal-badge portal-manager';
+                        break;
+                    case 'reconciliation':
+                        portalBadge.innerHTML = '<i class="fas fa-calculator"></i> RECONCILIATION OFFICER PORTAL';
+                        portalBadge.className = 'portal-badge portal-reconciliation';
+                        break;
+                    default:
+                        portalBadge.innerHTML = '<i class="fas fa-users"></i> SALES TEAM PORTAL';
+                        portalBadge.className = 'portal-badge portal-sales';
                 }
             }
 
-            // Update Portal Badge
-            portalBadge.innerHTML = '';
-            switch (redirectPortal) {
-                case 'super-admin':
-                    portalBadge.innerHTML = '<i class="fas fa-crown"></i> SUPER ADMIN PORTAL';
-                    portalBadge.className = 'portal-badge portal-super-admin';
-                    break;
-                case 'manager':
-                    portalBadge.innerHTML = '<i class="fas fa-chart-bar"></i> WAREHOUSE MANAGER PORTAL';
-                    portalBadge.className = 'portal-badge portal-manager';
-                    break;
-                default:
-                    portalBadge.innerHTML = '<i class="fas fa-users"></i> SALES TEAM PORTAL';
-                    portalBadge.className = 'portal-badge portal-sales';
-            }
+            updatePortalBadge(redirectPortal);
+
+            // When user changes the dropdown, update the portal
+            portalSelect.addEventListener('change', function() {
+                redirectPortal = this.value;
+                updatePortalBadge(redirectPortal);
+                clearMessages();
+            });
 
             // ============================================================
             // 3. REMEMBER ME
@@ -911,19 +966,17 @@
             }
 
             // ============================================================
-            // 8. LOGIN SUBMIT - COMPLETE API INTEGRATION
+            // 8. LOGIN SUBMIT
             // ============================================================
             loginForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
 
                 if (!validate()) return;
 
-                // Show loading state
                 loginBtn.classList.add('loading');
                 loginBtn.disabled = true;
                 loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authenticating...';
 
-                // Save remember me
                 if (rememberMe.checked) {
                     localStorage.setItem('rememberUser', username.value);
                 } else {
@@ -966,7 +1019,7 @@
                     }
 
                     // ============================================================
-                    // NORMAL LOGIN
+                    // NORMAL LOGIN - Use the selected portal
                     // ============================================================
                     const response = await fetch(`${API_URL}/auth/login-portal`, {
                         method: 'POST',
@@ -974,7 +1027,7 @@
                         body: JSON.stringify({
                             username: username.value.trim(),
                             password: password.value.trim(),
-                            portal: redirectPortal
+                            portal: redirectPortal  // ← Uses dropdown value!
                         })
                     });
 
@@ -1042,7 +1095,7 @@
             username.focus();
 
             // ============================================================
-            // 11. PWA SERVICE WORKER (ENHANCED)
+            // 11. PWA SERVICE WORKER (Enhanced)
             // ============================================================
             if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
@@ -1050,7 +1103,6 @@
                         .then(function(reg) {
                             console.log('✅ Service Worker registered:', reg);
                             
-                            // Check for updates
                             reg.addEventListener('updatefound', function() {
                                 const newWorker = reg.installing;
                                 newWorker.addEventListener('statechange', function() {
@@ -1094,7 +1146,6 @@
                 };
                 document.body.appendChild(notification);
                 
-                // Auto-hide after 10 seconds
                 setTimeout(function() {
                     if (notification.parentNode) {
                         notification.style.opacity = '0';
@@ -1106,7 +1157,6 @@
                 }, 10000);
             }
 
-            // Add slideUp animation
             const styleSheet = document.createElement('style');
             styleSheet.textContent = `
                 @keyframes slideUp {
@@ -1116,7 +1166,7 @@
             `;
             document.head.appendChild(styleSheet);
 
-        }); // End DOMContentLoaded
+        });
     </script>
 
 </body>
