@@ -1,4 +1,8 @@
-const db = require('../config/database');
+// ============================================================
+// DriverAssignment Model - Corrected Path
+// ============================================================
+
+const db = require('../database');  // ✅ Fixed path
 
 class DriverAssignment {
     // Create a new driver assignment
@@ -48,7 +52,7 @@ class DriverAssignment {
 
                 // Update product stock (reduce available)
                 await connection.query(
-                    `UPDATE products SET current_stock = current_stock - ? WHERE id = ?`,
+                    `UPDATE products SET current_qty = current_qty - ? WHERE id = ?`,
                     [item.quantity, item.product_id]
                 );
             }
