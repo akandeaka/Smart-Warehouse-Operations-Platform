@@ -14,13 +14,12 @@
     <link rel="apple-touch-icon" href="/icons/icon-192.png">
     <meta name="theme-color" content="#F40009">
 
-    <!-- ====== ADDED: Additional PWA Meta Tags ====== -->
+    <!-- Additional PWA Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="application-name" content="AKINEX SWOP Manager">
     <meta name="msapplication-TileColor" content="#F40009">
     <meta name="msapplication-TileImage" content="/icons/icon-144.png">
     <script src="/js/pwa.js" defer></script>
-    <!-- =========================================== -->
     
     <style>
         /* ============================================================
@@ -338,9 +337,12 @@
             font-size: 16px;
         }
 
+        /* ============================================================
+           UPDATED: Form Row with 5 columns for Driver + Team
+           ============================================================ */
         .form-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 20px;
             align-items: end;
             margin-bottom: 30px;
@@ -799,69 +801,157 @@
             <button class="tab" onclick="switchTab('returntracking', this)">📊 Returns Tracking</button>
         </div>
 
+        <!-- ============================================================
+             ALLOCATE STOCK TAB - INTEGRATED WITH DRIVER ALLOCATION
+             ============================================================ -->
         <div id="allocate" class="tab-content active">
             <h2>➕ New Allocation</h2>
+            
             <div class="form-row">
+                <!-- ====== NEW: Allocate To (Team or Driver) ====== -->
                 <div class="form-group">
-                    <label>Team</label>
-                    <select id="allocateTeamId">
-                        <option value="">Select Team</option>
+                    <label><i class="fas fa-users"></i> Allocate To</label>
+                    <select id="allocateTarget">
+                        <option value="">-- Select Team or Driver --</option>
+                        <optgroup label="🏢 Sales Teams">
+                            <option value="team_1">Alpha Team</option>
+                            <option value="team_2">Beta Team</option>
+                            <option value="team_3">Gamma Team</option>
+                        </optgroup>
+                        <optgroup label="🚛 Drivers">
+                            <option value="driver_1">Ahmed Bello</option>
+                            <option value="driver_2">Oluwaseun Adebayo</option>
+                            <option value="driver_3">Chidi Okonkwo</option>
+                            <option value="driver_4">Musa Ibrahim</option>
+                            <option value="driver_5">Emeka Okafor</option>
+                        </optgroup>
                     </select>
                 </div>
+                <!-- ================================================= -->
+
                 <div class="form-group">
-                    <label>Product</label>
+                    <label><i class="fas fa-box"></i> Product</label>
                     <select id="allocateProductId">
                         <option value="">Select Product</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Quantity</label>
+                    <label><i class="fas fa-hashtag"></i> Quantity</label>
                     <input type="number" id="allocateQuantity" min="1" placeholder="Enter quantity">
+                </div>
+                <div class="form-group" id="driverReturnDateGroup" style="display:none;">
+                    <label><i class="fas fa-calendar-alt"></i> Return Date</label>
+                    <input type="datetime-local" id="driverReturnDate">
                 </div>
                 <div class="form-group">
                     <button class="btn-allocate" onclick="allocateStock()">✅ Allocate</button>
                 </div>
             </div>
+
+            <!-- Show which type of allocation is selected -->
+            <div id="allocationTypeIndicator" style="margin-bottom:15px;padding:10px;border-radius:5px;display:none;">
+                <span id="allocationTypeText"></span>
+            </div>
+
             <h3>📋 Today's Allocations</h3>
-            <table>
-                <thead><tr><th>Team</th><th>Product</th><th>Allocated</th><th>Sold</th><th>Remaining</th></tr></thead>
-                <tbody id="allocationsTable"><tr><td colspan="5" class="loading-text">Loading allocations...</td></tr></tbody>
-            </table>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Type</th>
+                            <th>Team/Driver</th>
+                            <th>Product</th>
+                            <th>Allocated</th>
+                            <th>Sold</th>
+                            <th>Remaining</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allocationsTable">
+                        <tr><td colspan="8" class="loading-text">Loading allocations...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Driver Allocations Section -->
+            <h3 style="margin-top:25px;">🚛 Today's Driver Assignments</h3>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Driver</th>
+                            <th>Manifest #</th>
+                            <th>Product</th>
+                            <th>Qty</th>
+                            <th>Total Value</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="driverAssignmentsTable">
+                        <tr><td colspan="7" class="loading-text">Loading driver assignments...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
+        <!-- ============================================================
+             STOCK MANAGEMENT TAB
+             ============================================================ -->
         <div id="stock" class="tab-content">
             <h2>📦 Current Stock Levels</h2>
-            <table>
-                <thead><tr><th>Product</th><th>Quantity</th><th>Unit Cost</th><th>Total Value</th></tr></thead>
-                <tbody id="stockTable"><tr><td colspan="4" class="loading-text">Loading stock...</td></tr></tbody>
-            </table>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Product</th><th>Quantity</th><th>Unit Cost</th><th>Total Value</th></tr></thead>
+                    <tbody id="stockTable"><tr><td colspan="4" class="loading-text">Loading stock...</td></tr></tbody>
+                </table>
+            </div>
         </div>
 
+        <!-- ============================================================
+             CREDIT APPROVALS TAB
+             ============================================================ -->
         <div id="approvals" class="tab-content">
             <h2>📝 Pending Credit Approvals</h2>
-            <table>
-                <thead><tr><th>Order #</th><th>Customer</th><th>Original Amount</th><th>Modified Amount</th><th>Requested By</th><th>Action</th></tr></thead>
-                <tbody id="approvalsTable"><tr><td colspan="6" class="loading-text">Loading approvals...</td></tr></tbody>
-            </table>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Order #</th><th>Customer</th><th>Original Amount</th><th>Modified Amount</th><th>Requested By</th><th>Action</th></tr></thead>
+                    <tbody id="approvalsTable"><tr><td colspan="6" class="loading-text">Loading approvals...</td></tr></tbody>
+                </table>
+            </div>
         </div>
 
+        <!-- ============================================================
+             PENDING RETURNS TAB
+             ============================================================ -->
         <div id="returns" class="tab-content">
             <h2>🔄 Pending Returns (Unsold Goods)</h2>
-            <table>
-                <thead><tr><th>Team</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Action</th></tr></thead>
-                <tbody id="returnsTable"><tr><td colspan="7" class="loading-text">Loading returns...</td></tr></tbody>
-            </table>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Team</th><th>Customer</th><th>Product</th><th>Qty</th><th>Amount</th><th>Type</th><th>Action</th></tr></thead>
+                    <tbody id="returnsTable"><tr><td colspan="7" class="loading-text">Loading returns...</td></tr></tbody>
+                </table>
+            </div>
         </div>
 
+        <!-- ============================================================
+             DAILY REPORTS TAB
+             ============================================================ -->
         <div id="reports" class="tab-content">
             <button class="btn-allocate btn-danger" onclick="closeDay()" style="margin-bottom: 20px;">🔒 Close Day (5 PM)</button>
             <h2>📊 Daily Sales Report</h2>
-            <table>
-                <thead><tr><th>Team</th><th>Orders</th><th>Cash</th><th>Transfer</th><th>Credit</th><th>Total</th></tr></thead>
-                <tbody id="reportsTable"><tr><td colspan="6" class="loading-text">Loading report...</td></tr></tbody>
-            </table>
+            <div class="table-wrapper">
+                <table>
+                    <thead><tr><th>Team</th><th>Orders</th><th>Cash</th><th>Transfer</th><th>Credit</th><th>Total</th></tr></thead>
+                    <tbody id="reportsTable"><tr><td colspan="6" class="loading-text">Loading report...</td></tr></tbody>
+                </table>
+            </div>
         </div>
 
+        <!-- ============================================================
+             RETURNS TRACKING TAB
+             ============================================================ -->
         <div id="returntracking" class="tab-content">
             <h2>📊 Returns Tracking</h2>
             
@@ -1033,7 +1123,7 @@
 
         function loadTabData(tabId) {
             switch(tabId) {
-                case 'allocate': loadTodayAllocations(); loadTeams(); loadProductsForAllocation(); break;
+                case 'allocate': loadTodayAllocations(); loadTeamsAndDrivers(); loadProductsForAllocation(); loadDriverAssignments(); break;
                 case 'stock': loadProducts(); break;
                 case 'approvals': loadPendingApprovals(); break;
                 case 'returns': loadPendingReturns(); break;
@@ -1067,6 +1157,323 @@
             else if (tabId === 'returntracking') {
                 card3Label.innerHTML = "Today's Returns";
                 loadTodayReturnsCount();
+            }
+        }
+
+        // ============================================================
+        // DRIVER ALLOCATION - NEW FUNCTIONS
+        // ============================================================
+
+        // Load both Teams and Drivers into the dropdown
+        async function loadTeamsAndDrivers() {
+            try {
+                // Load teams
+                const teamsData = await fetchAPI('/teams');
+                // Load drivers
+                const driversData = await fetchAPI('/drivers');
+                
+                const targetSelect = document.getElementById('allocateTarget');
+                let html = '<option value="">-- Select Team or Driver --</option>';
+                
+                // Add Teams
+                if (teamsData && teamsData.success) {
+                    html += '<optgroup label="🏢 Sales Teams">';
+                    teamsData.data.forEach(team => {
+                        html += `<option value="team_${team.id}">${team.team_name}</option>`;
+                    });
+                    html += '</optgroup>';
+                }
+                
+                // Add Drivers
+                if (driversData && driversData.success) {
+                    html += '<optgroup label="🚛 Drivers">';
+                    driversData.data.forEach(driver => {
+                        html += `<option value="driver_${driver.id}">${driver.full_name}</option>`;
+                    });
+                    html += '</optgroup>';
+                }
+                
+                targetSelect.innerHTML = html;
+                
+                // Add event listener to show/hide return date for drivers
+                targetSelect.addEventListener('change', function() {
+                    const isDriver = this.value.startsWith('driver_');
+                    document.getElementById('driverReturnDateGroup').style.display = isDriver ? 'block' : 'none';
+                    
+                    // Show indicator
+                    const indicator = document.getElementById('allocationTypeIndicator');
+                    const text = document.getElementById('allocationTypeText');
+                    if (this.value) {
+                        indicator.style.display = 'block';
+                        const label = this.options[this.selectedIndex]?.text || '';
+                        if (isDriver) {
+                            text.innerHTML = `🚛 Allocating to <strong>${label}</strong> (Driver)`;
+                            text.style.color = '#17a2b8';
+                        } else {
+                            text.innerHTML = `🏢 Allocating to <strong>${label}</strong> (Sales Team)`;
+                            text.style.color = '#28a745';
+                        }
+                    } else {
+                        indicator.style.display = 'none';
+                    }
+                });
+            } catch (error) {
+                console.error('Error loading targets:', error);
+            }
+        }
+
+        // Load driver assignments
+        async function loadDriverAssignments() {
+            try {
+                const data = await fetchAPI('/drivers/assignments');
+                if (data && data.success) {
+                    const tbody = document.getElementById('driverAssignmentsTable');
+                    if (data.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" class="no-data-text">No driver assignments today</td></tr>';
+                        return;
+                    }
+                    
+                    let html = '';
+                    data.data.forEach(a => {
+                        const items = a.items || [];
+                        const firstItem = items[0] || {};
+                        html += `<tr>
+                            <td><strong>${a.driver_name || 'Unknown'}</strong></td>
+                            <td>${a.manifest_number || 'N/A'}</td>
+                            <td>${firstItem.product_name || 'N/A'}</td>
+                            <td>${a.total_units || 0}</td>
+                            <td>${formatMoney(a.total_value || 0)}</td>
+                            <td><span class="status-${a.status === 'settled' ? 'confirmed' : 'pending'}">${a.status || 'assigned'}</span></td>
+                            <td>
+                                ${a.status === 'returned' ? `<button class="btn-approve" onclick="settleDriver(${a.id})">💰 Settle</button>` : 
+                                  a.status === 'assigned' ? `<span style="color:var(--text-light);">🟡 Active</span>` : 
+                                  `<span style="color:var(--status-confirmed);">✅ Done</span>`}
+                            </td>
+                        </tr>`;
+                    });
+                    tbody.innerHTML = html;
+                }
+            } catch (error) {
+                console.error('Error loading driver assignments:', error);
+            }
+        }
+
+        // Settle driver (redirect to reconciliation)
+        function settleDriver(assignmentId) {
+            window.location.href = `/reconciliation-dashboard.html?assignment=${assignmentId}`;
+        }
+
+        // ============================================================
+        // UPDATED ALLOCATE STOCK - Handles Both Teams and Drivers
+        // ============================================================
+        async function allocateStock() {
+            const targetValue = document.getElementById('allocateTarget').value;
+            const productId = document.getElementById('allocateProductId').value;
+            const quantity = document.getElementById('allocateQuantity').value;
+            
+            if (!targetValue || !productId || quantity < 1) {
+                showMessage('Please fill all fields (Target, Product, Quantity)', true);
+                return;
+            }
+            
+            const qty = parseInt(quantity);
+            
+            // Determine if it's a team or driver
+            if (targetValue.startsWith('team_')) {
+                // Allocate to Sales Team
+                const teamId = targetValue.replace('team_', '');
+                const result = await fetchAPI('/allocations', {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        team_id: parseInt(teamId), 
+                        product_id: parseInt(productId), 
+                        quantity: qty,
+                        allocated_date: new Date().toISOString().split('T')[0]
+                    })
+                });
+                
+                if (result && result.success) {
+                    showMessage(`✅ ${qty} units allocated to team successfully!`);
+                    document.getElementById('allocateQuantity').value = '';
+                    loadTodayAllocations();
+                    loadProducts();
+                    loadProductsForAllocation();
+                } else {
+                    showMessage(result?.message || 'Allocation failed', true);
+                }
+            } else if (targetValue.startsWith('driver_')) {
+                // Allocate to Driver
+                const driverId = targetValue.replace('driver_', '');
+                
+                // Get product price
+                const productSelect = document.getElementById('allocateProductId');
+                const selectedOption = productSelect.options[productSelect.selectedIndex];
+                const price = parseFloat(selectedOption?.getAttribute('data-price')) || 0;
+                
+                const returnDate = document.getElementById('driverReturnDate').value || 
+                    new Date(Date.now() + 8*60*60*1000).toISOString().slice(0, 16);
+                
+                const result = await fetchAPI('/drivers/assignments', {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        driver_id: parseInt(driverId), 
+                        items: [{ 
+                            product_id: parseInt(productId), 
+                            quantity: qty,
+                            unit_price: price
+                        }],
+                        expected_return_date: returnDate
+                    })
+                });
+                
+                if (result && result.success) {
+                    showMessage(`✅ ${qty} units assigned to driver! Manifest: ${result.data?.manifest_number || ''}`);
+                    document.getElementById('allocateQuantity').value = '';
+                    loadDriverAssignments();
+                    loadProducts();
+                    loadProductsForAllocation();
+                } else {
+                    showMessage(result?.message || 'Driver allocation failed', true);
+                }
+            }
+        }
+
+        // ============================================================
+        // PRODUCT LOADING WITH PRICE ATTRIBUTE
+        // ============================================================
+        async function loadProductsForAllocation() {
+            const data = await fetchAPI('/products');
+            if (data && data.success) {
+                let html = '<option value="">Select Product</option>';
+                data.data.forEach(p => {
+                    if (p.current_qty > 0) {
+                        html += `<option value="${p.id}" data-price="${p.selling_price}" data-stock="${p.current_qty}">${p.product_name} (${p.current_qty} left, ${formatMoney(p.selling_price)})</option>`;
+                    }
+                });
+                document.getElementById('allocateProductId').innerHTML = html;
+            }
+        }
+
+        // ============================================================
+        // EXISTING MANAGER FUNCTIONS (KEPT UNCHANGED)
+        // ============================================================
+        async function loadTodayAllocations() {
+            const data = await fetchAPI('/allocations/today');
+            if (data && data.success) {
+                let html = '';
+                if (data.data.length === 0) {
+                    html = '<tr><td colspan="8" class="no-data-text">No allocations today</td></tr>';
+                } else {
+                    let count = 1;
+                    for (let a of data.data) {
+                        const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
+                        const statusClass = a.confirmed ? 'status-confirmed' : 'status-pending';
+                        const statusText = a.confirmed ? '✅ Confirmed' : '⏳ Pending';
+                        html += `<tr>
+                            <td>${count++}</td>
+                            <td>🏢 Team</td>
+                            <td>${a.team_name}</td>
+                            <td>${a.product_name}</td>
+                            <td>${a.allocated_qty}</td>
+                            <td>${a.sold_qty}</td>
+                            <td>${remaining}</td>
+                            <td><span class="${statusClass}">${statusText}</span></td>
+                        </tr>`;
+                    }
+                }
+                document.getElementById('allocationsTable').innerHTML = html;
+            }
+        }
+
+        async function loadProducts() {
+            const data = await fetchAPI('/products');
+            if (data && data.success) {
+                let totalValue = 0, html = '';
+                for (let p of data.data) {
+                    totalValue += p.current_qty * p.unit_cost;
+                    html += `<tr><td>${p.product_name}</td><td>${p.current_qty}</td><td>${formatMoney(p.unit_cost)}</td><td>${formatMoney(p.current_qty * p.unit_cost)}</td></tr>`;
+                }
+                document.getElementById('stockTable').innerHTML = html;
+                document.getElementById('totalProducts').innerText = data.data.length;
+                document.getElementById('totalValue').innerHTML = formatMoney(totalValue);
+            }
+        }
+
+        async function loadPendingApprovals() {
+            const data = await fetchAPI('/approvals/pending');
+            if (data && data.success) {
+                let html = '';
+                if (data.data.length === 0) {
+                    html = '<tr><td colspan="6" class="no-data-text">No pending approvals</td></tr>';
+                } else {
+                    for (let a of data.data) {
+                        html += `<tr>
+                            <td>${a.order_number}</td>
+                            <td>${a.customer_name}</td>
+                            <td>${formatMoney(a.total_amount)}</td>
+                            <td><input type="number" id="amount_${a.id}" value="${a.total_amount}" step="1000" style="width:100px; background:var(--input-bg); color:var(--text-primary); border:1px solid var(--input-border); border-radius:5px; padding:5px;"></td>
+                            <td>${a.requested_by || 'Unknown'}</td>
+                            <td><button class="btn-approve" onclick="approveCredit(${a.id})">✅ Approve</button>
+                            <button class="btn-reject" onclick="rejectCredit(${a.id})">❌ Reject</button></td>
+                        </tr>`;
+                    }
+                }
+                document.getElementById('approvalsTable').innerHTML = html;
+            }
+        }
+
+        async function loadPendingReturns() {
+            const data = await fetchAPI('/sales/pending-submissions');
+            if (data && data.success) {
+                let html = '';
+                if (data.data.length === 0) {
+                    html = '<tr><td colspan="7" class="no-data-text">No pending returns</td></tr>';
+                } else {
+                    for (let item of data.data) {
+                        let typeDisplay = '';
+                        if (item.type === 'Unsold Goods') {
+                            typeDisplay = '📦 Unsold Goods';
+                        } else if (item.type === 'credit') {
+                            typeDisplay = '📝 Credit';
+                        } else if (item.type === 'cash') {
+                            typeDisplay = '💵 Cash';
+                        } else {
+                            typeDisplay = '🏦 Transfer';
+                        }
+                        
+                        const isCredit = item.type === 'credit';
+                        html += `<tr>
+                            <td>${item.team_name}</td>
+                            <td>${item.customer_name}</td>
+                            <td>${item.product_name}</td>
+                            <td>${item.quantity}</td>
+                            <td class="${isCredit ? 'credit-amount' : ''}">${isCredit ? formatCreditMoney(item.amount) : formatMoney(item.amount)}</td>
+                            <td>${typeDisplay}</td>
+                            <td><button class="btn-approve" onclick="confirmReturn(${item.return_id}, 'accept')">✅ Accept</button>
+                            <button class="btn-reject" onclick="confirmReturn(${item.return_id}, 'reject')">🔄 Return to Team</button></td>
+                        </tr>`;
+                    }
+                }
+                document.getElementById('returnsTable').innerHTML = html;
+            }
+        }
+
+        async function loadDailyReport() {
+            const data = await fetchAPI('/reports/daily');
+            if (data && data.success) {
+                let html = '';
+                for (let t of data.teams) {
+                    const creditAmount = t.credit_sales || 0;
+                    html += `<tr>
+                        <td>${t.team_name}</td>
+                        <td>${t.num_orders || 0}</td>
+                        <td>${formatMoney(t.cash_sales || 0)}</td>
+                        <td>${formatMoney(t.transfer_sales || 0)}</td>
+                        <td class="${creditAmount > 0 ? 'credit-amount' : ''}">${creditAmount > 0 ? '-' : ''}${formatMoney(Math.abs(creditAmount))}</td>
+                        <td>${formatMoney(t.total_sales || 0)}</td>
+                    </tr>`;
+                }
+                document.getElementById('reportsTable').innerHTML = html;
             }
         }
 
@@ -1186,139 +1593,6 @@
             loadReturnsTracking();
         }
 
-        // ============================================================
-        // EXISTING MANAGER FUNCTIONS
-        // ============================================================
-        async function loadTeams() {
-            const data = await fetchAPI('/teams');
-            if (data && data.success) {
-                let html = '<option value="">Select Team</option>';
-                data.data.forEach(t => { html += `<option value="${t.id}">${t.team_name}</option>`; });
-                document.getElementById('allocateTeamId').innerHTML = html;
-            }
-        }
-
-        async function loadProductsForAllocation() {
-            const data = await fetchAPI('/products');
-            if (data && data.success) {
-                let html = '<option value="">Select Product</option>';
-                data.data.forEach(p => {
-                    if (p.current_qty > 0) {
-                        html += `<option value="${p.id}" data-stock="${p.current_qty}">${p.product_name} (${p.current_qty} left, ${formatMoney(p.selling_price)})</option>`;
-                    }
-                });
-                document.getElementById('allocateProductId').innerHTML = html;
-            }
-        }
-
-        async function loadTodayAllocations() {
-            const data = await fetchAPI('/allocations/today');
-            if (data && data.success) {
-                let html = '';
-                if (data.data.length === 0) {
-                    html = '<tr><td colspan="5" class="no-data-text">No allocations today</td></tr>';
-                } else {
-                    for (let a of data.data) {
-                        const remaining = a.allocated_qty - a.sold_qty - a.returned_qty;
-                        html += `<tr><td>${a.team_name}</td><td>${a.product_name}</td><td>${a.allocated_qty}</td><td>${a.sold_qty}</td><td>${remaining}</td></tr>`;
-                    }
-                }
-                document.getElementById('allocationsTable').innerHTML = html;
-            }
-        }
-
-        async function loadProducts() {
-            const data = await fetchAPI('/products');
-            if (data && data.success) {
-                let totalValue = 0, html = '';
-                for (let p of data.data) {
-                    totalValue += p.current_qty * p.unit_cost;
-                    html += `<tr><td>${p.product_name}</td><td>${p.current_qty}</td><td>${formatMoney(p.unit_cost)}</td><td>${formatMoney(p.current_qty * p.unit_cost)}</td></tr>`;
-                }
-                document.getElementById('stockTable').innerHTML = html;
-                document.getElementById('totalProducts').innerText = data.data.length;
-                document.getElementById('totalValue').innerHTML = formatMoney(totalValue);
-            }
-        }
-
-        async function loadPendingApprovals() {
-            const data = await fetchAPI('/approvals/pending');
-            if (data && data.success) {
-                let html = '';
-                if (data.data.length === 0) {
-                    html = '<tr><td colspan="6" class="no-data-text">No pending approvals</td></tr>';
-                } else {
-                    for (let a of data.data) {
-                        html += `<tr>
-                            <td>${a.order_number}</td>
-                            <td>${a.customer_name}</td>
-                            <td>${formatMoney(a.total_amount)}</td>
-                            <td><input type="number" id="amount_${a.id}" value="${a.total_amount}" step="1000" style="width:100px; background:var(--input-bg); color:var(--text-primary); border:1px solid var(--input-border); border-radius:5px; padding:5px;"></td>
-                            <td>${a.requested_by || 'Unknown'}</td>
-                            <td><button class="btn-approve" onclick="approveCredit(${a.id})">✅ Approve</button>
-                            <button class="btn-reject" onclick="rejectCredit(${a.id})">❌ Reject</button></td>
-                        </tr>`;
-                    }
-                }
-                document.getElementById('approvalsTable').innerHTML = html;
-            }
-        }
-
-        async function loadPendingReturns() {
-            const data = await fetchAPI('/sales/pending-submissions');
-            if (data && data.success) {
-                let html = '';
-                if (data.data.length === 0) {
-                    html = '<tr><td colspan="7" class="no-data-text">No pending returns</td></tr>';
-                } else {
-                    for (let item of data.data) {
-                        let typeDisplay = '';
-                        if (item.type === 'Unsold Goods') {
-                            typeDisplay = '📦 Unsold Goods';
-                        } else if (item.type === 'credit') {
-                            typeDisplay = '📝 Credit';
-                        } else if (item.type === 'cash') {
-                            typeDisplay = '💵 Cash';
-                        } else {
-                            typeDisplay = '🏦 Transfer';
-                        }
-                        
-                        const isCredit = item.type === 'credit';
-                        html += `<tr>
-                            <td>${item.team_name}</td>
-                            <td>${item.customer_name}</td>
-                            <td>${item.product_name}</td>
-                            <td>${item.quantity}</td>
-                            <td class="${isCredit ? 'credit-amount' : ''}">${isCredit ? formatCreditMoney(item.amount) : formatMoney(item.amount)}</td>
-                            <td>${typeDisplay}</td>
-                            <td><button class="btn-approve" onclick="confirmReturn(${item.return_id}, 'accept')">✅ Accept</button>
-                            <button class="btn-reject" onclick="confirmReturn(${item.return_id}, 'reject')">🔄 Return to Team</button></td>
-                        </tr>`;
-                    }
-                }
-                document.getElementById('returnsTable').innerHTML = html;
-            }
-        }
-
-        async function loadDailyReport() {
-            const data = await fetchAPI('/reports/daily');
-            if (data && data.success) {
-                let html = '';
-                for (let t of data.teams) {
-                    const creditAmount = t.credit_sales || 0;
-                    html += `<tr>
-                        <td>${t.team_name}</td>
-                        <td>${t.num_orders || 0}</td>
-                        <td>${formatMoney(t.cash_sales || 0)}</td>
-                        <td>${formatMoney(t.transfer_sales || 0)}</td>
-                        <td class="${creditAmount > 0 ? 'credit-amount' : ''}">${creditAmount > 0 ? '-' : ''}${formatMoney(Math.abs(creditAmount))}</td>
-                        <td>${formatMoney(t.total_sales || 0)}</td>
-                    </tr>`;
-                }
-                document.getElementById('reportsTable').innerHTML = html;
-            }
-        }
-
         async function loadPendingApprovalsCount() {
             const data = await fetchAPI('/approvals/pending');
             if (data && data.success) document.getElementById('pendingApprovals').innerText = data.data.length;
@@ -1353,26 +1627,6 @@
             if (data && data.success) {
                 const todayTotal = data.teams.reduce((sum, t) => sum + t.total_sales, 0);
                 document.getElementById('pendingApprovals').innerHTML = formatMoney(todayTotal);
-            }
-        }
-
-        async function allocateStock() {
-            const teamId = document.getElementById('allocateTeamId').value;
-            const productId = document.getElementById('allocateProductId').value;
-            const quantity = document.getElementById('allocateQuantity').value;
-            if (!teamId || !productId || quantity < 1) { showMessage('Please fill all fields', true); return; }
-            const result = await fetchAPI('/allocations', {
-                method: 'POST',
-                body: JSON.stringify({ team_id: parseInt(teamId), product_id: parseInt(productId), quantity: parseInt(quantity), allocated_date: new Date().toISOString().split('T')[0] })
-            });
-            if (result && result.success) {
-                showMessage(result.message);
-                document.getElementById('allocateQuantity').value = '';
-                loadTodayAllocations();
-                loadProducts();
-                loadProductsForAllocation();
-            } else {
-                showMessage(result?.message || 'Allocation failed', true);
             }
         }
 
@@ -1485,10 +1739,11 @@
             window.location.href = 'login.html';
         } else {
             loadTodayAllocations();
-            loadTeams();
+            loadTeamsAndDrivers();
             loadProductsForAllocation();
             loadPendingApprovalsCount();
             loadProducts();
+            loadDriverAssignments();
             setTodayDate();
         }
 
@@ -1501,7 +1756,6 @@
                     .then(function(reg) {
                         console.log('✅ Service Worker registered:', reg);
                         
-                        // Check for updates
                         reg.addEventListener('updatefound', function() {
                             const newWorker = reg.installing;
                             newWorker.addEventListener('statechange', function() {
@@ -1522,7 +1776,6 @@
         // PWA UPDATE NOTIFICATION
         // ============================================================
         function showUpdateNotification() {
-            // Check if notification already exists
             if (document.querySelector('.pwa-update-notification')) return;
             
             const notification = document.createElement('div');
@@ -1533,7 +1786,6 @@
             };
             document.body.appendChild(notification);
             
-            // Auto-hide after 10 seconds
             setTimeout(function() {
                 if (notification.parentNode) {
                     notification.style.opacity = '0';
