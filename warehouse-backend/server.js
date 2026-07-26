@@ -9,7 +9,7 @@ const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const xlsx = require('xlsx');
-const bcrypt = require('bcryptjs');  // ← ADD THIS AT THE TOP!
+const bcrypt = require('bcryptjs');
 
 const { pool, testConnection } = require('./database');
 
@@ -32,19 +32,16 @@ const upload = multer({ dest: 'uploads/' });
 // PWA HEADERS MIDDLEWARE
 // ============================================================
 app.use((req, res, next) => {
-    // Set cache control for service worker
     if (req.path === '/sw.js' || req.path === '/manifest.json') {
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
     }
     
-    // Set secure headers for PWA
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-XSS-Protection', '1; mode=block');
     
-    // For iOS PWA
     if (req.path === '/') {
         res.setHeader('apple-mobile-web-app-capable', 'yes');
         res.setHeader('apple-mobile-web-app-status-bar-style', 'black-translucent');
@@ -214,34 +211,59 @@ const superAdminMiddleware = async (req, res, next) => {
 };
 
 // ============================================================
-// 2FA AND PORTAL-SPECIFIC LOGIN - FIXED!
+// 2FA AND PORTAL-SPECIFIC LOGIN - WITH DEBUG LOGS!
 // ============================================================
 const twofaPending = new Map();
 
 app.post('/api/auth/login-portal', async (req, res) => {
     try {
         const { username, password, portal } = req.body;
-        
-        // --- FIX: Include password_hash in SELECT ---
+
+        // ============================================================
+        // 🔍 DEBUG LOG 1: Login attempt received
+        // ============================================================
+        console.log('🔐 Login attempt:', { 
+            username, 
+            portal, 
+            passwordLength: password?.length || 0 
+        });
+
         const [users] = await pool.query(
             'SELECT id, username, full_name, email, role, team_id, is_active, twofa_secret, password_hash FROM users WHERE username = ? AND is_active = 1',
             [username]
         );
-        
-        // --- FIX: Check if user exists ---
+
+        // ============================================================
+        // 🔍 DEBUG LOG 2: User found in database
+        // ============================================================
+        console.log('👤 User found:', users.length > 0 ? { 
+            username: users[0].username, 
+            role: users[0].role,
+            is_active: users[0].is_active,
+            hashLength: users[0].password_hash?.length || 0
+        } : '❌ None');
+
         if (users.length === 0) {
+            console.log('❌ No user found for:', username);
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
-        
+
         const user = users[0];
-        
-        // --- FIX: Verify password using bcrypt ---
+
+        // ============================================================
+        // 🔍 DEBUG LOG 3: Password verification
+        // ============================================================
         const isValidPassword = bcrypt.compareSync(password, user.password_hash);
+        console.log('🔑 Password match?', isValidPassword);
+
         if (!isValidPassword) {
+            console.log('❌ Password mismatch for:', username);
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
-        
-        // --- REST OF THE CODE STAYS THE SAME ---
+
+        // ============================================================
+        // 🔍 DEBUG LOG 4: Role match
+        // ============================================================
         let roleMatch = false;
         let redirectUrl = '';
         
@@ -265,14 +287,21 @@ app.post('/api/auth/login-portal', async (req, res) => {
             default:
                 return res.status(400).json({ success: false, message: 'Invalid portal' });
         }
-        
+
+        console.log('🔍 Role match result:', { 
+            portal, 
+            userRole: user.role, 
+            roleMatch 
+        });
+
         if (!roleMatch) {
+            console.log('❌ Role mismatch for:', { portal, userRole: user.role });
             return res.status(403).json({
                 success: false,
                 message: `Access denied. Your role: ${user.role}`
             });
         }
-        
+
         if (user.role === 'super_admin' && user.twofa_secret) {
             const sessionId = Math.random().toString(36).substring(2, 15);
             twofaPending.set(sessionId, {
@@ -290,9 +319,11 @@ app.post('/api/auth/login-portal', async (req, res) => {
                 message: '2FA required. Enter your secret code.'
             });
         }
-        
+
         const token = Buffer.from(`${user.username}:${Date.now()}`).toString('base64');
-        
+
+        console.log('✅ Login successful for:', username);
+
         res.json({
             success: true,
             token: token,
@@ -305,13 +336,12 @@ app.post('/api/auth/login-portal', async (req, res) => {
                 team_id: user.team_id
             }
         });
-        
+
     } catch (error) {
+        console.error('❌ Login error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });
-
-// ... rest of your server.js stays the same ...
 
 // ============================================================
 // START SERVER - ONLY ONCE
